@@ -4,17 +4,16 @@ import { App } from './App';
 import { ConfigProvider, theme } from 'antd';
 import './styles/global.css';
 
-// Register service worker for PWA
+// Unregister old service worker if exists
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/service-worker.js')
-      .then((registration) => {
-        console.log('SW registered:', registration);
-      })
-      .catch((error) => {
-        console.log('SW registration failed:', error);
-      });
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    registrations.forEach((registration) => {
+      // Unregister old service-worker.js
+      if (registration.active?.scriptURL.includes('service-worker.js')) {
+        registration.unregister();
+        console.log('Old service worker unregistered');
+      }
+    });
   });
 }
 
