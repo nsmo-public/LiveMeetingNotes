@@ -20,7 +20,6 @@ export const App: React.FC = () => {
     attendees: ''
   });
   const [notes, setNotes] = useState<string>('');
-  const [notesHtml, setNotesHtml] = useState<string>('');
   const [timestampMap, setTimestampMap] = useState<Map<number, number>>(new Map());
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -94,7 +93,6 @@ export const App: React.FC = () => {
         onSaveComplete={handleSaveComplete}
         meetingInfo={meetingInfo}
         notes={notes}
-        notesHtml={notesHtml}
         timestampMap={timestampMap}
         audioBlob={audioBlob}
         isSaved={isSaved}
@@ -107,7 +105,6 @@ export const App: React.FC = () => {
         onNotesChange={setNotes}
         timestampMap={timestampMap}
         onTimestampMapChange={setTimestampMap}
-        onNotesHtmlChange={setNotesHtml}
       />
 
       <AudioPlayer audioBlob={audioBlob} />

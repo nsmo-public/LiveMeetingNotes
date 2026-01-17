@@ -249,91 +249,28 @@ body {
   font-style: italic;
 }
 
-/* Quill Editor Dark Theme */
-.ql-toolbar.ql-snow {
-  background: var(--bg-tertiary);
-  border-color: var(--border-color);
-  border-width: 0 0 1px 0;
+/* Notes Textarea */
+.notes-textarea {
+  background: var(--bg-secondary) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
 }
 
-.ql-container.ql-snow {
-  background: var(--bg-secondary);
-  border: none;
+.notes-textarea:hover,
+.notes-textarea:focus {
+  border-color: var(--accent-blue) !important;
+  box-shadow: 0 0 0 2px rgba(64, 150, 255, 0.1) !important;
 }
 
-.ql-editor {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  min-height: 400px;
-  font-size: 16px;
-  padding: 20px;
-}
-
-.ql-editor.ql-blank::before {
+.notes-textarea::placeholder {
   color: var(--text-secondary);
-  font-style: italic;
+  opacity: 0.6;
 }
 
-/* Quill toolbar icons */
-.ql-snow .ql-stroke {
-  stroke: var(--text-primary);
-}
-
-.ql-snow .ql-fill {
-  fill: var(--text-primary);
-}
-
-.ql-snow .ql-picker-label {
-  color: var(--text-primary);
-}
-
-.ql-toolbar.ql-snow .ql-picker-label:hover,
-.ql-toolbar.ql-snow .ql-picker-item:hover {
-  color: var(--accent-blue);
-}
-
-.ql-toolbar.ql-snow button:hover,
-.ql-toolbar.ql-snow button.ql-active {
-  color: var(--accent-blue);
-}
-
-.ql-toolbar.ql-snow button:hover .ql-stroke,
-.ql-toolbar.ql-snow button.ql-active .ql-stroke {
-  stroke: var(--accent-blue);
-}
-
-.ql-toolbar.ql-snow button:hover .ql-fill,
-.ql-toolbar.ql-snow button.ql-active .ql-fill {
-  fill: var(--accent-blue);
-}
-
-/* Timestamp styling in editor - target timestamps with background */
-.ql-editor [style*='background: rgba(64, 150, 255, 0.1)'],
-.ql-editor [style*='background:rgba(64, 150, 255, 0.1)'],
-.ql-editor strong[style*='background: rgba(64, 150, 255, 0.1)'],
-.ql-editor strong[style*='background:rgba(64, 150, 255, 0.1)'] {
-  color: #4096ff !important;
-  font-weight: bold;
-  cursor: pointer;
-  text-decoration: underline dotted;
-  transition: background 0.2s;
-  border-radius: 3px;
-  padding: 2px 4px;
-}
-
-.ql-editor [style*='background: rgba(64, 150, 255, 0.1)']:hover,
-.ql-editor [style*='background:rgba(64, 150, 255, 0.1)']:hover,
-.ql-editor strong[style*='background: rgba(64, 150, 255, 0.1)']:hover,
-.ql-editor strong[style*='background:rgba(64, 150, 255, 0.1)']:hover {
-  background: rgba(64, 150, 255, 0.2) !important;
-}
-
-/* Hide timestamps ONLY when toggle is off - target by background color */
-.ql-editor.hide-timestamps [style*='background: rgba(64, 150, 255, 0.1)'],
-.ql-editor.hide-timestamps [style*='background:rgba(64, 150, 255, 0.1)'],
-.ql-editor.hide-timestamps strong[style*='background: rgba(64, 150, 255, 0.1)'],
-.ql-editor.hide-timestamps strong[style*='background:rgba(64, 150, 255, 0.1)'] {
-  display: none !important;
+/* Timestamp highlighting in textarea */
+.notes-textarea {
+  line-height: 1.8;
+  letter-spacing: 0.3px;
 }
 
 /* Audio Player */

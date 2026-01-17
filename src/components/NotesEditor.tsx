@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
-import Quill from 'quill';
-import 'quill/dist/quill.snow.css';
+import React, { useEffect, useRef, useState } from 'react';
+import { Input } from 'antd';
+
+const { TextArea } = Input;
 
 interface Props {
   isRecording: boolean;
@@ -13,142 +14,87 @@ interface Props {
 
 export const NotesEditor: React.FC<Props> = ({
   isRecording,
+  notes,
   onNotesChange,
   timestampMap,
   onTimestampMapChange,
   onNotesHtmlChange
 }) => {
-  const editorRef = useRef<HTMLDivElement>(null);
-  const quillRef = useRef<Quill | null>(null);
+  const textareaRef = useRef<any>(null);
   const recordingStartTime = useRef<number>(0);
-  const [showTimestamps, setShowTimestamps] = React.useState(true);
-  const lastTextLength = useRef<number>(0);
+  const [showTimestamps, setShowTimestamps] = useState(true);
   const TIME_OFFSET_MS = 2000; // Bù 2 giây cho thời gian nghe và gõ
 
   useEffect(() => {
-    if (editorRef.current && !quillRef.current) {
-      quillRef.current = new Quill(editorRef.current, {
-        theme: 'snow',
-        modules: {
-          toolbar: [
-            ['bold', 'italic', 'underline'],
-            ['link'],
-            [{ color: [] }, { background: [] }],
-            ['clean']
-          ]
-        },
-        placeholder: 'Start typing your notes here...\nPress ENTER during recording to insert timestamp'
-      });
-
-      // Listen to text changes
-      quillRef.current.on('text-change', (_delta: any, _oldDelta: any, source: string) => {
-        const currentText = quillRef.current!.getText();
-        onNotesChange(currentText);
-        
-        // Also get HTML content if callback is provided
-        if (onNotesHtmlChange && quillRef.current) {
-          const container = quillRef.current.root as HTMLElement;
-          onNotesHtmlChange(container.innerHTML);
-        }
-        
-        // Auto-insert timestamp when starting new line during recording
-        if (isRecording && source === 'user') {
-          handleTextChange(_delta);
-        }
-      });
-
-      // Double-click to seek
-      editorRef.current.addEventListener('dblclick', handleDoubleClick);
-    }
-
-    return () => {
-      if (editorRef.current) {
-        editorRef.current.removeEventListener('dblclick', handleDoubleClick);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
     if (isRecording) {
       recordingStartTime.current = Date.now();
     }
   }, [isRecording]);
 
-  useEffect(() => {
-    if (isRecording) {
-      recordingStartTime.current = Date.now();
-      lastTextLength.current = quillRef.current?.getText().length || 0;
+  // Listen for Enter key during recording
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && isRecording && !e.shiftKey) {
+      // Let Enter happen naturally, then insert timestamp
+      setTimeout(() => {
+        insertTimestampAtCursor();
+      }, 0);
     }
-  }, [isRecording]);
-
-  // Detect Enter key and insert timestamp immediately
-  useEffect(() => {
-    if (!isRecording || !quillRef.current) return;
-
-    const quill = quillRef.current;
-    
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        // Don't prevent default - let Enter create new line
-        // Then insert timestamp at the start of new line
-        setTimeout(() => {
-          const selection = quill.getSelection();
-          if (selection) {
-            // Insert timestamp at current cursor position (start of new line)
-            insertTimestampAtPosition(selection.index);
-          }
-        }, 0);
-      }
-    };
-
-    const editorElement = quill.root;
-    editorElement.addEventListener('keydown', handleKeyDown);
-    return () => editorElement.removeEventListener('keydown', handleKeyDown);
-  }, [isRecording]);
-
-  const handleTextChange = (_delta: any) => {
-    // This is now mainly for updating HTML content
-    if (!quillRef.current) return;
-    lastTextLength.current = quillRef.current.getText().length;
   };
 
-  const insertTimestampAtPosition = (position: number) => {
-    if (!quillRef.current) return;
+  const insertTimestampAtCursor = () => {
+    if (!textareaRef.current) return;
+
+    const textarea = textareaRef.current.resizableTextArea.textArea;
+    const cursorPos = textarea.selectionStart;
 
     const currentDuration = Date.now() - recordingStartTime.current;
-    // Subtract offset to account for listening and typing time
     const adjustedDuration = Math.max(0, currentDuration - TIME_OFFSET_MS);
     const timeStr = formatTime(adjustedDuration);
-    const timestampText = `[${timeStr}]`;
+    const timestampText = `[${timeStr}] `;
 
-    // Insert timestamp with special formatting
-    quillRef.current.insertText(position, timestampText, {
-      color: '#4096ff',
-      bold: true,
-      background: 'rgba(64, 150, 255, 0.1)' // Add background to identify timestamp
-    });
-    
-    // Insert space after timestamp with normal formatting
-    quillRef.current.insertText(position + timestampText.length, ' ', {});
+    // Insert timestamp at cursor position
+    const newText =
+      notes.substring(0, cursorPos) +
+      timestampText +
+      notes.substring(cursorPos);
 
-    // Store timestamp mapping with position
+    onNotesChange(newText);
+
+    // Store timestamp mapping
     const newMap = new Map(timestampMap);
-    newMap.set(position, adjustedDuration);
+    newMap.set(cursorPos, adjustedDuration);
     onTimestampMapChange(newMap);
 
-    // Move cursor after timestamp and space
-    quillRef.current.setSelection(position + timestampText.length + 1, 0);
+    // Move cursor after timestamp
+    setTimeout(() => {
+      textarea.selectionStart = cursorPos + timestampText.length;
+      textarea.selectionEnd = cursorPos + timestampText.length;
+      textarea.focus();
+    }, 0);
   };
 
-  const handleDoubleClick = (_e: MouseEvent) => {
-    if (!quillRef.current) return;
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    onNotesChange(newValue);
+    
+    // Also generate HTML for Word export (simple paragraph format)
+    if (onNotesHtmlChange) {
+      const html = newValue
+        .split('\n')
+        .map(line => `<p>${line}</p>`)
+        .join('');
+      onNotesHtmlChange(html);
+    }
+  };
 
-    const selection = quillRef.current.getSelection();
-    if (!selection) return;
+  const handleDoubleClick = () => {
+    if (!textareaRef.current) return;
 
-    const timestamp = findNearestTimestamp(selection.index);
+    const textarea = textareaRef.current.resizableTextArea.textArea;
+    const cursorPos = textarea.selectionStart;
+
+    const timestamp = findNearestTimestamp(cursorPos);
     if (timestamp !== null) {
-      // Dispatch event to AudioPlayer component
       window.dispatchEvent(
         new CustomEvent('seek-audio', {
           detail: { time: timestamp / 1000 }
@@ -163,7 +109,7 @@ export const NotesEditor: React.FC<Props> = ({
 
     timestampMap.forEach((time, pos) => {
       const dist = Math.abs(pos - index);
-      if (dist < minDist && dist < 20) {
+      if (dist < minDist && dist < 50) {
         minDist = dist;
         nearest = time;
       }
@@ -183,19 +129,10 @@ export const NotesEditor: React.FC<Props> = ({
       .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Update timestamp visibility when toggle changes
-  React.useEffect(() => {
-    if (!editorRef.current) return;
-    
-    const editorElement = editorRef.current.querySelector('.ql-editor');
-    if (!editorElement) return;
-    
-    if (showTimestamps) {
-      editorElement.classList.remove('hide-timestamps');
-    } else {
-      editorElement.classList.add('hide-timestamps');
-    }
-  }, [showTimestamps]);
+  // Render notes with optional timestamp hiding
+  const displayNotes = showTimestamps
+    ? notes
+    : notes.replace(/\[\d{2}:\d{2}:\d{2}\]\s*/g, '');
 
   return (
     <div className="notes-editor-container">
@@ -204,10 +141,10 @@ export const NotesEditor: React.FC<Props> = ({
         <div className="editor-controls">
           {isRecording && (
             <span className="recording-hint">
-              💡 Start typing on new line to insert timestamp
+              💡 Press Enter to insert timestamp at new line
             </span>
           )}
-          <button 
+          <button
             className="toggle-timestamps-btn"
             onClick={() => setShowTimestamps(!showTimestamps)}
             title={showTimestamps ? 'Hide timestamps' : 'Show timestamps'}
@@ -216,7 +153,21 @@ export const NotesEditor: React.FC<Props> = ({
           </button>
         </div>
       </div>
-      <div ref={editorRef} className="editor" />
+      <TextArea
+        ref={textareaRef}
+        value={displayNotes}
+        onChange={handleTextChange}
+        onKeyDown={handleKeyDown}
+        onDoubleClick={handleDoubleClick}
+        placeholder="Start typing your notes here...&#10;Press ENTER during recording to insert timestamp"
+        className="notes-textarea"
+        autoSize={{ minRows: 15, maxRows: 30 }}
+        style={{
+          fontFamily: 'monospace',
+          fontSize: '14px',
+          lineHeight: '1.6'
+        }}
+      />
     </div>
   );
 };

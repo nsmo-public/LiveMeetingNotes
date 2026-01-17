@@ -21,7 +21,6 @@ interface Props {
   onSaveComplete: () => void;
   meetingInfo: MeetingInfo;
   notes: string;
-  notesHtml: string;
   timestampMap: Map<number, number>;
   audioBlob: Blob | null;
   isSaved: boolean;
@@ -37,7 +36,6 @@ export const RecordingControls: React.FC<Props> = ({
   onSaveComplete,
   meetingInfo,
   notes,
-  notesHtml,
   timestampMap,
   audioBlob,
   isSaved,
@@ -117,7 +115,7 @@ export const RecordingControls: React.FC<Props> = ({
         );
 
         // Export Word document to same folder
-        const wordBlob = await WordExporter.createWordBlob(meetingInfo, notesHtml);
+        const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
         await fileManager.saveWordFile(wordBlob, `${projectName}.docx`);
 
         message.success('Recording saved successfully!');
@@ -149,7 +147,7 @@ export const RecordingControls: React.FC<Props> = ({
         // Export Word document
         await WordExporter.exportToWord(
           meetingInfo,
-          notesHtml,
+          notes,
           `${projectName}.docx`
         );
 
@@ -192,7 +190,7 @@ export const RecordingControls: React.FC<Props> = ({
           'metadata.json'
         );
 
-        const wordBlob = await WordExporter.createWordBlob(meetingInfo, notesHtml);
+        const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
         await fileManager.saveWordFile(wordBlob, `${lastProjectName}.docx`);
 
         message.success('Changes saved successfully!');
@@ -207,7 +205,7 @@ export const RecordingControls: React.FC<Props> = ({
 
         await WordExporter.exportToWord(
           meetingInfo,
-          notesHtml,
+          notes,
           `${lastProjectName}.docx`
         );
 

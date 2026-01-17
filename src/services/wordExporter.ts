@@ -6,13 +6,13 @@ export class WordExporter {
   // Create Word blob without downloading
   static async createWordBlob(
     meetingInfo: MeetingInfo,
-    notesHtml: string
+    notesText: string
   ): Promise<Blob> {
-    // Remove timestamps from HTML
-    const cleanHtml = this.removeTimestamps(notesHtml);
+    // Remove timestamps from text
+    const cleanText = this.removeTimestamps(notesText);
     
-    // Parse HTML to extract formatted content
-    const paragraphs = this.parseHtmlToParagraphs(cleanHtml);
+    // Parse text to paragraphs
+    const paragraphs = this.parseTextToParagraphs(cleanText);
     
     // Create document
     const doc = new Document({
@@ -104,96 +104,44 @@ export class WordExporter {
   // Export with auto-download (for fallback browsers)
   static async exportToWord(
     meetingInfo: MeetingInfo,
-    notesHtml: string,
+    notesText: string,
     fileName: string
   ): Promise<void> {
-    const blob = await this.createWordBlob(meetingInfo, notesHtml);
+    const blob = await this.createWordBlob(meetingInfo, notesText);
     saveAs(blob, fileName);
   }
   
-  private static removeTimestamps(html: string): string {
+  private static removeTimestamps(text: string): string {
     // Remove timestamp patterns like [00:00:15]
-    return html.replace(/\[?\d{2}:\d{2}:\d{2}\]?\s*/g, '');
+    return text.replace(/\[\d{2}:\d{2}:\d{2}\]\s*/g, '');
   }
   
-  private static parseHtmlToParagraphs(html: string): Paragraph[] {
+  private static parseTextToParagraphs(text: string): Paragraph[] {
     const paragraphs: Paragraph[] = [];
     
-    // Create temporary div to parse HTML
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
+    // Split by newlines
+    const lines = text.split('\n');
     
-    // Get all paragraph elements
-    const elements = tempDiv.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li');
-    
-    elements.forEach((element) => {
-      const textRuns = this.parseElementToTextRuns(element as HTMLElement);
-      
-      if (textRuns.length > 0) {
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (trimmed) {
         paragraphs.push(
           new Paragraph({
-            children: textRuns,
+            text: trimmed,
             spacing: { after: 100 }
+          })
+        );
+      } else {
+        // Empty line for spacing
+        paragraphs.push(
+          new Paragraph({
+            text: '',
+            spacing: { after: 50 }
           })
         );
       }
     });
     
-    // If no structured elements, parse plain text
-    if (paragraphs.length === 0) {
-      const lines = tempDiv.textContent?.split('\n') || [];
-      lines.forEach((line) => {
-        const trimmed = line.trim();
-        if (trimmed) {
-          paragraphs.push(
-            new Paragraph({
-              text: trimmed,
-              spacing: { after: 100 }
-            })
-          );
-        }
-      });
-    }
-    
     return paragraphs;
-  }
-  
-  private static parseElementToTextRuns(element: HTMLElement): TextRun[] {
-    const textRuns: TextRun[] = [];
-    
-    // Get all child nodes including text nodes
-    element.childNodes.forEach((node) => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        const text = node.textContent?.trim();
-        if (text) {
-          textRuns.push(new TextRun({ text }));
-        }
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        const childElement = node as HTMLElement;
-        const text = childElement.textContent?.trim();
-        
-        if (text) {
-          const isBold = childElement.tagName === 'STRONG' || 
-                        childElement.tagName === 'B' ||
-                        childElement.style.fontWeight === 'bold';
-          const isItalic = childElement.tagName === 'EM' || 
-                          childElement.tagName === 'I' ||
-                          childElement.style.fontStyle === 'italic';
-          const isUnderline = childElement.tagName === 'U' ||
-                             childElement.style.textDecoration?.includes('underline');
-          
-          textRuns.push(
-            new TextRun({
-              text,
-              bold: isBold,
-              italics: isItalic,
-              underline: isUnderline ? {} : undefined
-            })
-          );
-        }
-      }
-    });
-    
-    return textRuns;
   }
 }
