@@ -307,26 +307,32 @@ body {
   fill: var(--accent-blue);
 }
 
-/* Timestamp styling in editor */
-.ql-editor strong[style*='color: rgb(64, 150, 255)'],
-.ql-editor [style*='color: rgb(64, 150, 255)'] {
+/* Timestamp styling in editor - target timestamps with background */
+.ql-editor [style*='background: rgba(64, 150, 255, 0.1)'],
+.ql-editor [style*='background:rgba(64, 150, 255, 0.1)'],
+.ql-editor strong[style*='background: rgba(64, 150, 255, 0.1)'],
+.ql-editor strong[style*='background:rgba(64, 150, 255, 0.1)'] {
   color: #4096ff !important;
   font-weight: bold;
   cursor: pointer;
   text-decoration: underline dotted;
   transition: background 0.2s;
-}
-
-.ql-editor strong[style*='color: rgb(64, 150, 255)']:hover,
-.ql-editor [style*='color: rgb(64, 150, 255)']:hover {
-  background: rgba(64, 150, 255, 0.15);
   border-radius: 3px;
   padding: 2px 4px;
 }
 
-/* Hide timestamps ONLY when toggle is off */
-.ql-editor.hide-timestamps strong[style*='color: rgb(64, 150, 255)'],
-.ql-editor.hide-timestamps [style*='color: rgb(64, 150, 255)'] {
+.ql-editor [style*='background: rgba(64, 150, 255, 0.1)']:hover,
+.ql-editor [style*='background:rgba(64, 150, 255, 0.1)']:hover,
+.ql-editor strong[style*='background: rgba(64, 150, 255, 0.1)']:hover,
+.ql-editor strong[style*='background:rgba(64, 150, 255, 0.1)']:hover {
+  background: rgba(64, 150, 255, 0.2) !important;
+}
+
+/* Hide timestamps ONLY when toggle is off - target by background color */
+.ql-editor.hide-timestamps [style*='background: rgba(64, 150, 255, 0.1)'],
+.ql-editor.hide-timestamps [style*='background:rgba(64, 150, 255, 0.1)'],
+.ql-editor.hide-timestamps strong[style*='background: rgba(64, 150, 255, 0.1)'],
+.ql-editor.hide-timestamps strong[style*='background:rgba(64, 150, 255, 0.1)'] {
   display: none !important;
 }
 

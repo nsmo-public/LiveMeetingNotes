@@ -119,21 +119,25 @@ export const NotesEditor: React.FC<Props> = ({
     // Subtract offset to account for listening and typing time
     const adjustedDuration = Math.max(0, currentDuration - TIME_OFFSET_MS);
     const timeStr = formatTime(adjustedDuration);
-    const timestampText = `[${timeStr}] `;
+    const timestampText = `[${timeStr}]`;
 
-    // Insert timestamp at the beginning of the line (always blue, visibility controlled by CSS)
+    // Insert timestamp with special formatting
     quillRef.current.insertText(position, timestampText, {
       color: '#4096ff',
-      bold: true
+      bold: true,
+      background: 'rgba(64, 150, 255, 0.1)' // Add background to identify timestamp
     });
+    
+    // Insert space after timestamp with normal formatting
+    quillRef.current.insertText(position + timestampText.length, ' ', {});
 
     // Store timestamp mapping with position
     const newMap = new Map(timestampMap);
     newMap.set(position, adjustedDuration);
     onTimestampMapChange(newMap);
 
-    // Move cursor after timestamp
-    quillRef.current.setSelection(position + timestampText.length, 0);
+    // Move cursor after timestamp and space
+    quillRef.current.setSelection(position + timestampText.length + 1, 0);
   };
 
   const handleDoubleClick = (_e: MouseEvent) => {
