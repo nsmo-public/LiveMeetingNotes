@@ -25,6 +25,7 @@ interface Props {
   timestampMap: Map<number, number>;
   audioBlob: Blob | null;
   isSaved: boolean;
+  hasUnsavedChanges: boolean;
 }
 
 export const RecordingControls: React.FC<Props> = ({
@@ -39,7 +40,8 @@ export const RecordingControls: React.FC<Props> = ({
   notesHtml,
   timestampMap,
   audioBlob,
-  isSaved
+  isSaved,
+  hasUnsavedChanges
 }) => {
   const [duration, setDuration] = useState<number>(0);
   const [recorder] = useState(() => new AudioRecorderService());
@@ -262,8 +264,8 @@ export const RecordingControls: React.FC<Props> = ({
           </Button>
         )}
 
-        {/* Show Save Changes button when stopped and has saved data */}
-        {!isRecording && isSaved && audioBlob && (
+        {/* Show Save Changes button when has unsaved changes after first save */}
+        {!isRecording && isSaved && audioBlob && hasUnsavedChanges && (
           <Button
             type="default"
             icon={<SaveOutlined />}

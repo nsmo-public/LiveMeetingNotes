@@ -98,6 +98,7 @@ export const App: React.FC = () => {
         timestampMap={timestampMap}
         audioBlob={audioBlob}
         isSaved={isSaved}
+        hasUnsavedChanges={hasUnsavedChanges}
       />
 
       <NotesEditor
