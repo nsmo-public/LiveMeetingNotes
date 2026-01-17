@@ -8,7 +8,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'icons/*.png'],
+      base: '/LiveMeetingNote-Web/',
+      scope: '/LiveMeetingNote-Web/',
+      includeAssets: ['icons/*.svg'],
       manifest: {
         name: 'Live Meeting Notes',
         short_name: 'MeetingNotes',
@@ -17,16 +19,20 @@ export default defineConfig({
         background_color: '#1e1e1e',
         display: 'standalone',
         orientation: 'any',
+        scope: '/LiveMeetingNote-Web/',
+        start_url: '/LiveMeetingNote-Web/',
         icons: [
           {
-            src: 'icons/icon-192.png',
+            src: '/LiveMeetingNote-Web/icons/icon-192.svg',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/svg+xml',
+            purpose: 'any maskable'
           },
           {
-            src: 'icons/icon-512.png',
+            src: '/LiveMeetingNote-Web/icons/icon-512.svg',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/svg+xml',
+            purpose: 'any maskable'
           }
         ]
       },
