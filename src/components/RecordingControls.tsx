@@ -98,8 +98,8 @@ export const RecordingControls: React.FC<Props> = ({
           `${projectName}_meeting_info.json`
         );
         await fileManager.saveMetadataFile(
-          metadata.transcription,
-          `${projectName}_transcription.json`
+          metadata.metadata,
+          'metadata.json'
         );
 
         message.success('Recording saved successfully!');
@@ -121,8 +121,8 @@ export const RecordingControls: React.FC<Props> = ({
           `${projectName}_meeting_info.json`
         );
         await downloader.downloadMetadataFile(
-          metadata.transcription,
-          `${projectName}_transcription.json`
+          metadata.metadata,
+          'metadata.json'
         );
 
         message.info('Files downloaded. Please save them to your meeting notes folder.');

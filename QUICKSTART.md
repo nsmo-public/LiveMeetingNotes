@@ -54,7 +54,7 @@ Mở browser tại: **http://localhost:5173/**
    - Files sẽ được lưu tự động:
      - `Meeting_[timestamp].wav` - Audio file
      - `Meeting_[timestamp]_meeting_info.json` - Meeting metadata
-     - `Meeting_[timestamp]_transcription.json` - Notes với timestamps
+     - `metadata.json` - Notes với timestamps
 
 #### C. Playback:
 1. Sau khi stop recording, audio player sẽ hiển thị
@@ -155,27 +155,35 @@ vercel --prod
 }
 ```
 
-### Transcription JSON:
+### Metadata JSON (metadata.json):
 ```json
 {
   "ProjectName": "Meeting_2026-01-18T14-30-00",
-  "AudioPath": "Meeting_2026-01-18T14-30-00.wav",
-  "ModelName": "Live Recording",
+  "Model": "Live Recording",
   "Language": "vi",
-  "Duration": "00:15:30",
-  "Segments": [
+  "OriginalFileName": "Meeting_2026-01-18T14-30-00.wav",
+  "AudioFileName": "Meeting_2026-01-18T14-30-00.wav",
+  "Duration": "00:15:30.0000000",
+  "Timestamps": [
     {
       "Index": 0,
-      "Start": "00:00:15",
-      "End": "00:02:30",
       "Text": "Introduction and agenda",
+      "StartTime": "00:00:15.000",
+      "EndTime": "00:02:30.000",
+      "Highlight": false
+    },
+    {
+      "Index": 1,
+      "Text": "Project timeline discussion",
+      "StartTime": "00:02:30.500",
+      "EndTime": "00:05:45.250",
       "Highlight": false
     }
   ]
 }
 ```
 
-**100% tương thích với C# TranscriptionProject format!**
+**100% tương thích với cấu trúc metadata mới!**
 
 ---
 

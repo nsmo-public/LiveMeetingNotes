@@ -1,7 +1,6 @@
 import type {
   MeetingInfo,
-  MeetingMetadata,
-  TranscriptionProject
+  MeetingMetadata
 } from '../types/types';
 
 export class MetadataBuilder {
@@ -12,8 +11,8 @@ export class MetadataBuilder {
     duration: number,
     audioFileName: string
   ) {
-    // Extract segments from notes
-    const segments = this.extractSegments(notes, timestampMap, duration);
+    // Extract timestamps from notes with proper text content
+    const timestamps = this.extractTimestamps(notes, timestampMap, duration);
 
     // Meeting info JSON (compatible with C# SaveMeetingMetadataToJson)
     const meetingInfoJson: MeetingMetadata = {
@@ -26,74 +25,85 @@ export class MetadataBuilder {
       CreatedAt: new Date().toISOString()
     };
 
-    // Transcription JSON (compatible with C# TranscriptionProject.SaveProject)
-    const transcriptionJson: TranscriptionProject = {
+    // Metadata JSON with new structure
+    const metadataJson = {
       ProjectName: audioFileName.replace('.wav', ''),
-      AudioPath: audioFileName,
-      ModelName: 'Live Recording',
+      Model: 'Live Recording',
       Language: 'vi',
-      Duration: this.formatDuration(duration),
-      Segments: segments.map((seg, index) => ({
-        Index: index,
-        Start: this.formatDuration(seg.start),
-        End: this.formatDuration(seg.end),
-        Text: seg.text,
-        Highlight: false
-      }))
+      OriginalFileName: audioFileName,
+      AudioFileName: audioFileName,
+      Duration: this.formatDurationWithMs(duration),
+      Timestamps: timestamps
     };
 
     return {
       meetingInfo: meetingInfoJson,
-      transcription: transcriptionJson
+      metadata: metadataJson
     };
   }
 
-  private static extractSegments(
+  private static extractTimestamps(
     notes: string,
     timestampMap: Map<number, number>,
     totalDuration: number
-  ): Array<{ start: number; end: number; text: string }> {
-    const segments: Array<{ start: number; end: number; text: string }> = [];
+  ): Array<{ Index: number; Text: string; StartTime: string; EndTime: string; Highlight: boolean }> {
+    const timestamps: Array<{ Index: number; Text: string; StartTime: string; EndTime: string; Highlight: boolean }> = [];
     
-    // Sort timestamps by position
+    // Sort timestamps by time (not position)
     const sortedTimestamps = Array.from(timestampMap.entries())
-      .sort((a, b) => a[0] - b[0]);
+      .sort((a, b) => a[1] - b[1]);
 
     for (let i = 0; i < sortedTimestamps.length; i++) {
-      const [position, start] = sortedTimestamps[i];
+      const [position, startTime] = sortedTimestamps[i];
       
       // Find next timestamp or use total duration
-      const end =
+      const endTime =
         i < sortedTimestamps.length - 1
           ? sortedTimestamps[i + 1][1]
-          : totalDuration;
+          : Math.min(startTime + 3000, totalDuration); // Default 3 seconds or end
 
-      // Extract text between this timestamp and next
-      const text = this.extractTextAtPosition(notes, position);
+      // Extract text after this timestamp
+      const text = this.extractTextAfterTimestamp(notes, position);
 
       if (text.trim()) {
-        segments.push({ start, end, text: text.trim() });
+        timestamps.push({
+          Index: i,
+          Text: text.trim(),
+          StartTime: this.formatDurationWithMs(startTime),
+          EndTime: this.formatDurationWithMs(endTime),
+          Highlight: false
+        });
       }
     }
 
-    return segments;
+    return timestamps;
   }
 
-  private static extractTextAtPosition(text: string, position: number): string {
-    // Find the line containing the timestamp
-    const lines = text.split('\n');
-    let currentPos = 0;
-
-    for (const line of lines) {
-      if (currentPos <= position && position < currentPos + line.length) {
-        // Extract text after timestamp
-        const match = line.match(/\[\d{2}:\d{2}:\d{2}\]\s*(.+)/);
-        return match ? match[1] : '';
-      }
-      currentPos += line.length + 1; // +1 for newline
+  private static extractTextAfterTimestamp(text: string, position: number): string {
+    // Get text after the timestamp position
+    const afterTimestamp = text.substring(position);
+    
+    // Find the timestamp pattern and extract text after it
+    const timestampMatch = afterTimestamp.match(/\[\d{2}:\d{2}:\d{2}\]\s*([^\n]+)/);
+    
+    if (timestampMatch && timestampMatch[1]) {
+      return timestampMatch[1].trim();
     }
-
-    return '';
+    
+    // Fallback: get text until next timestamp or newline
+    const nextTimestampIndex = afterTimestamp.indexOf('[', 10); // Skip current timestamp
+    const nextNewlineIndex = afterTimestamp.indexOf('\n', 10);
+    
+    let endIndex = afterTimestamp.length;
+    if (nextTimestampIndex > 0 && nextNewlineIndex > 0) {
+      endIndex = Math.min(nextTimestampIndex, nextNewlineIndex);
+    } else if (nextTimestampIndex > 0) {
+      endIndex = nextTimestampIndex;
+    } else if (nextNewlineIndex > 0) {
+      endIndex = nextNewlineIndex;
+    }
+    
+    return afterTimestamp.substring(0, endIndex).replace(/\[\d{2}:\d{2}:\d{2}\]\s*/, '').trim();
   }
 
   static formatDuration(ms: number): string {
@@ -105,6 +115,19 @@ export class MetadataBuilder {
     return `${hours.toString().padStart(2, '0')}:${minutes
       .toString()
       .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+  // Format with milliseconds (HH:MM:SS.mmmmmmm)
+  static formatDurationWithMs(ms: number): string {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const milliseconds = ms % 1000;
+
+    return `${hours.toString().padStart(2, '0')}:${minutes
+      .toString()
+      .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}0000`;
   }
 
   // Parse timestamp string to milliseconds

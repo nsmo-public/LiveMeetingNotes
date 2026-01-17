@@ -202,6 +202,29 @@ body {
   font-weight: 600;
 }
 
+.editor-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.toggle-timestamps-btn {
+  padding: 6px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-timestamps-btn:hover {
+  background: var(--bg-primary);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
 .recording-hint {
   font-size: 13px;
   color: var(--text-secondary);
@@ -279,6 +302,13 @@ body {
   background: rgba(64, 150, 255, 0.15);
   border-radius: 3px;
   padding: 2px 4px;
+}
+
+/* Hide timestamps when toggle is off */
+.ql-editor.hide-timestamps strong[style*='color: rgb(64, 150, 255)'],
+.ql-editor.hide-timestamps [style*='color: rgb(64, 150, 255)'],
+.ql-editor.hide-timestamps [style*='color: transparent'] {
+  display: none;
 }
 
 /* Audio Player */

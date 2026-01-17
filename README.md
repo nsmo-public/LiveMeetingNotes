@@ -96,15 +96,35 @@ After recording, the following files are saved:
 
 - `Meeting_[timestamp].wav` - Audio recording (WAV format)
 - `Meeting_[timestamp]_meeting_info.json` - Meeting metadata
-- `Meeting_[timestamp]_transcription.json` - Notes with timestamps
+- `metadata.json` - Notes with timestamps
 
 ### Metadata Format
 
-Compatible with existing MeetingTrace C# TranscriptionProject format:
-
+**metadata.json structure:**
 ```json
 {
-  "MeetingTitle": "Project Planning",
+  "ProjectName": "Meeting_2026-01-18T14-30-00",
+  "Model": "Live Recording",
+  "Language": "vi",
+  "OriginalFileName": "Meeting_2026-01-18T14-30-00.wav",
+  "AudioFileName": "Meeting_2026-01-18T14-30-00.wav",
+  "Duration": "00:15:30.0000000",
+  "Timestamps": [
+    {
+      "Index": 0,
+      "Text": "Introduction and agenda",
+      "StartTime": "00:00:15.000",
+      "EndTime": "00:02:30.000",
+      "Highlight": false
+    }
+  ]
+}
+```
+
+**Meeting Info JSON:**
+```json
+{
+  "MeetingTitle": "Weekly Team Meeting",
   "MeetingDate": "2026-01-18",
   "MeetingTime": "14:30",
   "Location": "Conference Room A",
