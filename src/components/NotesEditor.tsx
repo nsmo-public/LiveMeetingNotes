@@ -40,13 +40,13 @@ export const NotesEditor: React.FC<Props> = ({
       });
 
       // Listen to text changes
-      quillRef.current.on('text-change', (delta: any, _oldDelta: any, source: string) => {
+      quillRef.current.on('text-change', (_delta: any, _oldDelta: any, source: string) => {
         const currentText = quillRef.current!.getText();
         onNotesChange(currentText);
         
         // Auto-insert timestamp when starting new line during recording
         if (isRecording && source === 'user') {
-          handleTextChange(delta);
+          handleTextChange(_delta);
         }
       });
 

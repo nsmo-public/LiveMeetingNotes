@@ -54,9 +54,14 @@ export class MetadataBuilder {
   ): Array<{ Index: number; Text: string; StartTime: string; EndTime: string; Highlight: boolean }> {
     const timestamps: Array<{ Index: number; Text: string; StartTime: string; EndTime: string; Highlight: boolean }> = [];
     
+    console.log('extractTimestamps - Input notes:', notes);
+    console.log('extractTimestamps - timestampMap size:', timestampMap.size);
+    
     // Sort timestamps by time (not position)
     const sortedTimestamps = Array.from(timestampMap.entries())
       .sort((a, b) => a[1] - b[1]);
+
+    console.log('extractTimestamps - Sorted timestamps:', sortedTimestamps);
 
     for (let i = 0; i < sortedTimestamps.length; i++) {
       const [position, startTime] = sortedTimestamps[i];
@@ -69,6 +74,8 @@ export class MetadataBuilder {
 
       // Extract text after this timestamp
       const text = this.extractTextAfterTimestamp(notes, position);
+      
+      console.log(`Timestamp ${i}: position=${position}, text="${text}"`);
 
       if (text.trim()) {
         timestamps.push({
