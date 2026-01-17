@@ -117,9 +117,9 @@ export const NotesEditor: React.FC<Props> = ({
     const adjustedDuration = Math.max(0, currentDuration - TIME_OFFSET_MS);
     const timeStr = formatTime(adjustedDuration);
 
-    // Insert timestamp at the beginning of the line
+    // Insert timestamp at the beginning of the line (always blue, visibility controlled by CSS)
     quillRef.current.insertText(position, `[${timeStr}] `, {
-      color: showTimestamps ? '#4096ff' : 'transparent',
+      color: '#4096ff',
       bold: true
     });
 

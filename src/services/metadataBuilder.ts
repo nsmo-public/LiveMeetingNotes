@@ -11,8 +11,13 @@ export class MetadataBuilder {
     duration: number,
     audioFileName: string
   ) {
+    console.log('Building metadata with notes:', notes);
+    console.log('Timestamp map entries:', Array.from(timestampMap.entries()));
+    
     // Extract timestamps from notes with proper text content
     const timestamps = this.extractTimestamps(notes, timestampMap, duration);
+    
+    console.log('Extracted timestamps:', timestamps);
 
     // Meeting info JSON (compatible with C# SaveMeetingMetadataToJson)
     const meetingInfoJson: MeetingMetadata = {
@@ -80,30 +85,23 @@ export class MetadataBuilder {
   }
 
   private static extractTextAfterTimestamp(text: string, position: number): string {
-    // Get text after the timestamp position
-    const afterTimestamp = text.substring(position);
+    // Split text into lines
+    const lines = text.split('\n');
+    let charCount = 0;
     
-    // Find the timestamp pattern and extract text after it
-    const timestampMatch = afterTimestamp.match(/\[\d{2}:\d{2}:\d{2}\]\s*([^\n]+)/);
-    
-    if (timestampMatch && timestampMatch[1]) {
-      return timestampMatch[1].trim();
+    // Find the line containing this position
+    for (const line of lines) {
+      if (charCount <= position && position < charCount + line.length) {
+        // Found the line with timestamp
+        // Extract text after the timestamp pattern [HH:MM:SS]
+        const timestampRegex = /\[\d{2}:\d{2}:\d{2}\]\s*/;
+        const textAfterTimestamp = line.replace(timestampRegex, '').trim();
+        return textAfterTimestamp;
+      }
+      charCount += line.length + 1; // +1 for newline
     }
     
-    // Fallback: get text until next timestamp or newline
-    const nextTimestampIndex = afterTimestamp.indexOf('[', 10); // Skip current timestamp
-    const nextNewlineIndex = afterTimestamp.indexOf('\n', 10);
-    
-    let endIndex = afterTimestamp.length;
-    if (nextTimestampIndex > 0 && nextNewlineIndex > 0) {
-      endIndex = Math.min(nextTimestampIndex, nextNewlineIndex);
-    } else if (nextTimestampIndex > 0) {
-      endIndex = nextTimestampIndex;
-    } else if (nextNewlineIndex > 0) {
-      endIndex = nextNewlineIndex;
-    }
-    
-    return afterTimestamp.substring(0, endIndex).replace(/\[\d{2}:\d{2}:\d{2}\]\s*/, '').trim();
+    return '';
   }
 
   static formatDuration(ms: number): string {
