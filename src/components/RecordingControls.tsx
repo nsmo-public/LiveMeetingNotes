@@ -366,14 +366,26 @@ export const RecordingControls: React.FC<Props> = ({
       if (projectData.metadata.Timestamps && projectData.metadata.Timestamps.length > 0) {
         const firstTimestamp = projectData.metadata.Timestamps[0];
         const firstDatetime = new Date(firstTimestamp.DateTime).getTime();
-        // Parse StartTime to get offset
+        // Parse StartTime to get offset (format: HH:MM:SS.NNNNNNN with 7 decimal digits)
         const startTimeMatch = firstTimestamp.StartTime.match(/(\d+):(\d+):(\d+)\.(\d+)/);
         if (startTimeMatch) {
+          const fractionalPart = startTimeMatch[4];
+          // Convert to milliseconds: if 7 digits (e.g., 9900000), divide by 10000
+          const ms = fractionalPart.length === 7 ? parseInt(fractionalPart) / 10000 : parseInt(fractionalPart);
           const offsetMs = parseInt(startTimeMatch[1]) * 3600000 + 
                           parseInt(startTimeMatch[2]) * 60000 + 
                           parseInt(startTimeMatch[3]) * 1000 + 
-                          parseInt(startTimeMatch[4]);
+                          ms;
           recordingStart = firstDatetime - offsetMs;
+          
+          console.log('🕐 Parse StartTime:', {
+            raw: firstTimestamp.StartTime,
+            fractionalPart,
+            parsedMs: ms,
+            totalOffsetMs: offsetMs,
+            firstDatetime: new Date(firstDatetime).toISOString(),
+            calculatedRecordingStart: new Date(recordingStart).toISOString()
+          });
         }
       }
       
@@ -414,7 +426,7 @@ export const RecordingControls: React.FC<Props> = ({
         });
       }
 
-      // Parse duration string to milliseconds
+      // Parse duration string to milliseconds (format: HH:MM:SS.NNNNNNN with 7 decimal digits)
       let durationMs = 0;
       if (projectData.metadata.Duration) {
         const durationStr = projectData.metadata.Duration;
@@ -423,7 +435,9 @@ export const RecordingControls: React.FC<Props> = ({
           const hours = parseInt(match[1]);
           const minutes = parseInt(match[2]);
           const seconds = parseInt(match[3]);
-          const ms = parseInt(match[4]);
+          const fractionalPart = match[4];
+          // Convert to milliseconds: if 7 digits, divide by 10000
+          const ms = fractionalPart.length === 7 ? parseInt(fractionalPart) / 10000 : parseInt(fractionalPart);
           durationMs = hours * 3600000 + minutes * 60000 + seconds * 1000 + ms;
         }
       }

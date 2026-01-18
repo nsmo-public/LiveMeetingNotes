@@ -47,6 +47,32 @@ export const NotesEditor: React.FC<Props> = ({
     return initialLineTimestamps;
   });
 
+  // Sync lineTimestamps when parent timestampMap changes (e.g., when loading project)
+  React.useEffect(() => {
+    const newLineTimestamps = new Map<number, number>();
+    const lines = notes.split(BLOCK_SEPARATOR);
+    
+    timestampMap.forEach((time, position) => {
+      let currentPos = 0;
+      for (let i = 0; i < lines.length; i++) {
+        const lineStartPos = i === 0 ? 0 : currentPos;
+        if (position === lineStartPos) {
+          newLineTimestamps.set(i, time);
+          break;
+        }
+        currentPos += lines[i].length + (i < lines.length - 1 ? BLOCK_SEPARATOR.length : 0);
+      }
+    });
+    
+    setLineTimestamps(newLineTimestamps);
+    console.log('📊 NotesEditor synced lineTimestamps:', {
+      timestampMapSize: timestampMap.size,
+      lineTimestampsSize: newLineTimestamps.size,
+      linesCount: lines.length,
+      sampleLineTimestamps: Array.from(newLineTimestamps.entries()).slice(0, 3)
+    });
+  }, [timestampMap, notes]);
+
   const formatDatetime = (datetimeMs: number): string => {
     const date = new Date(datetimeMs);
     const year = date.getFullYear();
