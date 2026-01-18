@@ -92,15 +92,24 @@ export const RecordingControls: React.FC<Props> = ({
       const recordingDuration = recorder.getCurrentDuration();
       onRecordingChange(false);
 
-      // Generate file names
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('.')[0];
-      const projectName = `Meeting_${timestamp}`;
+      // Generate folder and file names with timestamp prefix
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const timePrefix = `${year}${month}${day}_${hours}${minutes}`;
+      
+      const timestamp = now.toISOString().replace(/[:.]/g, '-').split('.')[0];
+      const projectName = `${timePrefix}_Meeting_${timestamp}`;
       const audioFileName = `${projectName}.wav`;
 
       // Save files
       if (FileManagerService.isSupported() && folderPath) {
-        // Save to user-selected folder
-        await fileManager.saveAudioFile(audioBlob, audioFileName);
+        // Create project subdirectory and save all files there
+        await fileManager.createProjectDirectory(projectName);
+        await fileManager.saveAudioFile(audioBlob, audioFileName, projectName);
 
         // Build and save metadata
         const metadata = MetadataBuilder.buildMetadata(
@@ -114,18 +123,20 @@ export const RecordingControls: React.FC<Props> = ({
 
         await fileManager.saveMetadataFile(
           metadata.meetingInfo,
-          `${projectName}_meeting_info.json`
+          `${projectName}_meeting_info.json`,
+          projectName
         );
         await fileManager.saveMetadataFile(
           metadata.metadata,
-          `${projectName}_metadata.json`
+          `${projectName}_metadata.json`,
+          projectName
         );
 
         // Export Word document to same folder
         const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
-        await fileManager.saveWordFile(wordBlob, `${projectName}.docx`);
+        await fileManager.saveWordFile(wordBlob, `${projectName}.docx`, projectName);
 
-        message.success('Recording saved successfully!');
+        message.success(`Recording saved to folder: ${projectName}`);
         setLastProjectName(projectName);
         setLastRecordingDuration(recordingDuration);
         onSaveComplete(); // Notify parent that save is complete
@@ -193,14 +204,15 @@ export const RecordingControls: React.FC<Props> = ({
 
       // Save files - check if folder was selected via folderPath
       if (folderPath) {
-        // Update metadata and Word files
+        // Update metadata and Word files in the project folder
         await fileManager.saveMetadataFile(
           metadata.metadata,
-          `${lastProjectName}_metadata.json`
+          `${lastProjectName}_metadata.json`,
+          lastProjectName
         );
 
         const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
-        await fileManager.saveWordFile(wordBlob, `${lastProjectName}.docx`);
+        await fileManager.saveWordFile(wordBlob, `${lastProjectName}.docx`, lastProjectName);
 
         message.success('Changes saved successfully!');
       } else {
