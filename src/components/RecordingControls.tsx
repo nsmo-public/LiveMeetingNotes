@@ -86,13 +86,28 @@ export const RecordingControls: React.FC<Props> = ({
     }
   };
 
+  const sanitizeMeetingTitle = (title: string): string => {
+    // Remove invalid characters for file/folder names: < > : " / \ | ? *
+    let sanitized = title.replace(/[<>:"/\\|?*]/g, '_');
+    // Replace multiple spaces/underscores with single underscore
+    sanitized = sanitized.replace(/[\s_]+/g, '_');
+    // Trim leading/trailing underscores
+    sanitized = sanitized.replace(/^_+|_+$/g, '');
+    // Limit length to 50 characters
+    if (sanitized.length > 50) {
+      sanitized = sanitized.substring(0, 50);
+    }
+    // Fallback if empty after sanitization
+    return sanitized || 'Meeting';
+  };
+
   const handleStopRecording = async () => {
     try {
       const audioBlob = await recorder.stopRecording();
       const recordingDuration = recorder.getCurrentDuration();
       onRecordingChange(false);
 
-      // Generate folder and file names with timestamp prefix
+      // Generate folder and file names with timestamp prefix and meeting title
       const now = new Date();
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -101,8 +116,8 @@ export const RecordingControls: React.FC<Props> = ({
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const timePrefix = `${year}${month}${day}_${hours}${minutes}`;
       
-      const timestamp = now.toISOString().replace(/[:.]/g, '-').split('.')[0];
-      const projectName = `${timePrefix}_Meeting_${timestamp}`;
+      const sanitizedTitle = sanitizeMeetingTitle(meetingInfo.title || 'Meeting');
+      const projectName = `${timePrefix}_${sanitizedTitle}`;
       const audioFileName = `${projectName}.wav`;
 
       // Save files
