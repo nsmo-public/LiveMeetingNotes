@@ -9,7 +9,6 @@ interface Props {
   onNotesChange: (notes: string) => void;
   timestampMap: Map<number, number>;
   onTimestampMapChange: (map: Map<number, number>) => void;
-  onNotesHtmlChange?: (html: string) => void;
 }
 
 export const NotesEditor: React.FC<Props> = ({
@@ -17,8 +16,7 @@ export const NotesEditor: React.FC<Props> = ({
   notes,
   onNotesChange,
   timestampMap,
-  onTimestampMapChange,
-  onNotesHtmlChange
+  onTimestampMapChange
 }) => {
   const textareaRef = useRef<any>(null);
   const recordingStartTime = useRef<number>(0);
