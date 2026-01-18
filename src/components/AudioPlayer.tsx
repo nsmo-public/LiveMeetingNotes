@@ -107,6 +107,31 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
       setCurrentTime(currentTime);
     });
 
+    wavesurferRef.current = wavesurfer;
+
+    // Get waveform container for event handlers
+    const waveformContainer = waveformRef.current;
+    
+    // Add double-click handler for seek and play
+    const handleDoubleClick = (e: MouseEvent) => {
+      const rect = waveformContainer.getBoundingClientRect();
+      const clickX = e.clientX - rect.left + waveformContainer.scrollLeft;
+      const waveformWidth = waveformContainer.scrollWidth;
+      const clickRatio = clickX / waveformWidth;
+      const totalDuration = wavesurfer.getDuration();
+      const seekTime = clickRatio * totalDuration;
+      
+      if (!isNaN(seekTime) && seekTime >= 0 && totalDuration > 0) {
+        wavesurfer.setTime(seekTime);
+        // Auto-play from this position
+        if (!wavesurfer.isPlaying()) {
+          wavesurfer.play();
+        }
+      }
+    };
+    
+    waveformContainer.addEventListener('dblclick', handleDoubleClick);
+
     // Add context menu for inserting notes at specific time
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
@@ -141,12 +166,9 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
       );
     };
     
-    waveformRef.current.addEventListener('contextmenu', handleContextMenu);
+    waveformContainer.addEventListener('contextmenu', handleContextMenu);
 
-    wavesurferRef.current = wavesurfer;
-
-    // Add mouse wheel zoom functionality to the waveform container
-    const waveformContainer = waveformRef.current;
+    // Add mouse wheel zoom functionality
     const handleWheel = (e: WheelEvent) => {
       // Stop event from bubbling and prevent default scroll
       e.preventDefault();
@@ -174,6 +196,7 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
 
     return () => {
       waveformContainer.removeEventListener('wheel', handleWheel);
+      waveformContainer.removeEventListener('dblclick', handleDoubleClick);
       waveformContainer.removeEventListener('contextmenu', handleContextMenu);
       wavesurfer.destroy();
     };

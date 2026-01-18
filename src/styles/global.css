@@ -338,7 +338,7 @@ body {
 
 /* Tooltip for zoom hint */
 .waveform-container::after {
-  content: '💡 Scroll wheel = Zoom | Click = Seek | Scrollbar = Pan';
+  content: '💡 Scroll = Zoom | Click = Seek | Double-click = Play from position';
   position: absolute;
   top: 4px;
   right: 8px;
