@@ -103,7 +103,6 @@ export const App: React.FC = () => {
       />
 
       <NotesEditor
-        isRecording={isRecording}
         notes={notes}
         onNotesChange={setNotes}
         timestampMap={timestampMap}

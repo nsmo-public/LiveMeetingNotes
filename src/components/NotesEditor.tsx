@@ -4,7 +4,6 @@ import { Input } from 'antd';
 const { TextArea } = Input;
 
 interface Props {
-  isRecording: boolean;
   notes: string;
   onNotesChange: (notes: string) => void;
   timestampMap: Map<number, number>;
@@ -13,7 +12,6 @@ interface Props {
 }
 
 export const NotesEditor: React.FC<Props> = ({
-  isRecording,
   notes,
   onNotesChange,
   timestampMap,
@@ -89,8 +87,8 @@ export const NotesEditor: React.FC<Props> = ({
     const oldLineEmpty = oldLine.trim().length === 0;
     const newLineHasContent = value.trim().length > 0;
     
-    if (isRecording && oldLineEmpty && newLineHasContent && !lineTimestamps.has(index)) {
-      // Save current datetime (not duration)
+    if (oldLineEmpty && newLineHasContent && !lineTimestamps.has(index)) {
+      // Save current datetime (always, not just when recording)
       const currentDatetime = Date.now();
       
       const newLineTimestamps = new Map(lineTimestamps);
@@ -208,11 +206,9 @@ export const NotesEditor: React.FC<Props> = ({
       <div className="editor-header">
         <h3>📝 Notes Editor</h3>
         <div className="editor-controls">
-          {isRecording && (
-            <span className="recording-hint">
-              💡 Type to auto-create timestamp • Enter for new line
-            </span>
-          )}
+          <span className="recording-hint">
+            💡 Type to auto-create datetime • Enter for new line
+          </span>
           <button
             className="toggle-timestamps-btn"
             onClick={() => setShowTimestamps(!showTimestamps)}
