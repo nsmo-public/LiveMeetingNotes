@@ -73,6 +73,62 @@ export const NotesEditor: React.FC<Props> = ({
     });
   }, [timestampMap, notes]);
 
+  // Listen for insert-note-at-time event from AudioPlayer
+  React.useEffect(() => {
+    const handleInsertNote = (event: CustomEvent) => {
+      const { time } = event.detail; // time in seconds
+      const timestampMs = recordingStartTime + time * 1000;
+      
+      console.log('📝 Insert note at time:', { time, timestampMs, recordingStartTime });
+      
+      // Find insertion position based on timestamp order
+      const lines = notes.split(BLOCK_SEPARATOR);
+      let insertIndex = lines.length; // Default: append at end
+      
+      // Find the correct position to insert
+      const sortedTimestamps = Array.from(lineTimestamps.entries()).sort((a, b) => a[1] - b[1]);
+      for (let i = 0; i < sortedTimestamps.length; i++) {
+        const [lineIdx, lineTime] = sortedTimestamps[i];
+        if (timestampMs < lineTime) {
+          insertIndex = lineIdx;
+          break;
+        }
+      }
+      
+      // Insert new empty line
+      lines.splice(insertIndex, 0, '');
+      
+      // Update lineTimestamps: shift existing and add new
+      const newLineTimestamps = new Map<number, number>();
+      lineTimestamps.forEach((time, lineIndex) => {
+        if (lineIndex < insertIndex) {
+          newLineTimestamps.set(lineIndex, time);
+        } else {
+          newLineTimestamps.set(lineIndex + 1, time);
+        }
+      });
+      newLineTimestamps.set(insertIndex, timestampMs);
+      
+      setLineTimestamps(newLineTimestamps);
+      onNotesChange(lines.join(BLOCK_SEPARATOR));
+      syncToParentTimestampMap(lines, newLineTimestamps);
+      
+      // Focus the new line
+      setTimeout(() => {
+        const inputs = containerRef.current?.querySelectorAll('textarea');
+        const newInput = inputs?.[insertIndex] as HTMLTextAreaElement;
+        if (newInput) {
+          newInput.focus();
+        }
+      }, 50);
+    };
+    
+    window.addEventListener('insert-note-at-time', handleInsertNote as EventListener);
+    return () => {
+      window.removeEventListener('insert-note-at-time', handleInsertNote as EventListener);
+    };
+  }, [notes, lineTimestamps, recordingStartTime]);
+
   const formatDatetime = (datetimeMs: number): string => {
     const date = new Date(datetimeMs);
     const year = date.getFullYear();
@@ -181,22 +237,29 @@ export const NotesEditor: React.FC<Props> = ({
     // Update line content
     lines[index] = value;
     
-    // Auto-create timestamp: when line goes from empty/whitespace to having content
-    const oldLineEmpty = oldLine.trim().length === 0;
-    const newLineHasContent = value.trim().length > 0;
-    
-    if (oldLineEmpty && newLineHasContent && !lineTimestamps.has(index)) {
-      // Save current datetime (always, not just when recording)
-      const currentDatetime = Date.now();
+    // Auto-create timestamp: Only in Live Mode when line goes from empty to having content
+    if (isLiveMode) {
+      const oldLineEmpty = oldLine.trim().length === 0;
+      const newLineHasContent = value.trim().length > 0;
       
-      const newLineTimestamps = new Map(lineTimestamps);
-      newLineTimestamps.set(index, currentDatetime);
-      setLineTimestamps(newLineTimestamps);
-      
-      syncToParentTimestampMap(lines, newLineTimestamps);
+      if (oldLineEmpty && newLineHasContent && !lineTimestamps.has(index)) {
+        // Save current datetime (when recording or just recorded)
+        const currentDatetime = Date.now();
+        
+        const newLineTimestamps = new Map(lineTimestamps);
+        newLineTimestamps.set(index, currentDatetime);
+        setLineTimestamps(newLineTimestamps);
+        
+        onNotesChange(lines.join(BLOCK_SEPARATOR));
+        syncToParentTimestampMap(lines, newLineTimestamps);
+        return;
+      }
     }
+    // In Loaded Mode: Never auto-create timestamp, user must use right-click on waveform
     
+    // Always sync timestamps when text changes (to update positions)
     onNotesChange(lines.join(BLOCK_SEPARATOR));
+    syncToParentTimestampMap(lines, lineTimestamps);
   };
   
   // Convert line-based timestamps to position-based for parent state
@@ -218,7 +281,13 @@ export const NotesEditor: React.FC<Props> = ({
     const cursorPos = target.selectionStart;
 
     if (e.key === 'Enter' && !e.shiftKey) {
-      // Enter only: Split into new line with new timestamp
+      // In Loaded Mode: Let Enter behave like Shift+Enter (newline within the same textarea)
+      if (!isLiveMode) {
+        // Don't preventDefault - let textarea handle Enter naturally (creates newline in text)
+        return;
+      }
+      
+      // In Live Mode: Enter creates new line (new block) with timestamp
       e.preventDefault();
       
       // Split current line at cursor
@@ -237,6 +306,26 @@ export const NotesEditor: React.FC<Props> = ({
           newLineTimestamps.set(lineIndex + 1, time);
         }
       });
+      
+      // Calculate timestamp for new line (index + 1)
+      const currentTimestamp = lineTimestamps.get(index);
+      const nextTimestamp = lineTimestamps.get(index + 1); // Will be shifted to index + 2
+      
+      if (currentTimestamp) {
+        let newTimestamp: number;
+        if (nextTimestamp) {
+          // Insert timestamp halfway between current and next
+          newTimestamp = currentTimestamp + (nextTimestamp - currentTimestamp) / 2;
+        } else {
+          // No next timestamp, add 3 seconds
+          newTimestamp = currentTimestamp + 3000;
+        }
+        newLineTimestamps.set(index + 1, newTimestamp);
+      } else if (afterCursor.trim().length > 0) {
+        // Current line has no timestamp, create one for new line
+        newLineTimestamps.set(index + 1, Date.now());
+      }
+      
       setLineTimestamps(newLineTimestamps);
       
       onNotesChange(lines.join(BLOCK_SEPARATOR));
@@ -255,12 +344,72 @@ export const NotesEditor: React.FC<Props> = ({
     // No preventDefault for Shift+Enter - let textarea handle it naturally
     
     if (e.key === 'Backspace' && cursorPos === 0 && index > 0) {
-      // Merge with previous line
+      // Backspace at start: merge with previous line only if current line is empty
       e.preventDefault();
-      const prevLine = lines[index - 1];
-      const prevLength = prevLine.length;
       
-      lines[index - 1] = prevLine + currentLine;
+      if (currentLine.trim().length === 0) {
+        // Current line is empty, just remove it
+        lines.splice(index, 1);
+        
+        // Remove timestamp for deleted line and shift others
+        const newLineTimestamps = new Map<number, number>();
+        lineTimestamps.forEach((time, lineIndex) => {
+          if (lineIndex < index) {
+            newLineTimestamps.set(lineIndex, time);
+          } else if (lineIndex > index) {
+            newLineTimestamps.set(lineIndex - 1, time);
+          }
+        });
+        setLineTimestamps(newLineTimestamps);
+        
+        onNotesChange(lines.join(BLOCK_SEPARATOR));
+        syncToParentTimestampMap(lines, newLineTimestamps);
+        
+        // Focus previous line at end
+        setTimeout(() => {
+          const prevInput = containerRef.current?.querySelectorAll('textarea')[index - 1] as HTMLTextAreaElement;
+          if (prevInput) {
+            prevInput.focus();
+            prevInput.setSelectionRange(prevInput.value.length, prevInput.value.length);
+          }
+        }, 10);
+      } else {
+        // Current line has content, merge with previous
+        const prevLine = lines[index - 1];
+        const prevLength = prevLine.length;
+        
+        lines[index - 1] = prevLine + currentLine;
+        lines.splice(index, 1);
+        
+        // Remove timestamp for deleted line and shift others
+        const newLineTimestamps = new Map<number, number>();
+        lineTimestamps.forEach((time, lineIndex) => {
+          if (lineIndex < index) {
+            newLineTimestamps.set(lineIndex, time);
+          } else if (lineIndex > index) {
+            newLineTimestamps.set(lineIndex - 1, time);
+          }
+        });
+        setLineTimestamps(newLineTimestamps);
+        
+        onNotesChange(lines.join(BLOCK_SEPARATOR));
+        syncToParentTimestampMap(lines, newLineTimestamps);
+        
+        // Focus previous line
+        setTimeout(() => {
+          const prevInput = containerRef.current?.querySelectorAll('textarea')[index - 1] as HTMLTextAreaElement;
+          if (prevInput) {
+            prevInput.focus();
+            prevInput.setSelectionRange(prevLength, prevLength);
+          }
+        }, 10);
+      }
+      return;
+    }
+    
+    // Delete key: delete entire line if it's empty
+    if (e.key === 'Delete' && currentLine.trim().length === 0 && lines.length > 1) {
+      e.preventDefault();
       lines.splice(index, 1);
       
       // Remove timestamp for deleted line and shift others
@@ -277,12 +426,12 @@ export const NotesEditor: React.FC<Props> = ({
       onNotesChange(lines.join(BLOCK_SEPARATOR));
       syncToParentTimestampMap(lines, newLineTimestamps);
       
-      // Focus previous line
+      // Focus current position (which will now be the next line)
       setTimeout(() => {
-        const prevInput = containerRef.current?.querySelectorAll('textarea')[index - 1] as HTMLTextAreaElement;
-        if (prevInput) {
-          prevInput.focus();
-          prevInput.setSelectionRange(prevLength, prevLength);
+        const inputs = containerRef.current?.querySelectorAll('textarea');
+        const focusInput = inputs?.[Math.min(index, inputs.length - 1)] as HTMLTextAreaElement;
+        if (focusInput) {
+          focusInput.focus();
         }
       }, 10);
     }
@@ -313,7 +462,10 @@ export const NotesEditor: React.FC<Props> = ({
         <h3>📝 Notes Editor</h3>
         <div className="editor-controls">
           <span className="recording-hint">
-            💡 Type to auto-create {isLiveMode ? 'datetime' : 'timestamp'} • Enter for new line • Shift+Enter for line break
+            {isLiveMode 
+              ? '💡 Type to create datetime • Enter for new line • Shift+Enter for line break'
+              : '💡 Right-click waveform to insert note • Enter/Shift+Enter for line break in text'
+            }
           </span>
           <button
             className="toggle-timestamps-btn"

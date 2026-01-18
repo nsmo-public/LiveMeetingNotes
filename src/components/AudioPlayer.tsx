@@ -107,6 +107,42 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
       setCurrentTime(currentTime);
     });
 
+    // Add context menu for inserting notes at specific time
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      const time = wavesurfer.getCurrentTime();
+      
+      // Show visual feedback
+      const notification = document.createElement('div');
+      notification.textContent = `📝 Inserting note at ${Math.floor(time / 60)}:${String(Math.floor(time % 60)).padStart(2, '0')}`;
+      notification.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #1890ff;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        animation: fadeInOut 1.5s ease-in-out;
+      `;
+      document.body.appendChild(notification);
+      setTimeout(() => notification.remove(), 1500);
+      
+      // Dispatch custom event to insert note at this time
+      window.dispatchEvent(
+        new CustomEvent('insert-note-at-time', {
+          detail: { time }
+        })
+      );
+    };
+    
+    waveformRef.current.addEventListener('contextmenu', handleContextMenu);
+
     wavesurferRef.current = wavesurfer;
 
     // Add mouse wheel zoom functionality to the waveform container
@@ -138,6 +174,7 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
 
     return () => {
       waveformContainer.removeEventListener('wheel', handleWheel);
+      waveformContainer.removeEventListener('contextmenu', handleContextMenu);
       wavesurfer.destroy();
     };
   }, [audioUrl]);
