@@ -54,15 +54,15 @@ export const MetadataPanel: React.FC<Props> = ({ meetingInfo, onChange }) => {
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('time', e.target.value)}
                   />
                 </div>
-              </div>
 
-              <div className="form-row">
+                <div className="form-field">
                 <label>Location:</label>
                 <Input
                   value={meetingInfo.location}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('location', e.target.value)}
                   placeholder="e.g., Conference Room A / Zoom"
                 />
+              </div>
               </div>
 
               <div className="form-row">
