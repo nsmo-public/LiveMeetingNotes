@@ -22,10 +22,11 @@ export const NotesEditor: React.FC<Props> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Use line-index-based timestamps (lineIndex → dateTimeMs) as source of truth
+  const BLOCK_SEPARATOR = '§§§';
   const [lineTimestamps, setLineTimestamps] = useState<Map<number, number>>(() => {
     // Initialize from parent's timestampMap only once on mount
     const initialLineTimestamps = new Map<number, number>();
-    const lines = notes.split('\n');
+    const lines = notes.split(BLOCK_SEPARATOR);
     
     timestampMap.forEach((time, position) => {
       let currentPos = 0;
@@ -55,7 +56,8 @@ export const NotesEditor: React.FC<Props> = ({
   };
 
   const handleLineChange = (index: number, value: string) => {
-    const lines = notes.split('\n');
+    const BLOCK_SEPARATOR = '§§§';
+    const lines = notes.split(BLOCK_SEPARATOR);
     const oldLine = lines[index];
     
     // If line becomes empty, delete it
@@ -73,7 +75,7 @@ export const NotesEditor: React.FC<Props> = ({
       });
       setLineTimestamps(newLineTimestamps);
       
-      onNotesChange(lines.join('\n'));
+      onNotesChange(lines.join(BLOCK_SEPARATOR));
       syncToParentTimestampMap(lines, newLineTimestamps);
       return;
     }
@@ -96,21 +98,23 @@ export const NotesEditor: React.FC<Props> = ({
       syncToParentTimestampMap(lines, newLineTimestamps);
     }
     
-    onNotesChange(lines.join('\n'));
+    onNotesChange(lines.join(BLOCK_SEPARATOR));
   };
   
   // Convert line-based timestamps to position-based for parent state
   const syncToParentTimestampMap = (lines: string[], lineTimestamps: Map<number, number>) => {
+    const BLOCK_SEPARATOR = '§§§';
     const newMap = new Map<number, number>();
     lineTimestamps.forEach((time, lineIndex) => {
-      const lineStartPos = lines.slice(0, lineIndex).join('\n').length + (lineIndex > 0 ? 1 : 0);
+      const lineStartPos = lines.slice(0, lineIndex).join(BLOCK_SEPARATOR).length + (lineIndex > 0 ? BLOCK_SEPARATOR.length : 0);
       newMap.set(lineStartPos, time);
     });
     onTimestampMapChange(newMap);
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const lines = notes.split('\n');
+    const BLOCK_SEPARATOR = '§§§';
+    const lines = notes.split(BLOCK_SEPARATOR);
     const currentLine = lines[index];
     const target = e.target as HTMLTextAreaElement;
     const cursorPos = target.selectionStart;
@@ -137,7 +141,7 @@ export const NotesEditor: React.FC<Props> = ({
       });
       setLineTimestamps(newLineTimestamps);
       
-      onNotesChange(lines.join('\n'));
+      onNotesChange(lines.join(BLOCK_SEPARATOR));
       syncToParentTimestampMap(lines, newLineTimestamps);
       
       // Focus next line after React re-renders
@@ -148,21 +152,11 @@ export const NotesEditor: React.FC<Props> = ({
           nextInput.setSelectionRange(0, 0);
         }
       }, 10);
-    } else if (e.key === 'Enter' && e.shiftKey) {
-      // Shift+Enter: Add newline within the same block (no new timestamp)
-      e.preventDefault();
-      const beforeCursor = currentLine.substring(0, cursorPos);
-      const afterCursor = currentLine.substring(cursorPos);
-      const newValue = beforeCursor + '\n' + afterCursor;
-      
-      lines[index] = newValue;
-      onNotesChange(lines.join('\n'));
-      
-      // Restore cursor position after newline
-      setTimeout(() => {
-        target.setSelectionRange(cursorPos + 1, cursorPos + 1);
-      }, 0);
-    } else if (e.key === 'Backspace' && cursorPos === 0 && index > 0) {
+    }
+    // Shift+Enter: Allow natural newline (browser default behavior)
+    // No preventDefault for Shift+Enter - let textarea handle it naturally
+    
+    if (e.key === 'Backspace' && cursorPos === 0 && index > 0) {
       // Merge with previous line
       e.preventDefault();
       const prevLine = lines[index - 1];
@@ -182,7 +176,7 @@ export const NotesEditor: React.FC<Props> = ({
       });
       setLineTimestamps(newLineTimestamps);
       
-      onNotesChange(lines.join('\n'));
+      onNotesChange(lines.join(BLOCK_SEPARATOR));
       syncToParentTimestampMap(lines, newLineTimestamps);
       
       // Focus previous line
@@ -209,7 +203,7 @@ export const NotesEditor: React.FC<Props> = ({
     }
   };
 
-  const lines = notes.split('\n');
+  const lines = notes.split(BLOCK_SEPARATOR);
   if (lines.length === 0 || (lines.length === 1 && lines[0] === '')) {
     lines[0] = '';
   }
