@@ -51,26 +51,21 @@ export class MetadataBuilder {
   ): Array<{ Index: number; Text: string; DateTime: string; StartTime: string; EndTime: string; Highlight: boolean }> {
     const timestamps: Array<{ Index: number; Text: string; DateTime: string; StartTime: string; EndTime: string; Highlight: boolean }> = [];
     
+    // BLOCK_SEPARATOR is used in NotesEditor to separate lines
+    const BLOCK_SEPARATOR = '§§§';
+    
     // Sort timestamps by datetime
     const sortedTimestamps = Array.from(timestampMap.entries())
       .sort((a, b) => a[1] - b[1]);
     
-    const lines = notes.split('\n');
-    
-    // Build position to line index map
-    const positionToLineMap = new Map<number, number>();
-    let currentPos = 0;
-    for (let i = 0; i < lines.length; i++) {
-      positionToLineMap.set(currentPos, i);
-      currentPos += lines[i].length + 1; // +1 for newline
-    }
+    // Split notes by BLOCK_SEPARATOR to get individual notes
+    const lines = notes.split(BLOCK_SEPARATOR);
 
     for (let i = 0; i < sortedTimestamps.length; i++) {
-      const [position, datetimeMs] = sortedTimestamps[i];
+      const [, datetimeMs] = sortedTimestamps[i];
       
-      // Find line index using position map
-      const lineIndex = positionToLineMap.get(position) ?? 0;
-      const text = lines[lineIndex] || '';
+      // Get text for this timestamp - use line index from sorted order
+      const text = lines[i]?.trim() || '';
       
       // Calculate relative start time from recording start
       const startTimeMs = recordingStartTime > 0 ? Math.max(0, datetimeMs - recordingStartTime) : 0;
@@ -81,7 +76,7 @@ export class MetadataBuilder {
 
       timestamps.push({
         Index: i,
-        Text: text.trim(),
+        Text: text,
         DateTime: new Date(datetimeMs).toISOString(),
         StartTime: this.formatDurationWithMs(startTimeMs),
         EndTime: this.formatDurationWithMs(endTimeMs),
