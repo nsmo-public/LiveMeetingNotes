@@ -9,10 +9,11 @@ export class MetadataBuilder {
     notes: string,
     timestampMap: Map<number, number>,
     duration: number,
-    audioFileName: string
+    audioFileName: string,
+    recordingStartTime: number
   ) {
     // Extract timestamps from notes with proper text content
-    const timestamps = this.extractTimestamps(notes, timestampMap, duration);
+    const timestamps = this.extractTimestamps(notes, timestampMap, duration, recordingStartTime);
 
     // Meeting info JSON (compatible with C# SaveMeetingMetadataToJson)
     const meetingInfoJson: MeetingMetadata = {
@@ -45,11 +46,12 @@ export class MetadataBuilder {
   private static extractTimestamps(
     notes: string,
     timestampMap: Map<number, number>,
-    totalDuration: number
-  ): Array<{ Index: number; Text: string; StartTime: string; EndTime: string; Highlight: boolean }> {
-    const timestamps: Array<{ Index: number; Text: string; StartTime: string; EndTime: string; Highlight: boolean }> = [];
+    totalDuration: number,
+    recordingStartTime: number
+  ): Array<{ Index: number; Text: string; DateTime: string; StartTime: string; EndTime: string; Highlight: boolean }> {
+    const timestamps: Array<{ Index: number; Text: string; DateTime: string; StartTime: string; EndTime: string; Highlight: boolean }> = [];
     
-    // Sort timestamps by time
+    // Sort timestamps by datetime
     const sortedTimestamps = Array.from(timestampMap.entries())
       .sort((a, b) => a[1] - b[1]);
     
@@ -64,23 +66,25 @@ export class MetadataBuilder {
     }
 
     for (let i = 0; i < sortedTimestamps.length; i++) {
-      const [position, startTime] = sortedTimestamps[i];
+      const [position, datetimeMs] = sortedTimestamps[i];
       
       // Find line index using position map
       const lineIndex = positionToLineMap.get(position) ?? 0;
       const text = lines[lineIndex] || '';
       
+      // Calculate relative start time from recording start
+      const startTimeMs = recordingStartTime > 0 ? Math.max(0, datetimeMs - recordingStartTime) : 0;
+      
       // Find next timestamp or use total duration
-      const endTime =
-        i < sortedTimestamps.length - 1
-          ? sortedTimestamps[i + 1][1]
-          : Math.min(startTime + 3000, totalDuration);
+      const nextDatetimeMs = i < sortedTimestamps.length - 1 ? sortedTimestamps[i + 1][1] : datetimeMs + 3000;
+      const endTimeMs = recordingStartTime > 0 ? Math.min(nextDatetimeMs - recordingStartTime, totalDuration) : startTimeMs + 3000;
 
       timestamps.push({
         Index: i,
         Text: text.trim(),
-        StartTime: this.formatDurationWithMs(startTime),
-        EndTime: this.formatDurationWithMs(endTime),
+        DateTime: new Date(datetimeMs).toISOString(),
+        StartTime: this.formatDurationWithMs(startTimeMs),
+        EndTime: this.formatDurationWithMs(endTimeMs),
         Highlight: false
       });
     }

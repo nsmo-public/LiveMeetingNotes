@@ -22,6 +22,8 @@ interface Props {
   meetingInfo: MeetingInfo;
   notes: string;
   timestampMap: Map<number, number>;
+  recordingStartTime: number;
+  onRecordingStartTimeChange: (time: number) => void;
   audioBlob: Blob | null;
   isSaved: boolean;
   hasUnsavedChanges: boolean;
@@ -37,6 +39,8 @@ export const RecordingControls: React.FC<Props> = ({
   meetingInfo,
   notes,
   timestampMap,
+  recordingStartTime,
+  onRecordingStartTimeChange,
   audioBlob,
   isSaved,
   hasUnsavedChanges
@@ -72,6 +76,8 @@ export const RecordingControls: React.FC<Props> = ({
   const handleStartRecording = async () => {
     try {
       await recorder.startRecording();
+      const startTime = Date.now();
+      onRecordingStartTimeChange(startTime);
       onRecordingChange(true);
       setDuration(0);
       message.success('Recording started');
@@ -102,7 +108,8 @@ export const RecordingControls: React.FC<Props> = ({
           notes,
           timestampMap,
           recordingDuration,
-          audioFileName
+          audioFileName,
+          recordingStartTime
         );
 
         await fileManager.saveMetadataFile(
@@ -132,7 +139,8 @@ export const RecordingControls: React.FC<Props> = ({
           notes,
           timestampMap,
           recordingDuration,
-          audioFileName
+          audioFileName,
+          recordingStartTime
         );
 
         await downloader.downloadMetadataFile(
@@ -179,7 +187,8 @@ export const RecordingControls: React.FC<Props> = ({
         notes,
         timestampMap,
         lastRecordingDuration,
-        audioFileName
+        audioFileName,
+        recordingStartTime
       );
 
       // Save files - check if folder was selected via folderPath

@@ -9,6 +9,7 @@ interface Props {
   onNotesChange: (notes: string) => void;
   timestampMap: Map<number, number>;
   onTimestampMapChange: (map: Map<number, number>) => void;
+  recordingStartTime: number;
 }
 
 export const NotesEditor: React.FC<Props> = ({
@@ -16,11 +17,10 @@ export const NotesEditor: React.FC<Props> = ({
   notes,
   onNotesChange,
   timestampMap,
-  onTimestampMapChange
+  onTimestampMapChange,
+  recordingStartTime
 }) => {
-  const recordingStartTime = useRef<number>(0);
   const [showTimestamps, setShowTimestamps] = useState(true);
-  const TIME_OFFSET_MS = 2000;
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Use line-index-based timestamps (lineIndex → timeMs)
@@ -46,21 +46,16 @@ export const NotesEditor: React.FC<Props> = ({
     setLineTimestamps(newLineTimestamps);
   }, [timestampMap, notes]);
 
-  useEffect(() => {
-    if (isRecording) {
-      recordingStartTime.current = Date.now();
-    }
-  }, [isRecording]);
-
-  const formatTime = (ms: number): string => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    return `${hours.toString().padStart(2, '0')}:${minutes
-      .toString()
-      .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  const formatDatetime = (datetimeMs: number): string => {
+    const date = new Date(datetimeMs);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   };
 
   const handleLineChange = (index: number, value: string) => {
@@ -90,18 +85,19 @@ export const NotesEditor: React.FC<Props> = ({
     // Update line content
     lines[index] = value;
     
-    // Auto-create timestamp if first character on this line
-    if (isRecording && oldLine.trim().length === 0 && value.trim().length > 0) {
-      if (!lineTimestamps.has(index)) {
-        const currentDuration = Date.now() - recordingStartTime.current;
-        const adjustedDuration = Math.max(0, currentDuration - TIME_OFFSET_MS);
-        
-        const newLineTimestamps = new Map(lineTimestamps);
-        newLineTimestamps.set(index, adjustedDuration);
-        setLineTimestamps(newLineTimestamps);
-        
-        syncToParentTimestampMap(lines, newLineTimestamps);
-      }
+    // Auto-create timestamp: when line goes from empty/whitespace to having content
+    const oldLineEmpty = oldLine.trim().length === 0;
+    const newLineHasContent = value.trim().length > 0;
+    
+    if (isRecording && oldLineEmpty && newLineHasContent && !lineTimestamps.has(index)) {
+      // Save current datetime (not duration)
+      const currentDatetime = Date.now();
+      
+      const newLineTimestamps = new Map(lineTimestamps);
+      newLineTimestamps.set(index, currentDatetime);
+      setLineTimestamps(newLineTimestamps);
+      
+      syncToParentTimestampMap(lines, newLineTimestamps);
     }
     
     onNotesChange(lines.join('\n'));
@@ -190,11 +186,13 @@ export const NotesEditor: React.FC<Props> = ({
   };
 
   const handleDoubleClick = (lineIndex: number) => {
-    const timeMs = lineTimestamps.get(lineIndex);
-    if (timeMs !== undefined) {
+    const datetimeMs = lineTimestamps.get(lineIndex);
+    if (datetimeMs !== undefined && recordingStartTime > 0) {
+      // Convert datetime to relative time from recording start
+      const relativeTimeMs = datetimeMs - recordingStartTime;
       window.dispatchEvent(
         new CustomEvent('seek-audio', {
-          detail: { time: timeMs / 1000 }
+          detail: { time: Math.max(0, relativeTimeMs) / 1000 }
         })
       );
     }
@@ -249,12 +247,12 @@ export const NotesEditor: React.FC<Props> = ({
               <div
                 onClick={() => handleDoubleClick(index)}
                 style={{
-                  width: '100px',
+                  width: '160px',
                   backgroundColor: '#252526',
                   borderRight: '1px solid #434343',
                   padding: '8px',
                   fontFamily: 'monospace',
-                  fontSize: '14px',
+                  fontSize: '12px',
                   color: timeMs !== undefined ? '#1890ff' : 'transparent',
                   textAlign: 'right',
                   cursor: timeMs !== undefined ? 'pointer' : 'default',
@@ -265,7 +263,7 @@ export const NotesEditor: React.FC<Props> = ({
                   paddingTop: '8px'
                 }}
               >
-                {timeMs !== undefined && showTimestamps ? formatTime(timeMs) : '\u00A0'}
+                {timeMs !== undefined && showTimestamps ? formatDatetime(timeMs) : '\u00A0'}
               </div>
 
               {/* Text Input */}
@@ -273,6 +271,11 @@ export const NotesEditor: React.FC<Props> = ({
                 value={line}
                 onChange={(e) => handleLineChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
+                onInput={(e) => {
+                  // Handle undo/redo operations
+                  const target = e.target as HTMLTextAreaElement;
+                  handleLineChange(index, target.value);
+                }}
                 placeholder={index === 0 ? "Start typing..." : ""}
                 autoSize={{ minRows: 1, maxRows: 10 }}
                 style={{

@@ -21,6 +21,7 @@ export const App: React.FC = () => {
   });
   const [notes, setNotes] = useState<string>('');
   const [timestampMap, setTimestampMap] = useState<Map<number, number>>(new Map());
+  const [recordingStartTime, setRecordingStartTime] = useState<number>(0);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [savedNotesSnapshot, setSavedNotesSnapshot] = useState<string>('');
@@ -94,6 +95,8 @@ export const App: React.FC = () => {
         meetingInfo={meetingInfo}
         notes={notes}
         timestampMap={timestampMap}
+        recordingStartTime={recordingStartTime}
+        onRecordingStartTimeChange={setRecordingStartTime}
         audioBlob={audioBlob}
         isSaved={isSaved}
         hasUnsavedChanges={hasUnsavedChanges}
@@ -105,6 +108,7 @@ export const App: React.FC = () => {
         onNotesChange={setNotes}
         timestampMap={timestampMap}
         onTimestampMapChange={setTimestampMap}
+        recordingStartTime={recordingStartTime}
       />
 
       <AudioPlayer audioBlob={audioBlob} />
