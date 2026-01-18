@@ -2,6 +2,18 @@ import { Document, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx'
 import { saveAs } from 'file-saver';
 import type { MeetingInfo } from '../types/types';
 
+// Helper function to add timestamp prefix to filename
+function addTimestampPrefix(fileName: string): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const prefix = `${year}${month}${day}_${hours}${minutes}_`;
+  return prefix + fileName;
+}
+
 export class WordExporter {
   // Create Word blob without downloading
   static async createWordBlob(
@@ -104,8 +116,9 @@ export class WordExporter {
     notesText: string,
     fileName: string
   ): Promise<void> {
+    const fileNameWithTimestamp = addTimestampPrefix(fileName);
     const blob = await this.createWordBlob(meetingInfo, notesText);
-    saveAs(blob, fileName);
+    saveAs(blob, fileNameWithTimestamp);
   }
   
   private static parseTextToParagraphs(text: string): Paragraph[] {

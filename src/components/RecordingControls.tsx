@@ -118,7 +118,7 @@ export const RecordingControls: React.FC<Props> = ({
         );
         await fileManager.saveMetadataFile(
           metadata.metadata,
-          '${projectName}_metadata.json'
+          `${projectName}_metadata.json`
         );
 
         // Export Word document to same folder
@@ -149,7 +149,7 @@ export const RecordingControls: React.FC<Props> = ({
         );
         await downloader.downloadMetadataFile(
           metadata.metadata,
-          '${projectName}_metadata.json'
+          `${projectName}_metadata.json`
         );
 
         // Export Word document

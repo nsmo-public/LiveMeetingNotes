@@ -19,6 +19,8 @@ export const NotesEditor: React.FC<Props> = ({
   recordingStartTime
 }) => {
   const [showTimestamps, setShowTimestamps] = useState(true);
+  const [editingDatetimeIndex, setEditingDatetimeIndex] = useState<number | null>(null);
+  const [editingDatetimeValue, setEditingDatetimeValue] = useState<string>('');
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Use line-index-based timestamps (lineIndex → dateTimeMs) as source of truth
@@ -53,6 +55,61 @@ export const NotesEditor: React.FC<Props> = ({
     const seconds = String(date.getSeconds()).padStart(2, '0');
     
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  };
+
+  const parseDatetime = (dateStr: string): number | null => {
+    // Format: yyyy-MM-dd HH:mm:ss
+    const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
+    if (!match) return null;
+    
+    const [, year, month, day, hours, minutes, seconds] = match;
+    const date = new Date(
+      parseInt(year),
+      parseInt(month) - 1,
+      parseInt(day),
+      parseInt(hours),
+      parseInt(minutes),
+      parseInt(seconds)
+    );
+    
+    return date.getTime();
+  };
+
+  const handleDatetimeClick = (index: number) => {
+    const timeMs = lineTimestamps.get(index);
+    if (timeMs !== undefined) {
+      setEditingDatetimeIndex(index);
+      setEditingDatetimeValue(formatDatetime(timeMs));
+    }
+  };
+
+  const handleDatetimeChange = (value: string) => {
+    setEditingDatetimeValue(value);
+  };
+
+  const handleDatetimeBlur = () => {
+    if (editingDatetimeIndex !== null) {
+      const newTimeMs = parseDatetime(editingDatetimeValue);
+      if (newTimeMs !== null) {
+        const newLineTimestamps = new Map(lineTimestamps);
+        newLineTimestamps.set(editingDatetimeIndex, newTimeMs);
+        setLineTimestamps(newLineTimestamps);
+        
+        const lines = notes.split(BLOCK_SEPARATOR);
+        syncToParentTimestampMap(lines, newLineTimestamps);
+      }
+    }
+    setEditingDatetimeIndex(null);
+    setEditingDatetimeValue('');
+  };
+
+  const handleDatetimeKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleDatetimeBlur();
+    } else if (e.key === 'Escape') {
+      setEditingDatetimeIndex(null);
+      setEditingDatetimeValue('');
+    }
   };
 
   const handleLineChange = (index: number, value: string) => {
@@ -190,7 +247,8 @@ export const NotesEditor: React.FC<Props> = ({
     }
   };
 
-  const handleDoubleClick = (lineIndex: number) => {
+  const handleDatetimeDoubleClick = (e: React.MouseEvent, lineIndex: number) => {
+    e.stopPropagation();
     const datetimeMs = lineTimestamps.get(lineIndex);
     if (datetimeMs !== undefined && recordingStartTime > 0) {
       // Convert datetime to relative time from recording start
@@ -248,7 +306,8 @@ export const NotesEditor: React.FC<Props> = ({
             >
               {/* Timestamp Column */}
               <div
-                onClick={() => handleDoubleClick(index)}
+                onClick={() => editingDatetimeIndex !== index && timeMs !== undefined && handleDatetimeClick(index)}
+                onDoubleClick={(e) => timeMs !== undefined && handleDatetimeDoubleClick(e, index)}
                 style={{
                   width: '160px',
                   backgroundColor: '#252526',
@@ -259,14 +318,35 @@ export const NotesEditor: React.FC<Props> = ({
                   color: timeMs !== undefined ? '#1890ff' : 'transparent',
                   textAlign: 'right',
                   cursor: timeMs !== undefined ? 'pointer' : 'default',
-                  userSelect: 'none',
+                  userSelect: editingDatetimeIndex === index ? 'text' : 'none',
                   flexShrink: 0,
                   display: 'flex',
                   alignItems: 'flex-start',
                   paddingTop: '8px'
                 }}
+                title={timeMs !== undefined ? 'Click to edit • Double-click to jump to audio' : ''}
               >
-                {timeMs !== undefined && showTimestamps ? formatDatetime(timeMs) : '\u00A0'}
+                {editingDatetimeIndex === index ? (
+                  <Input
+                    value={editingDatetimeValue}
+                    onChange={(e) => handleDatetimeChange(e.target.value)}
+                    onBlur={handleDatetimeBlur}
+                    onKeyDown={handleDatetimeKeyDown}
+                    autoFocus
+                    size="small"
+                    style={{
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      padding: '2px 4px',
+                      width: '144px',
+                      backgroundColor: '#1e1e1e',
+                      color: '#1890ff',
+                      border: '1px solid #1890ff'
+                    }}
+                  />
+                ) : (
+                  timeMs !== undefined && showTimestamps ? formatDatetime(timeMs) : '\u00A0'
+                )}
               </div>
 
               {/* Text Input */}
