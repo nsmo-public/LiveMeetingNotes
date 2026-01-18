@@ -301,17 +301,60 @@ body {
   padding: 16px;
   overflow-x: auto;
   overflow-y: hidden;
+  position: relative;
+  /* Improve scrolling performance */
+  -webkit-overflow-scrolling: touch;
+}
+
+.waveform-container:hover {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -2px;
 }
 
 .waveform {
   min-height: 100px;
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* WaveSurfer internal canvas */
+.waveform canvas {
+  cursor: pointer !important;
+}
+
+/* WaveSurfer wrapper should also inherit cursor */
+.waveform > div {
+  cursor: pointer !important;
 }
 
 /* WaveSurfer styles */
 .waveform wave {
   overflow-x: auto !important;
   overflow-y: hidden !important;
+}
+
+/* Tooltip for zoom hint */
+.waveform-container::after {
+  content: '💡 Scroll wheel = Zoom | Click = Seek | Scrollbar = Pan';
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.waveform-container:hover::after {
+  opacity: 0.9;
 }
 
 .player-controls {

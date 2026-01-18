@@ -64,8 +64,8 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
       barRadius: 2,
       height: 100,
       normalize: true,
-      interact: true,
-      dragToSeek: true,
+      interact: true, // Enable click to seek
+      dragToSeek: false, // Click only, no drag to seek
       hideScrollbar: false,
     });
 
@@ -93,9 +93,51 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
       setIsPlaying(false);
     });
 
+    // Add interaction event for better UX
+    wavesurfer.on('interaction', () => {
+      // User clicked on waveform
+      if (!isPlaying) {
+        // Optional: auto-play when clicking on waveform
+        // wavesurfer.play();
+      }
+    });
+
+    wavesurfer.on('seeking', (currentTime) => {
+      // Update current time while seeking/dragging
+      setCurrentTime(currentTime);
+    });
+
     wavesurferRef.current = wavesurfer;
 
+    // Add mouse wheel zoom functionality to the waveform container
+    const waveformContainer = waveformRef.current;
+    const handleWheel = (e: WheelEvent) => {
+      // Stop event from bubbling and prevent default scroll
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Determine zoom direction based on wheel delta
+      const delta = e.deltaY;
+      const zoomStep = 5;
+      
+      setZoom(prevZoom => {
+        let newZoom;
+        if (delta < 0) {
+          // Scroll up = Zoom in
+          newZoom = Math.min(prevZoom + zoomStep, 200);
+        } else {
+          // Scroll down = Zoom out
+          newZoom = Math.max(prevZoom - zoomStep, 10);
+        }
+        return newZoom;
+      });
+    };
+
+    // Add wheel event listener with passive: false to allow preventDefault
+    waveformContainer.addEventListener('wheel', handleWheel, { passive: false });
+
     return () => {
+      waveformContainer.removeEventListener('wheel', handleWheel);
       wavesurfer.destroy();
     };
   }, [audioUrl]);
