@@ -210,9 +210,9 @@ export const NotesEditor: React.FC<Props> = ({
           <button
             className="toggle-timestamps-btn"
             onClick={() => setShowTimestamps(!showTimestamps)}
-            title={showTimestamps ? 'Hide timestamps' : 'Show timestamps'}
+            title={showTimestamps ? 'Hide DateTimes' : 'Show DateTimes'}
           >
-            {showTimestamps ? '👁️ Hide Timestamps' : '👁️‍🗨️ Show Timestamps'}
+            {showTimestamps ? '👁️ Hide DateTimes' : '👁️‍🗨️ Show DateTimes'}
           </button>
         </div>
       </div>
