@@ -25,6 +25,7 @@ export const App: React.FC = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [savedNotesSnapshot, setSavedNotesSnapshot] = useState<string>('');
+  const [isLiveMode, setIsLiveMode] = useState(true); // true = live recording, false = loaded project
 
   // Check browser compatibility
   useEffect(() => {
@@ -45,6 +46,18 @@ export const App: React.FC = () => {
     const hasData = isRecording || (!isSaved && (audioBlob !== null || notes.trim().length > 0)) || notesModified;
     setHasUnsavedChanges(hasData);
   }, [isRecording, audioBlob, notes, isSaved, savedNotesSnapshot]);
+
+  // Switch to live mode when starting a new recording
+  useEffect(() => {
+    if (isRecording) {
+      setIsLiveMode(true);
+    }
+  }, [isRecording]);
+
+  // Debug: Log when meetingInfo changes
+  useEffect(() => {
+    console.log('📝 App meetingInfo state updated:', meetingInfo);
+  }, [meetingInfo]);
 
   // Prevent accidental page close/reload when recording or has unsaved data
   useEffect(() => {
@@ -80,15 +93,12 @@ export const App: React.FC = () => {
     audioBlob: Blob;
     recordingStartTime: number;
   }) => {
-    console.log('App.handleLoadProject received:', {
+    console.log('📂 App.handleLoadProject - Data received:', {
       meetingInfo: loadedData.meetingInfo,
       notesLength: loadedData.notes.length,
       timestampMapSize: loadedData.timestampMap.size,
-      audioBlobSize: loadedData.audioBlob.size,
-      recordingStartTime: loadedData.recordingStartTime
+      audioBlobSize: loadedData.audioBlob.size
     });
-    
-    console.log('Updating state with meetingInfo:', loadedData.meetingInfo);
     
     setMeetingInfo(loadedData.meetingInfo);
     setNotes(loadedData.notes);
@@ -98,8 +108,7 @@ export const App: React.FC = () => {
     setIsSaved(true);
     setHasUnsavedChanges(false);
     setSavedNotesSnapshot(loadedData.notes);
-    
-    console.log('State updated, new meetingInfo state should be:', loadedData.meetingInfo);
+    setIsLiveMode(false); // Switch to timestamp mode when loading project
   };
 
   return (
@@ -138,6 +147,7 @@ export const App: React.FC = () => {
         timestampMap={timestampMap}
         onTimestampMapChange={setTimestampMap}
         recordingStartTime={recordingStartTime}
+        isLiveMode={isLiveMode}
       />
 
       <AudioPlayer audioBlob={audioBlob} />

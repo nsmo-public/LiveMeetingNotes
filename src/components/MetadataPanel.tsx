@@ -10,11 +10,6 @@ interface Props {
 }
 
 export const MetadataPanel: React.FC<Props> = ({ meetingInfo, onChange }) => {
-  // Debug: log when meetingInfo changes
-  React.useEffect(() => {
-    console.log('MetadataPanel received meetingInfo:', meetingInfo);
-  }, [meetingInfo]);
-
   const handleChange = (field: keyof MeetingInfo, value: string) => {
     onChange({
       ...meetingInfo,

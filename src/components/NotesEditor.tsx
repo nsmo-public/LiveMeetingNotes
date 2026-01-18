@@ -9,6 +9,7 @@ interface Props {
   timestampMap: Map<number, number>;
   onTimestampMapChange: (map: Map<number, number>) => void;
   recordingStartTime: number;
+  isLiveMode?: boolean; // true when recording/just recorded, false when loaded from project
 }
 
 export const NotesEditor: React.FC<Props> = ({
@@ -16,7 +17,8 @@ export const NotesEditor: React.FC<Props> = ({
   onNotesChange,
   timestampMap,
   onTimestampMapChange,
-  recordingStartTime
+  recordingStartTime,
+  isLiveMode = true
 }) => {
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [editingDatetimeIndex, setEditingDatetimeIndex] = useState<number | null>(null);
@@ -55,6 +57,19 @@ export const NotesEditor: React.FC<Props> = ({
     const seconds = String(date.getSeconds()).padStart(2, '0');
     
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  };
+
+  const formatTimestamp = (datetimeMs: number): string => {
+    // Format as relative time from recording start (HH:MM:SS)
+    if (recordingStartTime === 0) return '00:00:00';
+    
+    const relativeMs = Math.max(0, datetimeMs - recordingStartTime);
+    const totalSeconds = Math.floor(relativeMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   };
 
   const parseDatetime = (dateStr: string): number | null => {
@@ -272,14 +287,14 @@ export const NotesEditor: React.FC<Props> = ({
         <h3>📝 Notes Editor</h3>
         <div className="editor-controls">
           <span className="recording-hint">
-            💡 Type to auto-create datetime • Enter for new line • Shift+Enter for line break
+            💡 Type to auto-create {isLiveMode ? 'datetime' : 'timestamp'} • Enter for new line • Shift+Enter for line break
           </span>
           <button
             className="toggle-timestamps-btn"
             onClick={() => setShowTimestamps(!showTimestamps)}
-            title={showTimestamps ? 'Hide DateTimes' : 'Show DateTimes'}
+            title={showTimestamps ? (isLiveMode ? 'Hide DateTimes' : 'Hide TimeStamps') : (isLiveMode ? 'Show DateTimes' : 'Show TimeStamps')}
           >
-            {showTimestamps ? '👁️ Hide DateTimes' : '👁️‍🗨️ Show DateTimes'}
+            {showTimestamps ? (isLiveMode ? '👁️ Hide DateTimes' : '👁️ Hide TimeStamps') : (isLiveMode ? '👁️‍🗨️ Show DateTimes' : '👁️‍🗨️ Show TimeStamps')}
           </button>
         </div>
       </div>
@@ -306,10 +321,10 @@ export const NotesEditor: React.FC<Props> = ({
             >
               {/* Timestamp Column */}
               <div
-                onClick={() => editingDatetimeIndex !== index && timeMs !== undefined && handleDatetimeClick(index)}
+                onClick={() => editingDatetimeIndex !== index && timeMs !== undefined && isLiveMode && handleDatetimeClick(index)}
                 onDoubleClick={(e) => timeMs !== undefined && handleDatetimeDoubleClick(e, index)}
                 style={{
-                  width: '160px',
+                  width: isLiveMode ? '160px' : '90px',
                   backgroundColor: '#252526',
                   borderRight: '1px solid #434343',
                   padding: '8px',
@@ -324,9 +339,9 @@ export const NotesEditor: React.FC<Props> = ({
                   alignItems: 'flex-start',
                   paddingTop: '8px'
                 }}
-                title={timeMs !== undefined ? 'Click to edit • Double-click to jump to audio' : ''}
+                title={timeMs !== undefined ? (isLiveMode ? 'Click to edit • Double-click to jump to audio' : 'Double-click to jump to audio') : ''}
               >
-                {editingDatetimeIndex === index ? (
+                {editingDatetimeIndex === index && isLiveMode ? (
                   <Input
                     value={editingDatetimeValue}
                     onChange={(e) => handleDatetimeChange(e.target.value)}
@@ -345,7 +360,7 @@ export const NotesEditor: React.FC<Props> = ({
                     }}
                   />
                 ) : (
-                  timeMs !== undefined && showTimestamps ? formatDatetime(timeMs) : '\u00A0'
+                  timeMs !== undefined && showTimestamps ? (isLiveMode ? formatDatetime(timeMs) : formatTimestamp(timeMs)) : '\u00A0'
                 )}
               </div>
 

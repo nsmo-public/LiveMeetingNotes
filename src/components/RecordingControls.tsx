@@ -343,9 +343,18 @@ export const RecordingControls: React.FC<Props> = ({
         attendees: projectData.meetingInfo.Attendees || ''
       };
 
-      console.log('Mapping meetingInfo:', {
+      console.log('📋 Mapping meetingInfo from file:', {
         rawData: projectData.meetingInfo,
         mapped: loadedMeetingInfo
+      });
+      
+      console.log('🔍 Individual field mapping:', {
+        'MeetingTitle → title': `"${projectData.meetingInfo.MeetingTitle}" → "${loadedMeetingInfo.title}"`,
+        'MeetingDate → date': `"${projectData.meetingInfo.MeetingDate}" → "${loadedMeetingInfo.date}"`,
+        'MeetingTime → time': `"${projectData.meetingInfo.MeetingTime}" → "${loadedMeetingInfo.time}"`,
+        'Location → location': `"${projectData.meetingInfo.Location}" → "${loadedMeetingInfo.location}"`,
+        'Host → host': `"${projectData.meetingInfo.Host}" → "${loadedMeetingInfo.host}"`,
+        'Attendees → attendees': `"${projectData.meetingInfo.Attendees}" → "${loadedMeetingInfo.attendees}"`
       });
 
       // Parse metadata to reconstruct timestampMap and notes
