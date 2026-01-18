@@ -44,39 +44,35 @@ export class MetadataBuilder {
 
   private static extractTimestamps(
     notes: string,
-    timestampMap: Map<number, number>,
+    _timestampMap: Map<number, number>,
     totalDuration: number
   ): Array<{ Index: number; Text: string; StartTime: string; EndTime: string; Highlight: boolean }> {
     const timestamps: Array<{ Index: number; Text: string; StartTime: string; EndTime: string; Highlight: boolean }> = [];
     
-    // Parse all lines and match timestamps from the map
+    // Directly parse all lines for timestamps - ignore timestampMap as positions may be stale
     const lines = notes.split('\n');
-    const sortedTimestamps = Array.from(timestampMap.entries())
-      .sort((a, b) => a[1] - b[1]);
-    
-    // Create a map of time -> line text
-    const timeToTextMap = new Map<number, string>();
+    const parsedLines: Array<{ timeMs: number; text: string }> = [];
     
     for (const line of lines) {
       const match = line.match(/\[(\d{2}):(\d{2}):(\d{2})\]\s*(.*)/);
       if (match) {
         const timeMs = this.parseTimestamp(match[0]);
-        const text = match[4]; // Text after timestamp
-        timeToTextMap.set(timeMs, text);
+        const text = match[4] || ''; // Text after timestamp
+        parsedLines.push({ timeMs, text });
       }
     }
+    
+    // Sort by time
+    parsedLines.sort((a, b) => a.timeMs - b.timeMs);
 
-    for (let i = 0; i < sortedTimestamps.length; i++) {
-      const [_, startTime] = sortedTimestamps[i];
+    for (let i = 0; i < parsedLines.length; i++) {
+      const { timeMs: startTime, text } = parsedLines[i];
       
       // Find next timestamp or use total duration
       const endTime =
-        i < sortedTimestamps.length - 1
-          ? sortedTimestamps[i + 1][1]
+        i < parsedLines.length - 1
+          ? parsedLines[i + 1].timeMs
           : Math.min(startTime + 3000, totalDuration); // Default 3 seconds or end
-
-      // Get text for this timestamp
-      const text = timeToTextMap.get(startTime) || '';
 
       timestamps.push({
         Index: i,

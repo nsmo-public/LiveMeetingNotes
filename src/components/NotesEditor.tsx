@@ -75,17 +75,13 @@ export const NotesEditor: React.FC<Props> = ({
   };
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    // Only allow editing when timestamps are visible to prevent data corruption
+    if (!showTimestamps) {
+      return; // Don't update when timestamps are hidden
+    }
+    
     const newValue = e.target.value;
     onNotesChange(newValue);
-    
-    // Also generate HTML for Word export (simple paragraph format)
-    if (onNotesHtmlChange) {
-      const html = newValue
-        .split('\n')
-        .map(line => `<p>${line}</p>`)
-        .join('');
-      onNotesHtmlChange(html);
-    }
   };
 
   const handleDoubleClick = () => {
@@ -163,10 +159,13 @@ export const NotesEditor: React.FC<Props> = ({
         placeholder="Start typing your notes here...&#10;Press ENTER during recording to insert timestamp"
         className="notes-textarea"
         autoSize={{ minRows: 15, maxRows: 30 }}
+        readOnly={!showTimestamps}
         style={{
           fontFamily: 'monospace',
           fontSize: '14px',
-          lineHeight: '1.6'
+          lineHeight: '1.6',
+          opacity: showTimestamps ? 1 : 0.8,
+          cursor: showTimestamps ? 'text' : 'default'
         }}
       />
     </div>
