@@ -214,27 +214,9 @@ export const NotesEditor: React.FC<Props> = ({
     const lines = notes.split(BLOCK_SEPARATOR);
     const oldLine = lines[index];
     
-    // If line becomes empty, delete it
-    if (value === '' && lines.length > 1) {
-      lines.splice(index, 1);
-      
-      // Remove timestamp for deleted line and shift others
-      const newLineTimestamps = new Map<number, number>();
-      lineTimestamps.forEach((time, lineIndex) => {
-        if (lineIndex < index) {
-          newLineTimestamps.set(lineIndex, time);
-        } else if (lineIndex > index) {
-          newLineTimestamps.set(lineIndex - 1, time);
-        }
-      });
-      setLineTimestamps(newLineTimestamps);
-      
-      onNotesChange(lines.join(BLOCK_SEPARATOR));
-      syncToParentTimestampMap(lines, newLineTimestamps);
-      return;
-    }
-    
-    // Update line content
+    // Don't auto-delete line when it becomes empty
+    // Let user explicitly delete via Backspace/Delete keys (handled in handleKeyDown)
+    // Just update the content
     lines[index] = value;
     
     // Auto-create timestamp: Only in Live Mode when line goes from empty to having content
