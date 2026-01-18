@@ -124,10 +124,20 @@ export class WordExporter {
   private static parseTextToParagraphs(text: string): Paragraph[] {
     const paragraphs: Paragraph[] = [];
     
-    // Split by newlines
-    const lines = text.split('\n');
+    // BLOCK_SEPARATOR is used in NotesEditor to separate lines
+    const BLOCK_SEPARATOR = '§§§';
     
+    // First split by BLOCK_SEPARATOR to get individual notes/lines
+    let lines = text.split(BLOCK_SEPARATOR);
+    
+    // Then split each line by newlines for multi-line content
+    const allLines: string[] = [];
     lines.forEach((line) => {
+      const subLines = line.split('\n');
+      allLines.push(...subLines);
+    });
+    
+    allLines.forEach((line) => {
       const trimmed = line.trim();
       if (trimmed) {
         paragraphs.push(
