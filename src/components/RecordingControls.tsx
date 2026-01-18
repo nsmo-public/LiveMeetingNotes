@@ -118,7 +118,7 @@ export const RecordingControls: React.FC<Props> = ({
         );
         await fileManager.saveMetadataFile(
           metadata.metadata,
-          'metadata.json'
+          '${projectName}_metadata.json'
         );
 
         // Export Word document to same folder
@@ -149,7 +149,7 @@ export const RecordingControls: React.FC<Props> = ({
         );
         await downloader.downloadMetadataFile(
           metadata.metadata,
-          'metadata.json'
+          '${projectName}_metadata.json'
         );
 
         // Export Word document
@@ -196,7 +196,7 @@ export const RecordingControls: React.FC<Props> = ({
         // Update metadata and Word files
         await fileManager.saveMetadataFile(
           metadata.metadata,
-          'metadata.json'
+          `${lastProjectName}_metadata.json`
         );
 
         const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
@@ -209,7 +209,7 @@ export const RecordingControls: React.FC<Props> = ({
         
         await downloader.downloadMetadataFile(
           metadata.metadata,
-          'metadata.json'
+          `${lastProjectName}_metadata.json`
         );
 
         await WordExporter.exportToWord(
