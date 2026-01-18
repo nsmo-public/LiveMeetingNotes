@@ -44,35 +44,39 @@ export class MetadataBuilder {
 
   private static extractTimestamps(
     notes: string,
-    _timestampMap: Map<number, number>,
+    timestampMap: Map<number, number>,
     totalDuration: number
   ): Array<{ Index: number; Text: string; StartTime: string; EndTime: string; Highlight: boolean }> {
     const timestamps: Array<{ Index: number; Text: string; StartTime: string; EndTime: string; Highlight: boolean }> = [];
     
-    // Directly parse all lines for timestamps - ignore timestampMap as positions may be stale
+    // Sort timestamps by time
+    const sortedTimestamps = Array.from(timestampMap.entries())
+      .sort((a, b) => a[1] - b[1]);
+    
     const lines = notes.split('\n');
-    const parsedLines: Array<{ timeMs: number; text: string }> = [];
-    
-    for (const line of lines) {
-      const match = line.match(/\[(\d{2}):(\d{2}):(\d{2})\]\s*(.*)/);
-      if (match) {
-        const timeMs = this.parseTimestamp(match[0]);
-        const text = match[4] || ''; // Text after timestamp
-        parsedLines.push({ timeMs, text });
-      }
-    }
-    
-    // Sort by time
-    parsedLines.sort((a, b) => a.timeMs - b.timeMs);
 
-    for (let i = 0; i < parsedLines.length; i++) {
-      const { timeMs: startTime, text } = parsedLines[i];
+    for (let i = 0; i < sortedTimestamps.length; i++) {
+      const [position, startTime] = sortedTimestamps[i];
+      
+      // Find which line this position corresponds to
+      let lineIndex = 0;
+      let currentPos = 0;
+      for (let j = 0; j < lines.length; j++) {
+        const lineEnd = currentPos + lines[j].length;
+        if (position >= currentPos && position <= lineEnd + 1) {
+          lineIndex = j;
+          break;
+        }
+        currentPos = lineEnd + 1; // +1 for newline character
+      }
+      
+      const text = lines[lineIndex] || '';
       
       // Find next timestamp or use total duration
       const endTime =
-        i < parsedLines.length - 1
-          ? parsedLines[i + 1].timeMs
-          : Math.min(startTime + 3000, totalDuration); // Default 3 seconds or end
+        i < sortedTimestamps.length - 1
+          ? sortedTimestamps[i + 1][1]
+          : Math.min(startTime + 3000, totalDuration);
 
       timestamps.push({
         Index: i,

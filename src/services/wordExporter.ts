@@ -8,11 +8,8 @@ export class WordExporter {
     meetingInfo: MeetingInfo,
     notesText: string
   ): Promise<Blob> {
-    // Remove timestamps from text
-    const cleanText = this.removeTimestamps(notesText);
-    
-    // Parse text to paragraphs
-    const paragraphs = this.parseTextToParagraphs(cleanText);
+    // Text is already clean (no timestamps embedded)
+    const paragraphs = this.parseTextToParagraphs(notesText);
     
     // Create document
     const doc = new Document({
@@ -109,11 +106,6 @@ export class WordExporter {
   ): Promise<void> {
     const blob = await this.createWordBlob(meetingInfo, notesText);
     saveAs(blob, fileName);
-  }
-  
-  private static removeTimestamps(text: string): string {
-    // Remove timestamp patterns like [00:00:15]
-    return text.replace(/\[\d{2}:\d{2}:\d{2}\]\s*/g, '');
   }
   
   private static parseTextToParagraphs(text: string): Paragraph[] {

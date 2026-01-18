@@ -19,9 +19,11 @@ export const NotesEditor: React.FC<Props> = ({
   onTimestampMapChange
 }) => {
   const textareaRef = useRef<any>(null);
+  const timestampColumnRef = useRef<HTMLDivElement>(null);
   const recordingStartTime = useRef<number>(0);
   const [showTimestamps, setShowTimestamps] = useState(true);
-  const TIME_OFFSET_MS = 2000; // Bù 2 giây cho thời gian nghe và gõ
+  const TIME_OFFSET_MS = 2000;
+  const lastLineCountRef = useRef(0);
 
   useEffect(() => {
     if (isRecording) {
@@ -29,49 +31,39 @@ export const NotesEditor: React.FC<Props> = ({
     }
   }, [isRecording]);
 
-  // Listen for Enter key during recording
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && isRecording && !e.shiftKey) {
-      // Prevent default to control newline ourselves
-      e.preventDefault();
-      insertTimestampAtCursor();
+  // Sync scroll between timestamp column and textarea
+  const handleScroll = () => {
+    if (timestampColumnRef.current && textareaRef.current) {
+      const textarea = textareaRef.current.resizableTextArea?.textArea;
+      if (textarea) {
+        timestampColumnRef.current.scrollTop = textarea.scrollTop;
+      }
     }
   };
 
-  const insertTimestampAtCursor = () => {
-    if (!textareaRef.current) return;
-
-    const textarea = textareaRef.current.resizableTextArea.textArea;
-    const cursorPos = textarea.selectionStart;
-
-    const currentDuration = Date.now() - recordingStartTime.current;
-    const adjustedDuration = Math.max(0, currentDuration - TIME_OFFSET_MS);
-    const timeStr = formatTime(adjustedDuration);
-    const timestampText = `\n[${timeStr}] `;
-
-    // Insert newline + timestamp at cursor position
-    const newText =
-      notes.substring(0, cursorPos) +
-      timestampText +
-      notes.substring(cursorPos);
-
-    onNotesChange(newText);
-
-    // Store timestamp mapping
-    const newMap = new Map(timestampMap);
-    newMap.set(cursorPos, adjustedDuration);
-    onTimestampMapChange(newMap);
-
-    // Move cursor after timestamp
-    requestAnimationFrame(() => {
-      textarea.selectionStart = cursorPos + timestampText.length;
-      textarea.selectionEnd = cursorPos + timestampText.length;
-      textarea.focus();
-    });
-  };
-
+  // Check if user is typing at start of a new line
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
+    const lines = newValue.split('\n');
+    const currentLineCount = lines.length;
+
+    // Detect new line created
+    if (isRecording && currentLineCount > lastLineCountRef.current) {
+      const newLineIndex = currentLineCount - 1;
+      const lineStartPos = newValue.split('\n').slice(0, newLineIndex).join('\n').length + (newLineIndex > 0 ? 1 : 0);
+      
+      // Check if this line doesn't have a timestamp yet
+      if (!timestampMap.has(lineStartPos)) {
+        const currentDuration = Date.now() - recordingStartTime.current;
+        const adjustedDuration = Math.max(0, currentDuration - TIME_OFFSET_MS);
+        
+        const newMap = new Map(timestampMap);
+        newMap.set(lineStartPos, adjustedDuration);
+        onTimestampMapChange(newMap);
+      }
+    }
+
+    lastLineCountRef.current = currentLineCount;
     onNotesChange(newValue);
   };
 
@@ -97,7 +89,7 @@ export const NotesEditor: React.FC<Props> = ({
 
     timestampMap.forEach((time, pos) => {
       const dist = Math.abs(pos - index);
-      if (dist < minDist && dist < 50) {
+      if (dist < minDist) {
         minDist = dist;
         nearest = time;
       }
@@ -117,10 +109,37 @@ export const NotesEditor: React.FC<Props> = ({
       .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Render notes with optional timestamp hiding
-  const displayNotes = showTimestamps
-    ? notes
-    : notes.replace(/\[\d{2}:\d{2}:\d{2}\]\s*/g, '');
+  // Build timestamp column content
+  const renderTimestampColumn = () => {
+    const lines = notes.split('\n');
+    const timestampArray = Array.from(timestampMap.entries())
+      .sort((a, b) => a[0] - b[0]); // Sort by position
+
+    return lines.map((_, index) => {
+      const lineStartPos = notes.split('\n').slice(0, index).join('\n').length + (index > 0 ? 1 : 0);
+      const timestampEntry = timestampArray.find(([pos]) => pos === lineStartPos);
+      const timeMs = timestampEntry ? timestampEntry[1] : null;
+
+      return (
+        <div
+          key={index}
+          className="timestamp-line"
+          style={{
+            height: '1.6em',
+            lineHeight: '1.6',
+            fontSize: '14px',
+            color: timeMs !== null ? '#1890ff' : 'transparent',
+            fontFamily: 'monospace',
+            paddingRight: '8px',
+            textAlign: 'right',
+            userSelect: 'none'
+          }}
+        >
+          {timeMs !== null && showTimestamps ? formatTime(timeMs) : '\u00A0'}
+        </div>
+      );
+    });
+  };
 
   return (
     <div className="notes-editor-container">
@@ -129,7 +148,7 @@ export const NotesEditor: React.FC<Props> = ({
         <div className="editor-controls">
           {isRecording && (
             <span className="recording-hint">
-              💡 Press Enter to insert timestamp at new line
+              💡 Type at new line to auto-create timestamp
             </span>
           )}
           <button
@@ -141,51 +160,50 @@ export const NotesEditor: React.FC<Props> = ({
           </button>
         </div>
       </div>
-      <div style={{ position: 'relative' }}>
-        {/* Overlay to show text without timestamps when hidden */}
-        {!showTimestamps && (
-          <div
+      
+      <div style={{ 
+        display: 'flex', 
+        border: '1px solid #434343',
+        borderRadius: '6px',
+        overflow: 'hidden',
+        backgroundColor: '#1e1e1e'
+      }}>
+        {/* Timestamp Column */}
+        <div
+          ref={timestampColumnRef}
+          style={{
+            width: '100px',
+            backgroundColor: '#252526',
+            borderRight: '1px solid #434343',
+            padding: '4px 8px',
+            overflow: 'hidden',
+            fontFamily: 'monospace'
+          }}
+        >
+          {renderTimestampColumn()}
+        </div>
+
+        {/* Text Editor Column */}
+        <div style={{ flex: 1 }}>
+          <TextArea
+            ref={textareaRef}
+            value={notes}
+            onChange={handleTextChange}
+            onDoubleClick={handleDoubleClick}
+            onScroll={handleScroll}
+            placeholder="Start typing your notes here...&#10;Timestamps will be added automatically when you type at a new line"
+            className="notes-textarea"
+            autoSize={{ minRows: 15, maxRows: 30 }}
             style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              padding: '4px 11px',
               fontFamily: 'monospace',
               fontSize: '14px',
               lineHeight: '1.6',
-              whiteSpace: 'pre-wrap',
-              wordWrap: 'break-word',
-              pointerEvents: 'none',
-              backgroundColor: 'var(--editor-bg, #1e1e1e)',
-              color: 'var(--editor-text, #d4d4d4)',
-              overflow: 'hidden',
-              zIndex: 1
+              border: 'none',
+              backgroundColor: 'transparent',
+              resize: 'none'
             }}
-          >
-            {displayNotes}
-          </div>
-        )}
-        <TextArea
-          ref={textareaRef}
-          value={notes}
-          onChange={handleTextChange}
-          onKeyDown={handleKeyDown}
-          onDoubleClick={handleDoubleClick}
-          placeholder="Start typing your notes here...&#10;Press ENTER during recording to insert timestamp"
-          className="notes-textarea"
-          autoSize={{ minRows: 15, maxRows: 30 }}
-          style={{
-            fontFamily: 'monospace',
-            fontSize: '14px',
-            lineHeight: '1.6',
-            color: showTimestamps ? 'inherit' : 'transparent',
-            caretColor: showTimestamps ? 'auto' : 'var(--editor-text, #d4d4d4)',
-            position: 'relative',
-            zIndex: 0
-          }}
-        />
+          />
+        </div>
       </div>
     </div>
   );
