@@ -49,7 +49,7 @@ export const NotesEditor: React.FC<Props> = ({
     const currentDuration = Date.now() - recordingStartTime.current;
     const adjustedDuration = Math.max(0, currentDuration - TIME_OFFSET_MS);
     const timeStr = formatTime(adjustedDuration);
-    const timestampText = `[${timeStr}] `;
+    const timestampText = `\n [${timeStr}] `;
 
     // Insert timestamp at cursor position (which is at start of new line after Enter)
     const newText =
