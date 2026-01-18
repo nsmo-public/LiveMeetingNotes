@@ -168,6 +168,34 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
     
     waveformContainer.addEventListener('contextmenu', handleContextMenu);
 
+    // Add keyboard handler for play/pause with spacebar
+    let isMouseInWaveform = false;
+    
+    const handleMouseEnter = () => {
+      isMouseInWaveform = true;
+    };
+    
+    const handleMouseLeave = () => {
+      isMouseInWaveform = false;
+    };
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle spacebar when mouse is in waveform
+      if (isMouseInWaveform && (e.code === 'Space' || e.key === ' ')) {
+        e.preventDefault(); // Prevent page scroll
+        
+        if (wavesurfer.isPlaying()) {
+          wavesurfer.pause();
+        } else {
+          wavesurfer.play();
+        }
+      }
+    };
+    
+    waveformContainer.addEventListener('mouseenter', handleMouseEnter);
+    waveformContainer.addEventListener('mouseleave', handleMouseLeave);
+    window.addEventListener('keydown', handleKeyDown);
+
     // Add mouse wheel zoom functionality
     const handleWheel = (e: WheelEvent) => {
       // Stop event from bubbling and prevent default scroll
@@ -198,6 +226,9 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
       waveformContainer.removeEventListener('wheel', handleWheel);
       waveformContainer.removeEventListener('dblclick', handleDoubleClick);
       waveformContainer.removeEventListener('contextmenu', handleContextMenu);
+      waveformContainer.removeEventListener('mouseenter', handleMouseEnter);
+      waveformContainer.removeEventListener('mouseleave', handleMouseLeave);
+      window.removeEventListener('keydown', handleKeyDown);
       wavesurfer.destroy();
     };
   }, [audioUrl]);

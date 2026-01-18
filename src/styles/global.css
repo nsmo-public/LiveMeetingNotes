@@ -338,11 +338,11 @@ body {
 
 /* Tooltip for zoom hint */
 .waveform-container::after {
-  content: '💡 Scroll = Zoom | Click = Seek | Double-click = Play from position';
+  content: '💡 Scroll = Zoom | Click = Seek | Double-click = Play | Space = Play/Pause';
   position: absolute;
   top: 4px;
   right: 8px;
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-secondary);
   opacity: 0;
   transition: opacity 0.3s;
