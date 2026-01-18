@@ -24,6 +24,7 @@ export const NotesEditor: React.FC<Props> = ({
   const [showTimestamps, setShowTimestamps] = useState(true);
   const TIME_OFFSET_MS = 2000;
   const lastLineCountRef = useRef(0);
+  const previousNotesRef = useRef('');
 
   useEffect(() => {
     if (isRecording) {
@@ -46,28 +47,33 @@ export const NotesEditor: React.FC<Props> = ({
     const newValue = e.target.value;
     const lines = newValue.split('\n');
     const currentLineCount = lines.length;
+    const previousLines = previousNotesRef.current.split('\n');
 
-    // Detect new line created AND has first character typed
-    if (isRecording && currentLineCount > lastLineCountRef.current) {
-      const newLineIndex = currentLineCount - 1;
-      const newLine = lines[newLineIndex];
-      
-      // Only create timestamp if the new line has at least one character
-      if (newLine.trim().length > 0) {
-        const lineStartPos = newValue.split('\n').slice(0, newLineIndex).join('\n').length + (newLineIndex > 0 ? 1 : 0);
+    if (isRecording) {
+      // Check each line to see if it just got its first character
+      for (let i = 0; i < lines.length; i++) {
+        const currentLine = lines[i];
+        const previousLine = previousLines[i] || '';
         
-        // Check if this line doesn't have a timestamp yet
-        if (!timestampMap.has(lineStartPos)) {
-          const currentDuration = Date.now() - recordingStartTime.current;
-          const adjustedDuration = Math.max(0, currentDuration - TIME_OFFSET_MS);
+        // Detect: line was empty before, now has content
+        if (previousLine.trim().length === 0 && currentLine.trim().length > 0) {
+          const lineStartPos = newValue.split('\n').slice(0, i).join('\n').length + (i > 0 ? 1 : 0);
           
-          const newMap = new Map(timestampMap);
-          newMap.set(lineStartPos, adjustedDuration);
-          onTimestampMapChange(newMap);
+          // Check if this line doesn't have a timestamp yet
+          if (!timestampMap.has(lineStartPos)) {
+            const currentDuration = Date.now() - recordingStartTime.current;
+            const adjustedDuration = Math.max(0, currentDuration - TIME_OFFSET_MS);
+            
+            const newMap = new Map(timestampMap);
+            newMap.set(lineStartPos, adjustedDuration);
+            onTimestampMapChange(newMap);
+            break; // Only create one timestamp per change
+          }
         }
       }
     }
 
+    previousNotesRef.current = newValue;
     lastLineCountRef.current = currentLineCount;
     onNotesChange(newValue);
   };
