@@ -14,6 +14,7 @@ function addTimestampPrefix(fileName: string): string {
 
 export class FileManagerService {
   private dirHandle: FileSystemDirectoryHandle | null = null;
+  private parentDirHandle: FileSystemDirectoryHandle | null = null; // Parent of loaded project folder
 
   async selectFolder(): Promise<string | null> {
     try {
@@ -112,8 +113,20 @@ export class FileManagerService {
     try {
       // Let user select a project folder
       const projectHandle = await window.showDirectoryPicker!({
-        mode: 'read'
+        mode: 'readwrite' // Need write permission to save changes later
       });
+      
+      // Get parent directory handle for saving new versions
+      try {
+        // @ts-ignore - getParent() exists but not in TypeScript types yet
+        const getParent = (projectHandle as any).getParent;
+        if (getParent) {
+          this.parentDirHandle = await getParent.call(projectHandle);
+          console.log('Saved parent directory handle for future saves');
+        }
+      } catch (err) {
+        console.warn('Could not get parent directory handle:', err);
+      }
 
       const projectName = projectHandle.name;
       let meetingInfoData = null;
@@ -174,6 +187,16 @@ export class FileManagerService {
       }
       throw error;
     }
+  }
+
+  // Get parent directory handle (for saving changes to loaded project)
+  getParentDirHandle(): FileSystemDirectoryHandle | null {
+    return this.parentDirHandle;
+  }
+  
+  // Set directory handle (use parent dir when saving changes)
+  setDirHandle(handle: FileSystemDirectoryHandle) {
+    this.dirHandle = handle;
   }
 
   // Check if File System Access API is supported

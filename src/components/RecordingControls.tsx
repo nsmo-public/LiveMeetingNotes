@@ -240,37 +240,66 @@ export const RecordingControls: React.FC<Props> = ({
         recordingStartTime
       );
 
-      // Save files - create new version like when stopping recording
-      if (FileManagerService.isSupported() && folderPath) {
-        // Create new project subdirectory
-        await fileManager.createProjectDirectory(newProjectName);
+      if (FileManagerService.isSupported()) {
+        // Use parent directory from loaded project (same level as original project folder)
+        const parentDirHandle = fileManager.getParentDirHandle();
         
-        // Save audio file with original audio blob to new folder
-        await fileManager.saveAudioFile(audioBlob, audioFileName, newProjectName, true);
+        if (parentDirHandle) {
+          // Save to parent directory (same location as loaded project)
+          fileManager.setDirHandle(parentDirHandle);
+          
+          // Create new project subdirectory
+          await fileManager.createProjectDirectory(newProjectName);
+          
+          // Save audio file with original audio blob to new folder
+          await fileManager.saveAudioFile(audioBlob, audioFileName, newProjectName, true);
 
-        // Save metadata files
-        await fileManager.saveMetadataFile(
-          metadata.meetingInfo,
-          `${newProjectName}_meeting_info.json`,
-          newProjectName,
-          true
-        );
-        await fileManager.saveMetadataFile(
-          metadata.metadata,
-          `${newProjectName}_metadata.json`,
-          newProjectName,
-          true
-        );
+          // Save metadata files
+          await fileManager.saveMetadataFile(
+            metadata.meetingInfo,
+            `${newProjectName}_meeting_info.json`,
+            newProjectName,
+            true
+          );
+          await fileManager.saveMetadataFile(
+            metadata.metadata,
+            `${newProjectName}_metadata.json`,
+            newProjectName,
+            true
+          );
 
-        // Export Word document
-        const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
-        await fileManager.saveWordFile(wordBlob, `${newProjectName}.docx`, newProjectName, true);
+          // Export Word document
+          const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
+          await fileManager.saveWordFile(wordBlob, `${newProjectName}.docx`, newProjectName, true);
 
-        message.success(`Changes saved to new folder: ${newProjectName}`);
-        // Update last project name for potential future saves
-        setLastProjectName(newProjectName);
+          message.success(`Changes saved to new folder: ${newProjectName}`);
+          setLastProjectName(newProjectName);
+        } else if (folderPath) {
+          // Fallback to selected folder if no parent handle (old workflow)
+          await fileManager.createProjectDirectory(newProjectName);
+          await fileManager.saveAudioFile(audioBlob, audioFileName, newProjectName, true);
+          await fileManager.saveMetadataFile(
+            metadata.meetingInfo,
+            `${newProjectName}_meeting_info.json`,
+            newProjectName,
+            true
+          );
+          await fileManager.saveMetadataFile(
+            metadata.metadata,
+            `${newProjectName}_metadata.json`,
+            newProjectName,
+            true
+          );
+          const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
+          await fileManager.saveWordFile(wordBlob, `${newProjectName}.docx`, newProjectName, true);
+          
+          message.success(`Changes saved to new folder: ${newProjectName}`);
+          setLastProjectName(newProjectName);
+        } else {
+          message.error('No save location available. Please use "Select Folder" first.');
+        }
       } else {
-        // Download updated files
+        // Download updated files (fallback for unsupported browsers)
         const downloader = new FileDownloadService();
         
         await downloader.downloadAudioFile(audioBlob, audioFileName);
