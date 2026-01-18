@@ -115,7 +115,8 @@ export const NotesEditor: React.FC<Props> = ({
     const target = e.target as HTMLTextAreaElement;
     const cursorPos = target.selectionStart;
 
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      // Enter only: Split into new line with new timestamp
       e.preventDefault();
       
       // Split current line at cursor
@@ -147,6 +148,20 @@ export const NotesEditor: React.FC<Props> = ({
           nextInput.setSelectionRange(0, 0);
         }
       }, 10);
+    } else if (e.key === 'Enter' && e.shiftKey) {
+      // Shift+Enter: Add newline within the same block (no new timestamp)
+      e.preventDefault();
+      const beforeCursor = currentLine.substring(0, cursorPos);
+      const afterCursor = currentLine.substring(cursorPos);
+      const newValue = beforeCursor + '\n' + afterCursor;
+      
+      lines[index] = newValue;
+      onNotesChange(lines.join('\n'));
+      
+      // Restore cursor position after newline
+      setTimeout(() => {
+        target.setSelectionRange(cursorPos + 1, cursorPos + 1);
+      }, 0);
     } else if (e.key === 'Backspace' && cursorPos === 0 && index > 0) {
       // Merge with previous line
       e.preventDefault();
@@ -205,7 +220,7 @@ export const NotesEditor: React.FC<Props> = ({
         <h3>📝 Notes Editor</h3>
         <div className="editor-controls">
           <span className="recording-hint">
-            💡 Type to auto-create datetime • Enter for new line
+            💡 Type to auto-create datetime • Enter for new line • Shift+Enter for line break
           </span>
           <button
             className="toggle-timestamps-btn"
