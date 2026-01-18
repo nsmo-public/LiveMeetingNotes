@@ -3,13 +3,13 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  base: '/LiveMeetingNote-Web/', // GitHub Pages base URL
+  base: '/LiveMeetingNotes/', // GitHub Pages base URL
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      base: '/LiveMeetingNote-Web/',
-      scope: '/LiveMeetingNote-Web/',
+      base: '/LiveMeetingNotes/',
+      scope: '/LiveMeetingNotes/',
       includeAssets: ['icons/*.svg'],
       manifest: {
         name: 'Live Meeting Notes',
