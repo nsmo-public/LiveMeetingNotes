@@ -32,11 +32,9 @@ export const NotesEditor: React.FC<Props> = ({
   // Listen for Enter key during recording
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && isRecording && !e.shiftKey) {
-      // Don't prevent default - let Enter create new line naturally
-      // Use requestAnimationFrame to ensure newline is rendered before inserting timestamp
-      requestAnimationFrame(() => {
-        insertTimestampAtCursor();
-      });
+      // Prevent default to control newline ourselves
+      e.preventDefault();
+      insertTimestampAtCursor();
     }
   };
 
@@ -49,9 +47,9 @@ export const NotesEditor: React.FC<Props> = ({
     const currentDuration = Date.now() - recordingStartTime.current;
     const adjustedDuration = Math.max(0, currentDuration - TIME_OFFSET_MS);
     const timeStr = formatTime(adjustedDuration);
-    const timestampText = `[${timeStr}] `;
+    const timestampText = `\n[${timeStr}] `;
 
-    // Insert timestamp at cursor position (which is at start of new line after Enter)
+    // Insert newline + timestamp at cursor position
     const newText =
       notes.substring(0, cursorPos) +
       timestampText +
@@ -59,7 +57,7 @@ export const NotesEditor: React.FC<Props> = ({
 
     onNotesChange(newText);
 
-    // Store timestamp mapping - use position in the ORIGINAL notes before adding timestamp
+    // Store timestamp mapping
     const newMap = new Map(timestampMap);
     newMap.set(cursorPos, adjustedDuration);
     onTimestampMapChange(newMap);
