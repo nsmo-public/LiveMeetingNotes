@@ -49,7 +49,7 @@ export const NotesEditor: React.FC<Props> = ({
     const currentDuration = Date.now() - recordingStartTime.current;
     const adjustedDuration = Math.max(0, currentDuration - TIME_OFFSET_MS);
     const timeStr = formatTime(adjustedDuration);
-    const timestampText = `\n [${timeStr}] `;
+    const timestampText = `\n[${timeStr}] `;
 
     // Insert timestamp at cursor position (which is at start of new line after Enter)
     const newText =
@@ -73,11 +73,6 @@ export const NotesEditor: React.FC<Props> = ({
   };
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    // Only allow editing when timestamps are visible to prevent data corruption
-    if (!showTimestamps) {
-      return; // Don't update when timestamps are hidden
-    }
-    
     const newValue = e.target.value;
     onNotesChange(newValue);
   };
@@ -148,24 +143,51 @@ export const NotesEditor: React.FC<Props> = ({
           </button>
         </div>
       </div>
-      <TextArea
-        ref={textareaRef}
-        value={displayNotes}
-        onChange={handleTextChange}
-        onKeyDown={handleKeyDown}
-        onDoubleClick={handleDoubleClick}
-        placeholder="Start typing your notes here...&#10;Press ENTER during recording to insert timestamp"
-        className="notes-textarea"
-        autoSize={{ minRows: 15, maxRows: 30 }}
-        readOnly={!showTimestamps}
-        style={{
-          fontFamily: 'monospace',
-          fontSize: '14px',
-          lineHeight: '1.6',
-          opacity: showTimestamps ? 1 : 0.8,
-          cursor: showTimestamps ? 'text' : 'default'
-        }}
-      />
+      <div style={{ position: 'relative' }}>
+        {/* Overlay to show text without timestamps when hidden */}
+        {!showTimestamps && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              padding: '4px 11px',
+              fontFamily: 'monospace',
+              fontSize: '14px',
+              lineHeight: '1.6',
+              whiteSpace: 'pre-wrap',
+              wordWrap: 'break-word',
+              pointerEvents: 'none',
+              backgroundColor: 'var(--editor-bg, #1e1e1e)',
+              color: 'var(--editor-text, #d4d4d4)',
+              overflow: 'hidden',
+              zIndex: 1
+            }}
+          >
+            {displayNotes}
+          </div>
+        )}
+        <TextArea
+          ref={textareaRef}
+          value={notes}
+          onChange={handleTextChange}
+          onKeyDown={handleKeyDown}
+          onDoubleClick={handleDoubleClick}
+          placeholder="Start typing your notes here...&#10;Press ENTER during recording to insert timestamp"
+          className="notes-textarea"
+          autoSize={{ minRows: 15, maxRows: 30 }}
+          style={{
+            fontFamily: 'monospace',
+            fontSize: '14px',
+            lineHeight: '1.6',
+            opacity: showTimestamps ? 1 : 0,
+            position: 'relative',
+            zIndex: 0
+          }}
+        />
+      </div>
     </div>
   );
 };
