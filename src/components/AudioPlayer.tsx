@@ -5,8 +5,11 @@ import {
   PauseCircleOutlined,
   StepBackwardOutlined,
   StepForwardOutlined,
-  SoundOutlined
+  SoundOutlined,
+  ZoomInOutlined,
+  ZoomOutOutlined
 } from '@ant-design/icons';
+import WaveSurfer from 'wavesurfer.js';
 
 interface Props {
   audioBlob: Blob | null;
@@ -14,12 +17,15 @@ interface Props {
 
 export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const waveformRef = useRef<HTMLDivElement>(null);
+  const wavesurferRef = useRef<WaveSurfer | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [volume, setVolume] = useState(100);
+  const [zoom, setZoom] = useState(50);
 
   // Update audio source when blob changes
   useEffect(() => {
@@ -37,6 +43,62 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
       };
     }
   }, [audioBlob]);
+
+  // Initialize WaveSurfer
+  useEffect(() => {
+    if (!waveformRef.current || !audioUrl) return;
+
+    // Destroy existing instance
+    if (wavesurferRef.current) {
+      wavesurferRef.current.destroy();
+    }
+
+    // Create WaveSurfer instance
+    const wavesurfer = WaveSurfer.create({
+      container: waveformRef.current,
+      waveColor: '#4a9eff',
+      progressColor: '#1890ff',
+      cursorColor: '#ff4d4f',
+      barWidth: 2,
+      barGap: 1,
+      barRadius: 2,
+      height: 100,
+      normalize: true,
+      interact: true,
+      dragToSeek: true,
+      hideScrollbar: false,
+    });
+
+    // Load audio
+    wavesurfer.load(audioUrl);
+
+    // Event listeners
+    wavesurfer.on('ready', () => {
+      setDuration(wavesurfer.getDuration());
+    });
+
+    wavesurfer.on('timeupdate', (time) => {
+      setCurrentTime(time);
+    });
+
+    wavesurfer.on('play', () => {
+      setIsPlaying(true);
+    });
+
+    wavesurfer.on('pause', () => {
+      setIsPlaying(false);
+    });
+
+    wavesurfer.on('finish', () => {
+      setIsPlaying(false);
+    });
+
+    wavesurferRef.current = wavesurfer;
+
+    return () => {
+      wavesurfer.destroy();
+    };
+  }, [audioUrl]);
 
   // Setup audio element event listeners
   useEffect(() => {
@@ -58,14 +120,35 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
     };
   }, [audioUrl]);
 
+  // Update WaveSurfer playback rate
+  useEffect(() => {
+    if (wavesurferRef.current) {
+      wavesurferRef.current.setPlaybackRate(playbackRate);
+    }
+  }, [playbackRate]);
+
+  // Update WaveSurfer volume
+  useEffect(() => {
+    if (wavesurferRef.current) {
+      const volumeLevel = Math.min(volume / 100, 1);
+      wavesurferRef.current.setVolume(volumeLevel);
+    }
+  }, [volume]);
+
+  // Update WaveSurfer zoom
+  useEffect(() => {
+    if (wavesurferRef.current) {
+      wavesurferRef.current.zoom(zoom);
+    }
+  }, [zoom]);
+
   // Listen for seek events from NotesEditor
   useEffect(() => {
     const handleSeek = (e: Event) => {
       const customEvent = e as CustomEvent;
       const time = customEvent.detail.time;
-      if (audioRef.current) {
-        audioRef.current.currentTime = time;
-        setCurrentTime(time);
+      if (wavesurferRef.current) {
+        wavesurferRef.current.setTime(time);
         if (!isPlaying) {
           handlePlay();
         }
@@ -77,10 +160,10 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
   }, [isPlaying]);
 
   const handlePlay = async () => {
-    if (!audioRef.current) return;
+    if (!wavesurferRef.current) return;
 
     try {
-      await audioRef.current.play();
+      await wavesurferRef.current.play();
       setIsPlaying(true);
     } catch (error) {
       console.error('Failed to play audio:', error);
@@ -88,42 +171,49 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
   };
 
   const handlePause = () => {
-    if (!audioRef.current) return;
-    audioRef.current.pause();
+    if (!wavesurferRef.current) return;
+    wavesurferRef.current.pause();
     setIsPlaying(false);
   };
 
   const handleSeek = (value: number) => {
-    if (!audioRef.current) return;
-    audioRef.current.currentTime = value;
+    if (!wavesurferRef.current) return;
+    wavesurferRef.current.setTime(value);
     setCurrentTime(value);
   };
 
   const handleSkipBackward = () => {
-    if (!audioRef.current) return;
-    audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+    if (!wavesurferRef.current) return;
+    const newTime = Math.max(0, currentTime - 10);
+    wavesurferRef.current.setTime(newTime);
   };
 
   const handleSkipForward = () => {
-    if (!audioRef.current) return;
-    audioRef.current.currentTime = Math.min(
-      duration,
-      audioRef.current.currentTime + 10
-    );
+    if (!wavesurferRef.current) return;
+    const newTime = Math.min(duration, currentTime + 10);
+    wavesurferRef.current.setTime(newTime);
   };
 
   const handlePlaybackRateChange = (rate: number) => {
-    if (!audioRef.current) return;
-    audioRef.current.playbackRate = rate;
+    if (!wavesurferRef.current) return;
+    wavesurferRef.current.setPlaybackRate(rate);
     setPlaybackRate(rate);
   };
 
   const handleVolumeChange = (value: number) => {
-    if (!audioRef.current) return;
-    // Volume range is 0-1 for audio element, but we use 0-200 for UI (allowing 2x amplification)
-    const volumeLevel = value / 100;
-    audioRef.current.volume = Math.min(volumeLevel, 1); // Browser limit is 1.0
+    if (!wavesurferRef.current) return;
+    // Volume range is 0-1 for wavesurfer, but we use 0-200 for UI (allowing 2x amplification)
+    const volumeLevel = Math.min(value / 100, 1);
+    wavesurferRef.current.setVolume(volumeLevel);
     setVolume(value);
+  };
+
+  const handleZoomIn = () => {
+    setZoom(prev => Math.min(prev + 10, 200));
+  };
+
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(prev - 10, 10));
   };
 
   const formatTime = (seconds: number): string => {
@@ -150,7 +240,10 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
 
   return (
     <div className="audio-player">
-      <audio ref={audioRef} src={audioUrl || undefined} preload="metadata" />
+      {/* Waveform Container */}
+      <div className="waveform-container">
+        <div ref={waveformRef} className="waveform" />
+      </div>
 
       <div className="player-controls">
         <Space size="middle">
@@ -206,8 +299,6 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
               { value: 1.5, label: '1.5x' },
               { value: 1.75, label: '1.75x' },
               { value: 2.0, label: '2.0x' },
-              { value: 2.5, label: '2.5x' },
-              { value: 3.0, label: '3.0x' },
             ]}
           />
 
@@ -223,6 +314,21 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
             />
             <span style={{ minWidth: '45px', textAlign: 'right' }}>{volume}%</span>
           </div>
+
+          <Space size="small">
+            <Button
+              icon={<ZoomOutOutlined />}
+              onClick={handleZoomOut}
+              title="Zoom out"
+              disabled={zoom <= 10}
+            />
+            <Button
+              icon={<ZoomInOutlined />}
+              onClick={handleZoomIn}
+              title="Zoom in"
+              disabled={zoom >= 200}
+            />
+          </Space>
         </Space>
       </div>
 

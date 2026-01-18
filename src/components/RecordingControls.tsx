@@ -208,7 +208,18 @@ export const RecordingControls: React.FC<Props> = ({
         return;
       }
 
-      const audioFileName = `${lastProjectName}.wav`;
+      // Generate new folder and file names with new timestamp
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const timePrefix = `${year}${month}${day}_${hours}${minutes}`;
+      
+      const sanitizedTitle = sanitizeMeetingTitle(meetingInfo.title || 'Meeting');
+      const newProjectName = `${timePrefix}_${sanitizedTitle}`;
+      const audioFileName = `${newProjectName}.wav`;
 
       // Build updated metadata with current notes
       const metadata = MetadataBuilder.buildMetadata(
@@ -220,37 +231,60 @@ export const RecordingControls: React.FC<Props> = ({
         recordingStartTime
       );
 
-      // Save files - check if folder was selected via folderPath
-      if (folderPath) {
-        // Update metadata and Word files in the project folder
-        // Skip prefix for files in subfolder since folder name already has timestamp
+      // Save files - create new version like when stopping recording
+      if (FileManagerService.isSupported() && folderPath) {
+        // Create new project subdirectory
+        await fileManager.createProjectDirectory(newProjectName);
+        
+        // Save audio file with original audio blob to new folder
+        await fileManager.saveAudioFile(audioBlob, audioFileName, newProjectName, true);
+
+        // Save metadata files
+        await fileManager.saveMetadataFile(
+          metadata.meetingInfo,
+          `${newProjectName}_meeting_info.json`,
+          newProjectName,
+          true
+        );
         await fileManager.saveMetadataFile(
           metadata.metadata,
-          `${lastProjectName}_metadata.json`,
-          lastProjectName,
+          `${newProjectName}_metadata.json`,
+          newProjectName,
           true
         );
 
+        // Export Word document
         const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
-        await fileManager.saveWordFile(wordBlob, `${lastProjectName}.docx`, lastProjectName, true);
+        await fileManager.saveWordFile(wordBlob, `${newProjectName}.docx`, newProjectName, true);
 
-        message.success('Changes saved successfully!');
+        message.success(`Changes saved to new folder: ${newProjectName}`);
+        // Update last project name for potential future saves
+        setLastProjectName(newProjectName);
       } else {
         // Download updated files
         const downloader = new FileDownloadService();
         
+        await downloader.downloadAudioFile(audioBlob, audioFileName);
+        
+        await downloader.downloadMetadataFile(
+          metadata.meetingInfo,
+          `${newProjectName}_meeting_info.json`
+        );
+        
         await downloader.downloadMetadataFile(
           metadata.metadata,
-          `${lastProjectName}_metadata.json`
+          `${newProjectName}_metadata.json`
         );
 
+        
         await WordExporter.exportToWord(
           meetingInfo,
           notes,
-          `${lastProjectName}.docx`
+          `${newProjectName}.docx`
         );
 
-        message.info('Updated files downloaded.');
+        message.info('Updated files downloaded as new version.');
+        setLastProjectName(newProjectName);
       }
 
       onSaveComplete(); // Notify parent that save is complete

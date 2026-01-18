@@ -294,10 +294,32 @@ body {
   padding: 20px;
 }
 
+/* Waveform Container */
+.waveform-container {
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.waveform {
+  min-height: 100px;
+  cursor: pointer;
+}
+
+/* WaveSurfer styles */
+.waveform wave {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
 .player-controls {
   display: flex;
   justify-content: center;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .player-progress {
