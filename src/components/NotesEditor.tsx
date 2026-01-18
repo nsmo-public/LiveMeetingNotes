@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Input } from 'antd';
 
 const { TextArea } = Input;
@@ -21,28 +21,26 @@ export const NotesEditor: React.FC<Props> = ({
   const [showTimestamps, setShowTimestamps] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Use line-index-based timestamps (lineIndex → timeMs)
-  const [lineTimestamps, setLineTimestamps] = useState<Map<number, number>>(new Map());
-  
-  // Sync with parent's position-based timestampMap (for compatibility)
-  useEffect(() => {
-    const newLineTimestamps = new Map<number, number>();
+  // Use line-index-based timestamps (lineIndex → dateTimeMs) as source of truth
+  const [lineTimestamps, setLineTimestamps] = useState<Map<number, number>>(() => {
+    // Initialize from parent's timestampMap only once on mount
+    const initialLineTimestamps = new Map<number, number>();
     const lines = notes.split('\n');
     
     timestampMap.forEach((time, position) => {
       let currentPos = 0;
       for (let i = 0; i < lines.length; i++) {
-        const lineEnd = currentPos + lines[i].length;
-        if (position >= currentPos && position <= lineEnd + 1) {
-          newLineTimestamps.set(i, time);
+        const lineStartPos = i === 0 ? 0 : currentPos;
+        if (position === lineStartPos) {
+          initialLineTimestamps.set(i, time);
           break;
         }
-        currentPos = lineEnd + 1;
+        currentPos += lines[i].length + 1;
       }
     });
     
-    setLineTimestamps(newLineTimestamps);
-  }, [timestampMap, notes]);
+    return initialLineTimestamps;
+  });
 
   const formatDatetime = (datetimeMs: number): string => {
     const date = new Date(datetimeMs);
