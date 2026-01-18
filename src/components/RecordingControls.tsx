@@ -124,7 +124,8 @@ export const RecordingControls: React.FC<Props> = ({
       if (FileManagerService.isSupported() && folderPath) {
         // Create project subdirectory and save all files there
         await fileManager.createProjectDirectory(projectName);
-        await fileManager.saveAudioFile(audioBlob, audioFileName, projectName);
+        // Skip prefix for files in subfolder since folder name already has timestamp
+        await fileManager.saveAudioFile(audioBlob, audioFileName, projectName, true);
 
         // Build and save metadata
         const metadata = MetadataBuilder.buildMetadata(
@@ -139,17 +140,19 @@ export const RecordingControls: React.FC<Props> = ({
         await fileManager.saveMetadataFile(
           metadata.meetingInfo,
           `${projectName}_meeting_info.json`,
-          projectName
+          projectName,
+          true
         );
         await fileManager.saveMetadataFile(
           metadata.metadata,
           `${projectName}_metadata.json`,
-          projectName
+          projectName,
+          true
         );
 
         // Export Word document to same folder
         const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
-        await fileManager.saveWordFile(wordBlob, `${projectName}.docx`, projectName);
+        await fileManager.saveWordFile(wordBlob, `${projectName}.docx`, projectName, true);
 
         message.success(`Recording saved to folder: ${projectName}`);
         setLastProjectName(projectName);
@@ -220,14 +223,16 @@ export const RecordingControls: React.FC<Props> = ({
       // Save files - check if folder was selected via folderPath
       if (folderPath) {
         // Update metadata and Word files in the project folder
+        // Skip prefix for files in subfolder since folder name already has timestamp
         await fileManager.saveMetadataFile(
           metadata.metadata,
           `${lastProjectName}_metadata.json`,
-          lastProjectName
+          lastProjectName,
+          true
         );
 
         const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
-        await fileManager.saveWordFile(wordBlob, `${lastProjectName}.docx`, lastProjectName);
+        await fileManager.saveWordFile(wordBlob, `${lastProjectName}.docx`, lastProjectName, true);
 
         message.success('Changes saved successfully!');
       } else {

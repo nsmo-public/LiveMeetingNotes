@@ -35,12 +35,12 @@ export class FileManagerService {
     }
   }
 
-  async saveAudioFile(audioBlob: Blob, fileName: string, subDir?: string): Promise<string> {
+  async saveAudioFile(audioBlob: Blob, fileName: string, subDir?: string, skipPrefix?: boolean): Promise<string> {
     if (!this.dirHandle) {
       throw new Error('No folder selected. Please select a folder first.');
     }
 
-    const fileNameWithTimestamp = addTimestampPrefix(fileName);
+    const fileNameWithTimestamp = skipPrefix ? fileName : addTimestampPrefix(fileName);
     const targetDir = subDir ? await this.dirHandle.getDirectoryHandle(subDir, { create: true }) : this.dirHandle;
 
     // Create file in target directory
@@ -55,12 +55,12 @@ export class FileManagerService {
     return fileNameWithTimestamp;
   }
 
-  async saveMetadataFile(data: any, fileName: string, subDir?: string): Promise<void> {
+  async saveMetadataFile(data: any, fileName: string, subDir?: string, skipPrefix?: boolean): Promise<void> {
     if (!this.dirHandle) {
       throw new Error('No folder selected');
     }
 
-    const fileNameWithTimestamp = addTimestampPrefix(fileName);
+    const fileNameWithTimestamp = skipPrefix ? fileName : addTimestampPrefix(fileName);
     const targetDir = subDir ? await this.dirHandle.getDirectoryHandle(subDir, { create: true }) : this.dirHandle;
 
     const json = JSON.stringify(data, null, 2);
@@ -75,12 +75,12 @@ export class FileManagerService {
     await writable.close();
   }
 
-  async saveWordFile(wordBlob: Blob, fileName: string, subDir?: string): Promise<void> {
+  async saveWordFile(wordBlob: Blob, fileName: string, subDir?: string, skipPrefix?: boolean): Promise<void> {
     if (!this.dirHandle) {
       throw new Error('No folder selected');
     }
 
-    const fileNameWithTimestamp = addTimestampPrefix(fileName);
+    const fileNameWithTimestamp = skipPrefix ? fileName : addTimestampPrefix(fileName);
     const targetDir = subDir ? await this.dirHandle.getDirectoryHandle(subDir, { create: true }) : this.dirHandle;
 
     const fileHandle = await targetDir.getFileHandle(fileNameWithTimestamp, {
