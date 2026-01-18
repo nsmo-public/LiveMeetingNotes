@@ -49,12 +49,25 @@ export class MetadataBuilder {
   ): Array<{ Index: number; Text: string; StartTime: string; EndTime: string; Highlight: boolean }> {
     const timestamps: Array<{ Index: number; Text: string; StartTime: string; EndTime: string; Highlight: boolean }> = [];
     
-    // Sort timestamps by time (not position)
+    // Parse all lines and match timestamps from the map
+    const lines = notes.split('\n');
     const sortedTimestamps = Array.from(timestampMap.entries())
       .sort((a, b) => a[1] - b[1]);
+    
+    // Create a map of time -> line text
+    const timeToTextMap = new Map<number, string>();
+    
+    for (const line of lines) {
+      const match = line.match(/\[(\d{2}):(\d{2}):(\d{2})\]\s*(.*)/);
+      if (match) {
+        const timeMs = this.parseTimestamp(match[0]);
+        const text = match[4]; // Text after timestamp
+        timeToTextMap.set(timeMs, text);
+      }
+    }
 
     for (let i = 0; i < sortedTimestamps.length; i++) {
-      const [position, startTime] = sortedTimestamps[i];
+      const [_, startTime] = sortedTimestamps[i];
       
       // Find next timestamp or use total duration
       const endTime =
@@ -62,46 +75,19 @@ export class MetadataBuilder {
           ? sortedTimestamps[i + 1][1]
           : Math.min(startTime + 3000, totalDuration); // Default 3 seconds or end
 
-      // Extract text after this timestamp
-      const text = this.extractTextAfterTimestamp(notes, position);
+      // Get text for this timestamp
+      const text = timeToTextMap.get(startTime) || '';
 
-      if (text.trim()) {
-        timestamps.push({
-          Index: i,
-          Text: text.trim(),
-          StartTime: this.formatDurationWithMs(startTime),
-          EndTime: this.formatDurationWithMs(endTime),
-          Highlight: false
-        });
-      }
+      timestamps.push({
+        Index: i,
+        Text: text.trim(),
+        StartTime: this.formatDurationWithMs(startTime),
+        EndTime: this.formatDurationWithMs(endTime),
+        Highlight: false
+      });
     }
 
     return timestamps;
-  }
-
-  private static extractTextAfterTimestamp(text: string, position: number): string {
-    // Split text into lines
-    const lines = text.split('\n');
-    let currentPos = 0;
-    
-    // Find the line containing this position
-    for (const line of lines) {
-      const lineEnd = currentPos + line.length;
-      
-      if (position >= currentPos && position <= lineEnd) {
-        // Found the line with this timestamp
-        // Extract text after timestamp pattern [HH:MM:SS]
-        const match = line.match(/\[\d{2}:\d{2}:\d{2}\]\s*(.*)/);
-        if (match && match[1]) {
-          return match[1].trim();
-        }
-        return '';
-      }
-      
-      currentPos = lineEnd + 1; // +1 for newline character
-    }
-    
-    return '';
   }
 
   static formatDuration(ms: number): string {
