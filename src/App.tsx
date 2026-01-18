@@ -73,6 +73,23 @@ export const App: React.FC = () => {
     setSavedNotesSnapshot(notes); // Save snapshot to detect future changes
   };
 
+  const handleLoadProject = (loadedData: {
+    meetingInfo: MeetingInfo;
+    notes: string;
+    timestampMap: Map<number, number>;
+    audioBlob: Blob;
+    recordingStartTime: number;
+  }) => {
+    setMeetingInfo(loadedData.meetingInfo);
+    setNotes(loadedData.notes);
+    setTimestampMap(loadedData.timestampMap);
+    setAudioBlob(loadedData.audioBlob);
+    setRecordingStartTime(loadedData.recordingStartTime);
+    setIsSaved(true);
+    setHasUnsavedChanges(false);
+    setSavedNotesSnapshot(loadedData.notes);
+  };
+
   return (
     <div className="app-container">
       <header className="app-header">
@@ -92,6 +109,7 @@ export const App: React.FC = () => {
         onRecordingChange={setIsRecording}
         onAudioBlobChange={handleAudioBlobChange}
         onSaveComplete={handleSaveComplete}
+        onLoadProject={handleLoadProject}
         meetingInfo={meetingInfo}
         notes={notes}
         timestampMap={timestampMap}

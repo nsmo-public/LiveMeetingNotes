@@ -103,6 +103,65 @@ export class FileManagerService {
     });
   }
 
+  async loadProjectFromFolder(): Promise<{
+    meetingInfo: any;
+    metadata: any;
+    audioBlob: Blob;
+    projectName: string;
+  } | null> {
+    try {
+      // Let user select a project folder
+      const projectHandle = await window.showDirectoryPicker!({
+        mode: 'read'
+      });
+
+      const projectName = projectHandle.name;
+      let meetingInfoData = null;
+      let metadataData = null;
+      let audioBlob = null;
+
+      // Read all files in the project directory
+      for await (const [name, handle] of (projectHandle as any).entries()) {
+        if (handle.kind === 'file') {
+          const file = await handle.getFile();
+          
+          // Load meeting_info.json
+          if (name.includes('meeting_info.json')) {
+            const text = await file.text();
+            meetingInfoData = JSON.parse(text);
+          }
+          
+          // Load metadata.json
+          if (name.includes('metadata.json')) {
+            const text = await file.text();
+            metadataData = JSON.parse(text);
+          }
+          
+          // Load audio file (.wav)
+          if (name.endsWith('.wav')) {
+            audioBlob = file;
+          }
+        }
+      }
+
+      if (!meetingInfoData || !metadataData || !audioBlob) {
+        throw new Error('Missing required files (meeting_info.json, metadata.json, or .wav file)');
+      }
+
+      return {
+        meetingInfo: meetingInfoData,
+        metadata: metadataData,
+        audioBlob: audioBlob,
+        projectName: projectName
+      };
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        return null; // User cancelled
+      }
+      throw error;
+    }
+  }
+
   // Check if File System Access API is supported
   static isSupported(): boolean {
     return 'showDirectoryPicker' in window;

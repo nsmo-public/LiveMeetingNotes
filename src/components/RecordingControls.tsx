@@ -4,7 +4,8 @@ import {
   FolderOpenOutlined,
   AudioOutlined,
   StopOutlined,
-  SaveOutlined
+  SaveOutlined,
+  FolderAddOutlined
 } from '@ant-design/icons';
 import { AudioRecorderService } from '../services/audioRecorder';
 import { FileManagerService, FileDownloadService } from '../services/fileManager';
@@ -19,6 +20,13 @@ interface Props {
   onRecordingChange: (recording: boolean) => void;
   onAudioBlobChange: (blob: Blob | null) => void;
   onSaveComplete: () => void;
+  onLoadProject: (loadedData: {
+    meetingInfo: MeetingInfo;
+    notes: string;
+    timestampMap: Map<number, number>;
+    audioBlob: Blob;
+    recordingStartTime: number;
+  }) => void;
   meetingInfo: MeetingInfo;
   notes: string;
   timestampMap: Map<number, number>;
@@ -36,6 +44,7 @@ export const RecordingControls: React.FC<Props> = ({
   onRecordingChange,
   onAudioBlobChange,
   onSaveComplete,
+  onLoadProject,
   meetingInfo,
   notes,
   timestampMap,
@@ -293,6 +302,53 @@ export const RecordingControls: React.FC<Props> = ({
     }
   };
 
+  const handleLoadProject = async () => {
+    try {
+      if (!FileManagerService.isSupported()) {
+        message.error('Your browser does not support loading projects. Please use Chrome or Edge.');
+        return;
+      }
+
+      if (hasUnsavedChanges) {
+        const confirmed = window.confirm(
+          'Bạn có dữ liệu chưa lưu. Tải project mới sẽ mất dữ liệu hiện tại. Tiếp tục?'
+        );
+        if (!confirmed) return;
+      }
+
+      const projectData = await fileManager.loadProjectFromFolder();
+      
+      if (!projectData) {
+        return; // User cancelled
+      }
+
+      // Parse metadata to reconstruct timestampMap
+      const timestampMapData = new Map<number, number>();
+      if (projectData.metadata.timestamps) {
+        projectData.metadata.timestamps.forEach((ts: { position: number; time: number }) => {
+          timestampMapData.set(ts.position, ts.time);
+        });
+      }
+
+      // Call parent handler to update all state
+      onLoadProject({
+        meetingInfo: projectData.meetingInfo,
+        notes: projectData.metadata.notes || '',
+        timestampMap: timestampMapData,
+        audioBlob: projectData.audioBlob,
+        recordingStartTime: projectData.metadata.recordingStartTime || Date.now()
+      });
+
+      // Update local state
+      setLastProjectName(projectData.projectName);
+      setLastRecordingDuration(projectData.metadata.duration || 0);
+
+      message.success(`Project loaded: ${projectData.projectName}`);
+    } catch (error: any) {
+      message.error(`Failed to load project: ${error.message}`);
+    }
+  };
+
   const formatDuration = (ms: number): string => {
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
@@ -314,6 +370,16 @@ export const RecordingControls: React.FC<Props> = ({
           size="large"
         >
           Select Folder
+        </Button>
+
+        <Button
+          icon={<FolderAddOutlined />}
+          onClick={handleLoadProject}
+          disabled={isRecording || !FileManagerService.isSupported()}
+          size="large"
+          type="default"
+        >
+          Load Project
         </Button>
 
         {!isRecording ? (
