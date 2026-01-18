@@ -54,22 +54,20 @@ export class MetadataBuilder {
       .sort((a, b) => a[1] - b[1]);
     
     const lines = notes.split('\n');
+    
+    // Build position to line index map
+    const positionToLineMap = new Map<number, number>();
+    let currentPos = 0;
+    for (let i = 0; i < lines.length; i++) {
+      positionToLineMap.set(currentPos, i);
+      currentPos += lines[i].length + 1; // +1 for newline
+    }
 
     for (let i = 0; i < sortedTimestamps.length; i++) {
       const [position, startTime] = sortedTimestamps[i];
       
-      // Find which line this position corresponds to
-      let lineIndex = 0;
-      let currentPos = 0;
-      for (let j = 0; j < lines.length; j++) {
-        const lineEnd = currentPos + lines[j].length;
-        if (position >= currentPos && position <= lineEnd + 1) {
-          lineIndex = j;
-          break;
-        }
-        currentPos = lineEnd + 1; // +1 for newline character
-      }
-      
+      // Find line index using position map
+      const lineIndex = positionToLineMap.get(position) ?? 0;
       const text = lines[lineIndex] || '';
       
       // Find next timestamp or use total duration

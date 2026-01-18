@@ -47,19 +47,24 @@ export const NotesEditor: React.FC<Props> = ({
     const lines = newValue.split('\n');
     const currentLineCount = lines.length;
 
-    // Detect new line created
+    // Detect new line created AND has first character typed
     if (isRecording && currentLineCount > lastLineCountRef.current) {
       const newLineIndex = currentLineCount - 1;
-      const lineStartPos = newValue.split('\n').slice(0, newLineIndex).join('\n').length + (newLineIndex > 0 ? 1 : 0);
+      const newLine = lines[newLineIndex];
       
-      // Check if this line doesn't have a timestamp yet
-      if (!timestampMap.has(lineStartPos)) {
-        const currentDuration = Date.now() - recordingStartTime.current;
-        const adjustedDuration = Math.max(0, currentDuration - TIME_OFFSET_MS);
+      // Only create timestamp if the new line has at least one character
+      if (newLine.trim().length > 0) {
+        const lineStartPos = newValue.split('\n').slice(0, newLineIndex).join('\n').length + (newLineIndex > 0 ? 1 : 0);
         
-        const newMap = new Map(timestampMap);
-        newMap.set(lineStartPos, adjustedDuration);
-        onTimestampMapChange(newMap);
+        // Check if this line doesn't have a timestamp yet
+        if (!timestampMap.has(lineStartPos)) {
+          const currentDuration = Date.now() - recordingStartTime.current;
+          const adjustedDuration = Math.max(0, currentDuration - TIME_OFFSET_MS);
+          
+          const newMap = new Map(timestampMap);
+          newMap.set(lineStartPos, adjustedDuration);
+          onTimestampMapChange(newMap);
+        }
       }
     }
 
