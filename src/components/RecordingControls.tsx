@@ -276,6 +276,10 @@ export const RecordingControls: React.FC<Props> = ({
         )}
 
         <span className="duration-display">⏱ {formatDuration(duration)}</span>
+        
+        {isRecording && (
+          <span className="recording-indicator">🔴 Recording...</span>
+        )}
       </Space>
 
       {folderPath && (
@@ -287,12 +291,6 @@ export const RecordingControls: React.FC<Props> = ({
       {!FileManagerService.isSupported() && (
         <div className="browser-warning">
           ⚠️ Your browser doesn't support direct folder access. Files will be downloaded.
-        </div>
-      )}
-
-      {isRecording && (
-        <div className="recording-status">
-          <span className="recording-indicator">🔴 Recording...</span>
         </div>
       )}
     </div>
