@@ -120,8 +120,12 @@ export class FileManagerService {
       let metadataData = null;
       let audioBlob = null;
 
+      console.log('Loading project from folder:', projectName);
+
       // Read all files in the project directory
       for await (const [name, handle] of (projectHandle as any).entries()) {
+        console.log('Found file:', name, 'kind:', handle.kind);
+        
         if (handle.kind === 'file') {
           const file = await handle.getFile();
           
@@ -129,17 +133,20 @@ export class FileManagerService {
           if (name.includes('meeting_info.json')) {
             const text = await file.text();
             meetingInfoData = JSON.parse(text);
+            console.log('Loaded meeting_info.json:', meetingInfoData);
           }
           
-          // Load metadata.json
-          if (name.includes('metadata.json')) {
+          // Load metadata.json (but not meeting_info.json)
+          if (name.includes('metadata.json') && !name.includes('meeting_info')) {
             const text = await file.text();
             metadataData = JSON.parse(text);
+            console.log('Loaded metadata.json:', metadataData);
           }
           
           // Load audio file (.wav)
           if (name.endsWith('.wav')) {
             audioBlob = file;
+            console.log('Loaded audio file:', name, 'size:', audioBlob.size);
           }
         }
       }
@@ -147,6 +154,13 @@ export class FileManagerService {
       if (!meetingInfoData || !metadataData || !audioBlob) {
         throw new Error('Missing required files (meeting_info.json, metadata.json, or .wav file)');
       }
+
+      console.log('Loaded project data:', {
+        projectName,
+        meetingInfo: meetingInfoData,
+        metadata: metadataData,
+        audioSize: audioBlob.size
+      });
 
       return {
         meetingInfo: meetingInfoData,

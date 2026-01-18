@@ -80,6 +80,16 @@ export const App: React.FC = () => {
     audioBlob: Blob;
     recordingStartTime: number;
   }) => {
+    console.log('App.handleLoadProject received:', {
+      meetingInfo: loadedData.meetingInfo,
+      notesLength: loadedData.notes.length,
+      timestampMapSize: loadedData.timestampMap.size,
+      audioBlobSize: loadedData.audioBlob.size,
+      recordingStartTime: loadedData.recordingStartTime
+    });
+    
+    console.log('Updating state with meetingInfo:', loadedData.meetingInfo);
+    
     setMeetingInfo(loadedData.meetingInfo);
     setNotes(loadedData.notes);
     setTimestampMap(loadedData.timestampMap);
@@ -88,6 +98,8 @@ export const App: React.FC = () => {
     setIsSaved(true);
     setHasUnsavedChanges(false);
     setSavedNotesSnapshot(loadedData.notes);
+    
+    console.log('State updated, new meetingInfo state should be:', loadedData.meetingInfo);
   };
 
   return (

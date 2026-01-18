@@ -303,48 +303,130 @@ export const RecordingControls: React.FC<Props> = ({
   };
 
   const handleLoadProject = async () => {
+    console.log('handleLoadProject called');
+    
     try {
       if (!FileManagerService.isSupported()) {
+        console.error('Browser not supported');
         message.error('Your browser does not support loading projects. Please use Chrome or Edge.');
         return;
       }
 
+      console.log('Checking unsaved changes...');
       if (hasUnsavedChanges) {
         const confirmed = window.confirm(
           'Bạn có dữ liệu chưa lưu. Tải project mới sẽ mất dữ liệu hiện tại. Tiếp tục?'
         );
-        if (!confirmed) return;
+        if (!confirmed) {
+          console.log('User cancelled due to unsaved changes');
+          return;
+        }
       }
 
+      console.log('Calling fileManager.loadProjectFromFolder...');
       const projectData = await fileManager.loadProjectFromFolder();
       
+      console.log('fileManager returned:', projectData);
+      
       if (!projectData) {
+        console.log('User cancelled folder selection');
         return; // User cancelled
       }
 
-      // Parse metadata to reconstruct timestampMap
+      // Map PascalCase from saved files to camelCase for MeetingInfo
+      const loadedMeetingInfo = {
+        title: projectData.meetingInfo.MeetingTitle || '',
+        date: projectData.meetingInfo.MeetingDate || '',
+        time: projectData.meetingInfo.MeetingTime || '',
+        location: projectData.meetingInfo.Location || '',
+        host: projectData.meetingInfo.Host || '',
+        attendees: projectData.meetingInfo.Attendees || ''
+      };
+
+      console.log('Mapping meetingInfo:', {
+        rawData: projectData.meetingInfo,
+        mapped: loadedMeetingInfo
+      });
+
+      // Parse metadata to reconstruct timestampMap and notes
       const timestampMapData = new Map<number, number>();
-      if (projectData.metadata.timestamps) {
-        projectData.metadata.timestamps.forEach((ts: { position: number; time: number }) => {
-          timestampMapData.set(ts.position, ts.time);
+      let notesText = '';
+      
+      if (projectData.metadata.Timestamps && Array.isArray(projectData.metadata.Timestamps)) {
+        // Reconstruct notes from Timestamps array
+        const BLOCK_SEPARATOR = '§§§';
+        const sortedTimestamps = projectData.metadata.Timestamps.sort((a: any, b: any) => a.Index - b.Index);
+        
+        sortedTimestamps.forEach((ts: any, index: number) => {
+          // Add BLOCK_SEPARATOR before text (except for first line)
+          if (index > 0) {
+            notesText += BLOCK_SEPARATOR;
+          }
+          
+          // Calculate position at start of this block (after separator if not first)
+          const position = notesText.length;
+          const datetime = new Date(ts.DateTime).getTime();
+          timestampMapData.set(position, datetime);
+          
+          // Add text to notes
+          notesText += ts.Text || '';
         });
+      }
+
+      // Parse duration string to milliseconds
+      let durationMs = 0;
+      if (projectData.metadata.Duration) {
+        const durationStr = projectData.metadata.Duration;
+        const match = durationStr.match(/(\d+):(\d+):(\d+)\.(\d+)/);
+        if (match) {
+          const hours = parseInt(match[1]);
+          const minutes = parseInt(match[2]);
+          const seconds = parseInt(match[3]);
+          const ms = parseInt(match[4]);
+          durationMs = hours * 3600000 + minutes * 60000 + seconds * 1000 + ms;
+        }
+      }
+
+      // Calculate recording start time from first timestamp if available
+      let recordingStart = Date.now();
+      if (projectData.metadata.Timestamps && projectData.metadata.Timestamps.length > 0) {
+        const firstTimestamp = projectData.metadata.Timestamps[0];
+        const firstDatetime = new Date(firstTimestamp.DateTime).getTime();
+        // Parse StartTime to get offset
+        const startTimeMatch = firstTimestamp.StartTime.match(/(\d+):(\d+):(\d+)\.(\d+)/);
+        if (startTimeMatch) {
+          const offsetMs = parseInt(startTimeMatch[1]) * 3600000 + 
+                          parseInt(startTimeMatch[2]) * 60000 + 
+                          parseInt(startTimeMatch[3]) * 1000 + 
+                          parseInt(startTimeMatch[4]);
+          recordingStart = firstDatetime - offsetMs;
+        }
       }
 
       // Call parent handler to update all state
       onLoadProject({
-        meetingInfo: projectData.meetingInfo,
-        notes: projectData.metadata.notes || '',
+        meetingInfo: loadedMeetingInfo,
+        notes: notesText,
         timestampMap: timestampMapData,
         audioBlob: projectData.audioBlob,
-        recordingStartTime: projectData.metadata.recordingStartTime || Date.now()
+        recordingStartTime: recordingStart
+      });
+
+      console.log('Load complete:', {
+        meetingInfo: loadedMeetingInfo,
+        notesLength: notesText.length,
+        timestampCount: timestampMapData.size,
+        timestampMap: Array.from(timestampMapData.entries()),
+        recordingStart
       });
 
       // Update local state
       setLastProjectName(projectData.projectName);
-      setLastRecordingDuration(projectData.metadata.duration || 0);
+      setLastRecordingDuration(durationMs);
 
       message.success(`Project loaded: ${projectData.projectName}`);
     } catch (error: any) {
+      console.error('Load project error:', error);
       message.error(`Failed to load project: ${error.message}`);
     }
   };
@@ -374,7 +456,12 @@ export const RecordingControls: React.FC<Props> = ({
 
         <Button
           icon={<FolderAddOutlined />}
-          onClick={handleLoadProject}
+          onClick={() => {
+            console.log('Load Project button clicked');
+            console.log('isRecording:', isRecording);
+            console.log('isSupported:', FileManagerService.isSupported());
+            handleLoadProject();
+          }}
           disabled={isRecording || !FileManagerService.isSupported()}
           size="large"
           type="default"
