@@ -180,7 +180,8 @@ export const NotesEditor: React.FC<Props> = ({
             fontFamily: 'monospace',
             fontSize: '14px',
             lineHeight: '1.6',
-            opacity: showTimestamps ? 1 : 0,
+            color: showTimestamps ? 'inherit' : 'transparent',
+            caretColor: showTimestamps ? 'auto' : 'var(--editor-text, #d4d4d4)',
             position: 'relative',
             zIndex: 0
           }}
