@@ -326,7 +326,18 @@ export const NotesEditor: React.FC<Props> = ({
     // No preventDefault for Shift+Enter - let textarea handle it naturally
     
     if (e.key === 'Backspace' && cursorPos === 0 && index > 0) {
-      // Backspace at start: merge with previous line only if current line is empty
+      // Check if user has selected text
+      const selectionStart = target.selectionStart;
+      const selectionEnd = target.selectionEnd;
+      const hasSelection = selectionStart !== selectionEnd;
+      
+      // If user is selecting text (e.g., select all), let textarea handle it naturally
+      // Don't merge lines
+      if (hasSelection) {
+        return; // Let default behavior handle selection deletion
+      }
+      
+      // Backspace at start with no selection: merge with previous line only if current line is empty
       e.preventDefault();
       
       if (currentLine.trim().length === 0) {
