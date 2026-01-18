@@ -361,6 +361,22 @@ export const RecordingControls: React.FC<Props> = ({
       const timestampMapData = new Map<number, number>();
       let notesText = '';
       
+      // Calculate recording start time first (needed for timestamp calculation)
+      let recordingStart = Date.now();
+      if (projectData.metadata.Timestamps && projectData.metadata.Timestamps.length > 0) {
+        const firstTimestamp = projectData.metadata.Timestamps[0];
+        const firstDatetime = new Date(firstTimestamp.DateTime).getTime();
+        // Parse StartTime to get offset
+        const startTimeMatch = firstTimestamp.StartTime.match(/(\d+):(\d+):(\d+)\.(\d+)/);
+        if (startTimeMatch) {
+          const offsetMs = parseInt(startTimeMatch[1]) * 3600000 + 
+                          parseInt(startTimeMatch[2]) * 60000 + 
+                          parseInt(startTimeMatch[3]) * 1000 + 
+                          parseInt(startTimeMatch[4]);
+          recordingStart = firstDatetime - offsetMs;
+        }
+      }
+      
       if (projectData.metadata.Timestamps && Array.isArray(projectData.metadata.Timestamps)) {
         // Reconstruct notes from Timestamps array
         const BLOCK_SEPARATOR = '§§§';
@@ -374,11 +390,27 @@ export const RecordingControls: React.FC<Props> = ({
           
           // Calculate position at start of this block (after separator if not first)
           const position = notesText.length;
+          
+          // Use DateTime as the timestamp value
+          // This will be converted to relative time in formatTimestamp() using recordingStartTime
           const datetime = new Date(ts.DateTime).getTime();
           timestampMapData.set(position, datetime);
           
           // Add text to notes
           notesText += ts.Text || '';
+        });
+        
+        console.log('🕐 Timestamp reconstruction:', {
+          recordingStart,
+          firstTimestamp: sortedTimestamps[0]?.DateTime,
+          firstStartTime: sortedTimestamps[0]?.StartTime,
+          timestampCount: timestampMapData.size,
+          sampleTimestamps: Array.from(timestampMapData.entries()).slice(0, 3).map(([pos, time]) => ({
+            position: pos,
+            datetime: new Date(time).toISOString(),
+            relativeMs: time - recordingStart,
+            relativeFormatted: `${String(Math.floor((time - recordingStart) / 3600000)).padStart(2, '0')}:${String(Math.floor(((time - recordingStart) % 3600000) / 60000)).padStart(2, '0')}:${String(Math.floor(((time - recordingStart) % 60000) / 1000)).padStart(2, '0')}`
+          }))
         });
       }
 
@@ -396,23 +428,7 @@ export const RecordingControls: React.FC<Props> = ({
         }
       }
 
-      // Calculate recording start time from first timestamp if available
-      let recordingStart = Date.now();
-      if (projectData.metadata.Timestamps && projectData.metadata.Timestamps.length > 0) {
-        const firstTimestamp = projectData.metadata.Timestamps[0];
-        const firstDatetime = new Date(firstTimestamp.DateTime).getTime();
-        // Parse StartTime to get offset
-        const startTimeMatch = firstTimestamp.StartTime.match(/(\d+):(\d+):(\d+)\.(\d+)/);
-        if (startTimeMatch) {
-          const offsetMs = parseInt(startTimeMatch[1]) * 3600000 + 
-                          parseInt(startTimeMatch[2]) * 60000 + 
-                          parseInt(startTimeMatch[3]) * 1000 + 
-                          parseInt(startTimeMatch[4]);
-          recordingStart = firstDatetime - offsetMs;
-        }
-      }
-
-      // Call parent handler to update all state
+      // Call parent handler to update all state (recordingStart already calculated above)
       onLoadProject({
         meetingInfo: loadedMeetingInfo,
         notes: notesText,
