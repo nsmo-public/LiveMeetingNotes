@@ -231,6 +231,10 @@ export const NotesEditor: React.FC<Props> = ({
     if (event.shiftKey && lastClickedLine !== null) {
       // Shift+Click: Select range
       event.preventDefault();
+      // Blur any focused textarea to allow Delete/Backspace to work on selected lines
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
       const start = Math.min(lastClickedLine, index);
       const end = Math.max(lastClickedLine, index);
       const newSelected = new Set<number>();
@@ -241,6 +245,10 @@ export const NotesEditor: React.FC<Props> = ({
     } else if (event.ctrlKey || event.metaKey) {
       // Ctrl+Click: Toggle selection
       event.preventDefault();
+      // Blur any focused textarea to allow Delete/Backspace to work on selected lines
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
       const newSelected = new Set(selectedLines);
       if (newSelected.has(index)) {
         newSelected.delete(index);
