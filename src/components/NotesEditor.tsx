@@ -475,6 +475,28 @@ export const NotesEditor: React.FC<Props> = ({
     const target = e.target as HTMLTextAreaElement;
     const cursorPos = target.selectionStart;
 
+    // ArrowUp: Move to previous textarea if cursor at beginning
+    if (e.key === 'ArrowUp' && cursorPos === 0 && index > 0) {
+      e.preventDefault();
+      const prevInput = containerRef.current?.querySelectorAll('textarea')[index - 1] as HTMLTextAreaElement;
+      if (prevInput) {
+        prevInput.focus();
+        prevInput.setSelectionRange(prevInput.value.length, prevInput.value.length);
+      }
+      return;
+    }
+
+    // ArrowDown: Move to next textarea if cursor at end
+    if (e.key === 'ArrowDown' && cursorPos === currentLine.length && index < lines.length - 1) {
+      e.preventDefault();
+      const nextInput = containerRef.current?.querySelectorAll('textarea')[index + 1] as HTMLTextAreaElement;
+      if (nextInput) {
+        nextInput.focus();
+        nextInput.setSelectionRange(0, 0);
+      }
+      return;
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       // In Loaded Mode: Let Enter behave like Shift+Enter (newline within the same textarea)
       if (!isLiveMode) {
