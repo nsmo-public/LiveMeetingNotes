@@ -1,9 +1,9 @@
-import RecordRTC from 'recordrtc';
-
 export class AudioRecorderService {
-  private recorder: RecordRTC | null = null;
+  private mediaRecorder: MediaRecorder | null = null;
   private stream: MediaStream | null = null;
   private startTime: number = 0;
+  private audioChunks: Blob[] = [];
+  private currentChunkSize = 0;
 
   async startRecording(): Promise<void> {
     try {
@@ -12,22 +12,60 @@ export class AudioRecorderService {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          sampleRate: 44100,
+          sampleRate: 48000,
           channelCount: 1 // Mono
         }
       });
 
-      this.recorder = new RecordRTC(this.stream, {
-        type: 'audio',
-        mimeType: 'audio/wav',
-        recorderType: RecordRTC.StereoAudioRecorder,
-        numberOfAudioChannels: 1,
-        desiredSampRate: 44100,
-        disableLogs: true
+      // Try to use WebM with Opus codec (much better compression than WAV)
+      const mimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/mp4',
+        'audio/wav'
+      ];
+      
+      let selectedMimeType = '';
+      for (const mimeType of mimeTypes) {
+        if (MediaRecorder.isTypeSupported(mimeType)) {
+          selectedMimeType = mimeType;
+          console.log(`Using audio format: ${mimeType}`);
+          break;
+        }
+      }
+
+      this.mediaRecorder = new MediaRecorder(this.stream, {
+        mimeType: selectedMimeType || undefined,
+        audioBitsPerSecond: 128000 // 128kbps - good quality, small size
       });
 
-      this.recorder.startRecording();
+      this.audioChunks = [];
+      this.currentChunkSize = 0;
+
+      // Collect audio data in chunks to prevent memory overflow
+      this.mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.audioChunks.push(event.data);
+          this.currentChunkSize += event.data.size;
+          
+          // Log progress for long recordings
+          if (this.audioChunks.length % 10 === 0) {
+            const sizeMB = (this.currentChunkSize / (1024 * 1024)).toFixed(2);
+            console.log(`Recording progress: ${this.audioChunks.length} chunks, ${sizeMB} MB`);
+          }
+        }
+      };
+
+      this.mediaRecorder.onerror = (event: Event) => {
+        console.error('MediaRecorder error:', event);
+      };
+
+      // Request data every 5 seconds to prevent single huge chunk
+      this.mediaRecorder.start(5000);
       this.startTime = Date.now();
+      
+      console.log('Recording started with MediaRecorder');
     } catch (error: any) {
       if (error.name === 'NotAllowedError') {
         throw new Error('Microphone permission denied. Please allow access in browser settings.');
@@ -41,23 +79,34 @@ export class AudioRecorderService {
 
   async stopRecording(): Promise<Blob> {
     return new Promise((resolve, reject) => {
-      if (!this.recorder) {
+      if (!this.mediaRecorder) {
         reject(new Error('No active recording'));
         return;
       }
 
-      this.recorder.stopRecording(() => {
-        const blob = this.recorder!.getBlob();
+      const recorder = this.mediaRecorder;
+      
+      recorder.onstop = () => {
+        console.log(`Recording stopped. Total chunks: ${this.audioChunks.length}, Total size: ${(this.currentChunkSize / (1024 * 1024)).toFixed(2)} MB`);
+        
+        // Combine all chunks into single blob
+        const mimeType = recorder.mimeType || 'audio/webm';
+        const blob = new Blob(this.audioChunks, { type: mimeType });
         
         // Stop all tracks
         if (this.stream) {
           this.stream.getTracks().forEach(track => track.stop());
         }
 
-        this.recorder = null;
+        this.mediaRecorder = null;
         this.stream = null;
+        this.audioChunks = [];
+        this.currentChunkSize = 0;
+        
         resolve(blob);
-      });
+      };
+
+      recorder.stop();
     });
   }
 
@@ -66,7 +115,7 @@ export class AudioRecorderService {
   }
 
   isRecording(): boolean {
-    return this.recorder !== null;
+    return this.mediaRecorder !== null && this.mediaRecorder.state === 'recording';
   }
 
   // Format duration to HH:MM:SS

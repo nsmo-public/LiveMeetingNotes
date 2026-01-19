@@ -127,7 +127,7 @@ export const RecordingControls: React.FC<Props> = ({
       
       const sanitizedTitle = sanitizeMeetingTitle(meetingInfo.title || 'Meeting');
       const projectName = `${timePrefix}_${sanitizedTitle}`;
-      const audioFileName = `${projectName}.wav`;
+      const audioFileName = `${projectName}.webm`;
 
       // Save files
       if (FileManagerService.isSupported() && folderPath) {
@@ -366,7 +366,7 @@ export const RecordingControls: React.FC<Props> = ({
         };
       } else {
         // Recording project with audio
-        const audioFileName = `${newProjectName}.wav`;
+        const audioFileName = `${newProjectName}.webm`;
         metadata = MetadataBuilder.buildMetadata(
           meetingInfo,
           notes,
@@ -414,7 +414,7 @@ export const RecordingControls: React.FC<Props> = ({
           
           // Save audio file only if it exists (recording project)
           if (audioBlob) {
-            const audioFileName = `${newProjectName}.wav`;
+            const audioFileName = `${newProjectName}.webm`;
             await fileManager.saveAudioFile(audioBlob, audioFileName, newProjectName, true);
           }
 
@@ -447,7 +447,7 @@ export const RecordingControls: React.FC<Props> = ({
         
         // Download audio only if it exists
         if (audioBlob) {
-          const audioFileName = `${newProjectName}.wav`;
+          const audioFileName = `${newProjectName}.webm`;
           await downloader.downloadAudioFile(audioBlob, audioFileName);
         }
         
