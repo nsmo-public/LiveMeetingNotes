@@ -270,11 +270,11 @@ export const HelpButton: React.FC = () => {
           <Paragraph>
             <Text strong>Tài liệu chi tiết:</Text>
             <br />
-            <a href="https://github.com/nsmo-public/Web_MeetingNote" target="_blank" rel="noopener noreferrer">
+            <a href="https://github.com/nsmo-public/LiveMeetingNotes" target="_blank" rel="noopener noreferrer">
               📚 GitHub Repository
             </a>
             {' | '}
-            <a href="https://github.com/nsmo-public/Web_MeetingNote/blob/main/PRIVACY.md" target="_blank" rel="noopener noreferrer">
+            <a href="https://github.com/nsmo-public/LiveMeetingNotes/blob/main/PRIVACY.md" target="_blank" rel="noopener noreferrer">
               🔒 Privacy Policy
             </a>
           </Paragraph>
