@@ -172,14 +172,15 @@ export const App: React.FC = () => {
     meetingInfo: MeetingInfo;
     notes: string;
     timestampMap: Map<number, number>;
-    audioBlob: Blob;
+    audioBlob: Blob | null;
     recordingStartTime: number;
   }) => {
     console.log('📂 App.handleLoadProject - Data received:', {
       meetingInfo: loadedData.meetingInfo,
       notesLength: loadedData.notes.length,
       timestampMapSize: loadedData.timestampMap.size,
-      audioBlobSize: loadedData.audioBlob.size
+      audioBlobSize: loadedData.audioBlob?.size || 0,
+      hasAudio: loadedData.audioBlob !== null
     });
     
     setMeetingInfo(loadedData.meetingInfo);

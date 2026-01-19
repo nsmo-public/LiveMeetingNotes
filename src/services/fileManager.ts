@@ -106,7 +106,7 @@ export class FileManagerService {
   async loadProjectFromFolder(): Promise<{
     meetingInfo: any;
     metadata: any;
-    audioBlob: Blob;
+    audioBlob: Blob | null;
     projectName: string;
   } | null> {
     try {

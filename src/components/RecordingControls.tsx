@@ -24,7 +24,7 @@ interface Props {
     meetingInfo: MeetingInfo;
     notes: string;
     timestampMap: Map<number, number>;
-    audioBlob: Blob;
+    audioBlob: Blob | null;
     recordingStartTime: number;
   }) => void;
   meetingInfo: MeetingInfo;
