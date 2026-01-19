@@ -22,8 +22,18 @@ export const NotesEditor: React.FC<Props> = ({
 }) => {
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [editingDatetimeIndex, setEditingDatetimeIndex] = useState<number | null>(null);
-  const [editingDatetimeValue, setEditingDatetimeValue] = useState<string>('');
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [editingDatetimeValue, setEditingDatetimeValue] = useState<string>('');  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Multi-line selection states
+  const [selectedLines, setSelectedLines] = useState<Set<number>>(new Set());
+  const [lastClickedLine, setLastClickedLine] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  
+  // Undo/Redo history
+  const [history, setHistory] = useState<Array<{ notes: string; timestamps: Map<number, number> }>>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedNotesRef = useRef<string>('');
   
   // Use line-index-based timestamps (lineIndex → dateTimeMs) as source of truth
   const BLOCK_SEPARATOR = '§§§';
@@ -208,6 +218,168 @@ export const NotesEditor: React.FC<Props> = ({
       setEditingDatetimeValue('');
     }
   };
+  
+  // Handle line mouse down for selection (drag start)
+  const handleLineMouseDown = (index: number, event: React.MouseEvent) => {
+    // Don't interfere with text selection inside textarea (unless Ctrl/Shift is pressed)
+    if ((event.target as HTMLElement).tagName === 'TEXTAREA' && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+      // Clear selection on normal click
+      setSelectedLines(new Set());
+      return;
+    }
+    
+    if (event.shiftKey && lastClickedLine !== null) {
+      // Shift+Click: Select range
+      event.preventDefault();
+      const start = Math.min(lastClickedLine, index);
+      const end = Math.max(lastClickedLine, index);
+      const newSelected = new Set<number>();
+      for (let i = start; i <= end; i++) {
+        newSelected.add(i);
+      }
+      setSelectedLines(newSelected);
+    } else if (event.ctrlKey || event.metaKey) {
+      // Ctrl+Click: Toggle selection
+      event.preventDefault();
+      const newSelected = new Set(selectedLines);
+      if (newSelected.has(index)) {
+        newSelected.delete(index);
+      } else {
+        newSelected.add(index);
+      }
+      setSelectedLines(newSelected);
+      setLastClickedLine(index);
+    } else {
+      // Normal mouse down: Start drag selection (only if not clicking inside textarea)
+      if ((event.target as HTMLElement).tagName !== 'TEXTAREA') {
+        setIsDragging(true);
+        const newSelected = new Set<number>();
+        newSelected.add(index);
+        setSelectedLines(newSelected);
+        setLastClickedLine(index);
+      }
+    }
+  };
+  
+  // Handle line mouse enter during drag
+  const handleLineMouseEnter = (index: number) => {
+    if (isDragging) {
+      const newSelected = new Set(selectedLines);
+      newSelected.add(index);
+      setSelectedLines(newSelected);
+    }
+  };
+  
+  // Handle delete selected lines
+  const handleDeleteSelected = () => {
+    if (selectedLines.size === 0) return;
+    
+    saveToHistory();
+    
+    const lines = notes.split(BLOCK_SEPARATOR);
+    const indicesToDelete = Array.from(selectedLines).sort((a, b) => b - a); // Delete from end to start
+    
+    indicesToDelete.forEach(idx => {
+      lines.splice(idx, 1);
+    });
+    
+    // Update timestamps
+    const newLineTimestamps = new Map<number, number>();
+    const deletedSet = new Set(indicesToDelete);
+    let offset = 0;
+    
+    lineTimestamps.forEach((time, lineIndex) => {
+      if (deletedSet.has(lineIndex)) {
+        offset++;
+      } else {
+        const newIndex = lineIndex - offset;
+        newLineTimestamps.set(newIndex, time);
+      }
+    });
+    
+    setLineTimestamps(newLineTimestamps);
+    setSelectedLines(new Set());
+    onNotesChange(lines.join(BLOCK_SEPARATOR));
+    syncToParentTimestampMap(lines, newLineTimestamps);
+  };
+  
+  // Handle copy selected lines
+  const handleCopySelected = () => {
+    if (selectedLines.size === 0) return;
+    
+    const lines = notes.split(BLOCK_SEPARATOR);
+    const selectedIndices = Array.from(selectedLines).sort((a, b) => a - b);
+    const textToCopy = selectedIndices.map(idx => lines[idx]).join('\n');
+    
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      console.log('📋 Copied selected lines to clipboard');
+    });
+  };
+  
+  // Global mouse up handler to end drag selection
+  React.useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+      }
+    };
+    
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [isDragging]);
+  
+  // Global keyboard handler
+  React.useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Z: Undo (works even when textarea is focused)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        if (historyIndex > 0) {
+          e.preventDefault();
+          const prevState = history[historyIndex - 1];
+          setHistoryIndex(historyIndex - 1);
+          onNotesChange(prevState.notes);
+          setLineTimestamps(new Map(prevState.timestamps));
+          const lines = prevState.notes.split(BLOCK_SEPARATOR);
+          syncToParentTimestampMap(lines, prevState.timestamps);
+          // Clear selection after undo
+          setSelectedLines(new Set());
+        }
+      }
+      // Ctrl+Shift+Z or Ctrl+Y: Redo (works even when textarea is focused)
+      else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+        if (historyIndex < history.length - 1) {
+          e.preventDefault();
+          const nextState = history[historyIndex + 1];
+          setHistoryIndex(historyIndex + 1);
+          onNotesChange(nextState.notes);
+          setLineTimestamps(new Map(nextState.timestamps));
+          const lines = nextState.notes.split(BLOCK_SEPARATOR);
+          syncToParentTimestampMap(lines, nextState.timestamps);
+          // Clear selection after redo
+          setSelectedLines(new Set());
+        }
+      }
+      // Ctrl+C: Copy selected lines
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedLines.size > 0) {
+        // Only handle if not inside textarea (let textarea handle its own copy)
+        if (document.activeElement?.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          handleCopySelected();
+        }
+      }
+      // Delete or Backspace: Delete selected lines
+      else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedLines.size > 0) {
+        // Only handle if not inside textarea
+        if (document.activeElement?.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          handleDeleteSelected();
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [history, historyIndex, selectedLines, notes, lineTimestamps]);
 
   const handleLineChange = (index: number, value: string) => {
     const BLOCK_SEPARATOR = '§§§';
@@ -242,6 +414,7 @@ export const NotesEditor: React.FC<Props> = ({
     // Always sync timestamps when text changes (to update positions)
     onNotesChange(lines.join(BLOCK_SEPARATOR));
     syncToParentTimestampMap(lines, lineTimestamps);
+    debouncedSaveToHistory(); // Auto-save after typing
   };
   
   // Convert line-based timestamps to position-based for parent state
@@ -253,6 +426,38 @@ export const NotesEditor: React.FC<Props> = ({
       newMap.set(lineStartPos, time);
     });
     onTimestampMapChange(newMap);
+  };
+  
+  // Save current state to history
+  const saveToHistory = () => {
+    // Don't save if no actual changes
+    if (notes === lastSavedNotesRef.current) {
+      return;
+    }
+    
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push({
+      notes: notes,
+      timestamps: new Map(lineTimestamps)
+    });
+    // Limit history to 50 entries
+    if (newHistory.length > 50) {
+      newHistory.shift();
+    } else {
+      setHistoryIndex(historyIndex + 1);
+    }
+    setHistory(newHistory);
+    lastSavedNotesRef.current = notes;
+  };
+  
+  // Debounced auto-save to history (for typing)
+  const debouncedSaveToHistory = () => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      saveToHistory();
+    }, 1000); // Save after 1 second of inactivity
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -271,6 +476,9 @@ export const NotesEditor: React.FC<Props> = ({
       
       // In Live Mode: Enter creates new line (new block) with timestamp
       e.preventDefault();
+      
+      // Save to history before creating new line
+      saveToHistory();
       
       // Split current line at cursor
       const beforeCursor = currentLine.substring(0, cursorPos);
@@ -323,6 +531,9 @@ export const NotesEditor: React.FC<Props> = ({
       
       // Backspace at start with no selection: merge with previous line only if current line is empty
       e.preventDefault();
+      
+      // Save to history before merge/delete
+      saveToHistory();
       
       if (currentLine.trim().length === 0) {
         // Current line is empty, just remove it
@@ -466,12 +677,19 @@ export const NotesEditor: React.FC<Props> = ({
       >
         {lines.map((line, index) => {
         const timeMs = lineTimestamps.get(index);
+        const isSelected = selectedLines.has(index);
           return (
             <div
               key={index}
+              onMouseDown={(e) => handleLineMouseDown(index, e)}
+              onMouseEnter={() => handleLineMouseEnter(index)}
               style={{
                 display: 'flex',
-                borderBottom: index < lines.length - 1 ? '1px solid #2d2d2d' : 'none'
+                borderBottom: index < lines.length - 1 ? '1px solid #2d2d2d' : 'none',
+                backgroundColor: isSelected ? 'rgba(24, 144, 255, 0.15)' : 'transparent',
+                outline: isSelected ? '2px solid rgba(24, 144, 255, 0.5)' : 'none',
+                outlineOffset: '-2px',
+                userSelect: 'none' // Prevent text selection during drag
               }}
             >
               {/* Timestamp Column */}
@@ -480,7 +698,7 @@ export const NotesEditor: React.FC<Props> = ({
                 onDoubleClick={(e) => timeMs !== undefined && handleDatetimeDoubleClick(e, index)}
                 style={{
                   width: isLiveMode ? '160px' : '90px',
-                  backgroundColor: '#252526',
+                  backgroundColor: isSelected ? 'rgba(37, 37, 38, 0.8)' : '#252526',
                   borderRight: '1px solid #434343',
                   padding: '8px',
                   fontFamily: 'monospace',
@@ -524,6 +742,12 @@ export const NotesEditor: React.FC<Props> = ({
                 value={line}
                 onChange={(e) => handleLineChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
+                onMouseDown={(e) => {
+                  // If Ctrl or Shift is pressed, prevent focus and let parent handle selection
+                  if (e.ctrlKey || e.metaKey || e.shiftKey) {
+                    e.preventDefault();
+                  }
+                }}
                 onInput={(e) => {
                   // Handle undo/redo operations
                   const target = e.target as HTMLTextAreaElement;
@@ -537,7 +761,7 @@ export const NotesEditor: React.FC<Props> = ({
                   fontSize: '14px',
                   lineHeight: '1.6',
                   border: 'none',
-                  backgroundColor: 'transparent',
+                  backgroundColor: isSelected ? 'rgba(30, 30, 30, 0.9)' : 'transparent',
                   resize: 'none',
                   padding: '8px'
                 }}
