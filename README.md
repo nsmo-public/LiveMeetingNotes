@@ -2,15 +2,27 @@
 
 > Progressive Web Application (PWA) for live meeting note-taking with audio recording
 
+[![GitHub Pages](https://img.shields.io/badge/demo-live-brightgreen)](https://nsmo-public.github.io/Web_MeetingNote/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18.3-blue)](https://reactjs.org/)
+
+**LiveMeetingNote** là ứng dụng web chuyên nghiệp giúp ghi chép cuộc họp với khả năng ghi âm, đánh dấu thời gian tự động, và hoạt động hoàn toàn offline. 100% bảo mật - dữ liệu lưu trên máy bạn, không upload lên server.
+
+📚 **[User Guide](USER_GUIDE.md)** | 🚀 **[Quick Start](QUICKSTART.md)** | 🔒 **[Privacy Policy](PRIVACY.md)**
+
 ## ✨ Features
 
-- 🎙️ **Audio Recording** - Record meetings with microphone (MediaRecorder API)
-- ⏱️ **Real-time Timestamps** - Press ENTER to insert timestamp during recording
-- 📝 **Rich Text Editor** - Format notes with Quill.js editor
-- 🎯 **Timestamp Seeking** - Double-click timestamp to jump to audio position
-- 💾 **Local File Storage** - Save audio (.wav), notes, and metadata (.json) to disk
-- 📴 **Offline Support** - Works 100% offline after first load
-- 🌐 **Cross-Platform** - Runs on any modern browser (Chrome, Edge, Firefox, Safari)
+- 🎙️ **Audio Recording** - Ghi âm chất lượng cao WAV (44.1kHz stereo)
+- ⏱️ **Real-time Timestamps** - Nhấn ENTER để chèn timestamp tự động
+- 📝 **Rich Text Editor** - Định dạng văn bản với toolbar đầy đủ (Quill.js)
+- 🎯 **Timestamp Seeking** - Double-click timestamp → jump đến vị trí audio
+- 💾 **Local File Storage** - Lưu files trực tiếp vào folder (Chrome/Edge)
+- 🔄 **Auto-backup & Recovery** - Tự động backup mỗi 3s, khôi phục khi crash
+- 📂 **Load Project** - Load lại project cũ để chỉnh sửa
+- 📴 **Offline Support** - Hoạt động 100% offline sau lần load đầu
+- 🌐 **Cross-Platform** - Tương thích Chrome, Edge, Firefox, Safari
+- 📄 **Word Export** - Export file .docx để chia sẻ
 
 ## 🚀 Quick Start
 
@@ -154,6 +166,18 @@ MIT License - See LICENSE file for details
 
 Contributions welcome! Please open an issue or PR.
 
+## � Documentation
+
+- **[📖 User Guide](USER_GUIDE.md)** - Hướng dẫn sử dụng đầy đủ
+- **[🚀 Quick Start](QUICKSTART.md)** - Hướng dẫn cài đặt và sử dụng nhanh
+- **[🔒 Privacy Policy](PRIVACY.md)** - Chính sách bảo mật và quyền riêng tư
+
 ## 📞 Support
 
-For issues or questions, please open a GitHub issue.
+- **Issues:** [GitHub Issues](https://github.com/nsmo-public/Web_MeetingNote/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/nsmo-public/Web_MeetingNote/discussions)
+- **Demo:** [Live Demo](https://nsmo-public.github.io/Web_MeetingNote/)
+
+---
+
+**Made with ❤️ for better meeting notes**

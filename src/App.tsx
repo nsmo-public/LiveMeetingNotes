@@ -3,6 +3,7 @@ import { MetadataPanel } from './components/MetadataPanel';
 import { RecordingControls } from './components/RecordingControls';
 import { NotesEditor } from './components/NotesEditor';
 import { AudioPlayer } from './components/AudioPlayer';
+import { HelpButton } from './components/HelpButton';
 import { FileManagerService } from './services/fileManager';
 import { saveBackup, loadBackup, clearBackup, hasBackup, getBackupAge } from './services/autoBackup';
 import type { MeetingInfo } from './types/types';
@@ -267,6 +268,7 @@ export const App: React.FC = () => {
         <div className="status-indicator">
           {navigator.onLine ? '🌐 Online' : '📴 Offline'}
           {hasUnsavedChanges && <span className="unsaved-indicator" title="Bạn có dữ liệu chưa lưu">⚠️ Chưa lưu</span>}
+          <HelpButton />
         </div>
       </header>
 

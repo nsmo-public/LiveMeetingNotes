@@ -57,6 +57,15 @@ body {
   align-items: center;
 }
 
+.status-indicator .ant-btn {
+  height: 32px;
+}
+
+.status-indicator .ant-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.4);
+}
+
 .unsaved-indicator {
   color: #faad14;
   font-weight: 600;
