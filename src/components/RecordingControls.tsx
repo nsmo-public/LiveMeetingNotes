@@ -210,10 +210,118 @@ export const RecordingControls: React.FC<Props> = ({
     }
   };
 
+  const handleSaveNotes = async () => {
+    try {
+      // Check if folder is selected, if not, prompt user to select
+      if (!FileManagerService.isSupported()) {
+        // Fallback: download files
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const timePrefix = `${year}${month}${day}_${hours}${minutes}`;
+        
+        const sanitizedTitle = sanitizeMeetingTitle(meetingInfo.title || 'Meeting');
+        const projectName = `${timePrefix}_${sanitizedTitle}`;
+        
+        const downloader = new FileDownloadService();
+        
+        await downloader.downloadMetadataFile(
+          meetingInfo,
+          `${projectName}_meeting_info.json`
+        );
+        
+        // Export Word document
+        await WordExporter.exportToWord(
+          meetingInfo,
+          notes,
+          `${projectName}.docx`
+        );
+        
+        message.info('Files downloaded. Please save them to your meeting notes folder.');
+        setLastProjectName(projectName);
+        onSaveComplete();
+        return;
+      }
+      
+      // Check if folder is selected
+      if (!folderPath && !fileManager.getParentDirHandle() && !fileManager.getProjectDirHandle()) {
+        // No folder selected, prompt user
+        const folder = await fileManager.selectFolder();
+        if (!folder) {
+          message.info('Please select a folder to save your notes.');
+          return; // User cancelled
+        }
+        onFolderSelect(folder);
+      }
+      
+      // Generate folder and file names with timestamp prefix and meeting title
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const timePrefix = `${year}${month}${day}_${hours}${minutes}`;
+      
+      const sanitizedTitle = sanitizeMeetingTitle(meetingInfo.title || 'Meeting');
+      const projectName = `${timePrefix}_${sanitizedTitle}`;
+      
+      // Create project subdirectory
+      await fileManager.createProjectDirectory(projectName);
+      
+      // Save metadata files
+      await fileManager.saveMetadataFile(
+        meetingInfo,
+        `${projectName}_meeting_info.json`,
+        projectName,
+        true
+      );
+      
+      // Create minimal metadata for notes-only project
+      const notesMetadata = {
+        ProjectName: projectName,
+        Model: 'Notes Only',
+        Language: 'vi',
+        OriginalFileName: '',
+        AudioFileName: '',
+        Duration: '00:00:00.0000000',
+        RecordingStartTime: new Date().toISOString(),
+        Timestamps: notes ? [{
+          Index: 0,
+          Text: notes,
+          DateTime: new Date().toISOString(),
+          StartTime: '00:00:00.0000000',
+          EndTime: '00:00:00.0000000',
+          Highlight: false
+        }] : []
+      };
+      
+      await fileManager.saveMetadataFile(
+        notesMetadata,
+        `${projectName}_metadata.json`,
+        projectName,
+        true
+      );
+      
+      // Export Word document
+      const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
+      await fileManager.saveWordFile(wordBlob, `${projectName}.docx`, projectName, true);
+      
+      message.success(`Notes saved to folder: ${projectName}`);
+      setLastProjectName(projectName);
+      onSaveComplete();
+    } catch (error: any) {
+      message.error(`Failed to save notes: ${error.message}`);
+    }
+  };
+
   const handleSaveChanges = async () => {
     try {
-      if (!audioBlob || !lastProjectName) {
-        message.error('No recording to update');
+      if (!lastProjectName) {
+        message.error('No project to update');
         return;
       }
 
@@ -228,17 +336,46 @@ export const RecordingControls: React.FC<Props> = ({
       
       const sanitizedTitle = sanitizeMeetingTitle(meetingInfo.title || 'Meeting');
       const newProjectName = `${timePrefix}_${sanitizedTitle}`;
-      const audioFileName = `${newProjectName}.wav`;
 
       // Build updated metadata with current notes
-      const metadata = MetadataBuilder.buildMetadata(
-        meetingInfo,
-        notes,
-        timestampMap,
-        lastRecordingDuration,
-        audioFileName,
-        recordingStartTime
-      );
+      // Check if this is a notes-only project or recording project
+      const isNotesOnly = !audioBlob;
+      
+      let metadata;
+      if (isNotesOnly) {
+        // Notes-only project metadata
+        metadata = {
+          meetingInfo: meetingInfo,
+          metadata: {
+            ProjectName: newProjectName,
+            Model: 'Notes Only',
+            Language: 'vi',
+            OriginalFileName: '',
+            AudioFileName: '',
+            Duration: '00:00:00.0000000',
+            RecordingStartTime: recordingStartTime ? new Date(recordingStartTime).toISOString() : new Date().toISOString(),
+            Timestamps: notes ? [{
+              Index: 0,
+              Text: notes,
+              DateTime: new Date().toISOString(),
+              StartTime: '00:00:00.0000000',
+              EndTime: '00:00:00.0000000',
+              Highlight: false
+            }] : []
+          }
+        };
+      } else {
+        // Recording project with audio
+        const audioFileName = `${newProjectName}.wav`;
+        metadata = MetadataBuilder.buildMetadata(
+          meetingInfo,
+          notes,
+          timestampMap,
+          lastRecordingDuration,
+          audioFileName,
+          recordingStartTime
+        );
+      }
 
       if (FileManagerService.isSupported()) {
         // Try multiple save locations in order of preference:
@@ -275,8 +412,11 @@ export const RecordingControls: React.FC<Props> = ({
           // Create new project subdirectory
           await fileManager.createProjectDirectory(newProjectName);
           
-          // Save audio file with original audio blob to new folder
-          await fileManager.saveAudioFile(audioBlob, audioFileName, newProjectName, true);
+          // Save audio file only if it exists (recording project)
+          if (audioBlob) {
+            const audioFileName = `${newProjectName}.wav`;
+            await fileManager.saveAudioFile(audioBlob, audioFileName, newProjectName, true);
+          }
 
           // Save metadata files
           await fileManager.saveMetadataFile(
@@ -305,7 +445,11 @@ export const RecordingControls: React.FC<Props> = ({
         // Download updated files (fallback for unsupported browsers)
         const downloader = new FileDownloadService();
         
-        await downloader.downloadAudioFile(audioBlob, audioFileName);
+        // Download audio only if it exists
+        if (audioBlob) {
+          const audioFileName = `${newProjectName}.wav`;
+          await downloader.downloadAudioFile(audioBlob, audioFileName);
+        }
         
         await downloader.downloadMetadataFile(
           metadata.meetingInfo,
@@ -596,8 +740,20 @@ export const RecordingControls: React.FC<Props> = ({
           </Button>
         )}
 
+        {/* Show Save Notes button when has unsaved data but not saved yet */}
+        {!isRecording && !isSaved && hasUnsavedChanges && (
+          <Button
+            type="primary"
+            icon={<SaveOutlined />}
+            onClick={handleSaveNotes}
+            size="large"
+          >
+            Save Notes
+          </Button>
+        )}
+
         {/* Show Save Changes button when has unsaved changes after first save */}
-        {!isRecording && isSaved && audioBlob && hasUnsavedChanges && (
+        {!isRecording && isSaved && hasUnsavedChanges && (
           <Button
             type="default"
             icon={<SaveOutlined />}
