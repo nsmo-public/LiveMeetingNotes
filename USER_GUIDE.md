@@ -367,8 +367,8 @@ Bảo vệ dữ liệu chưa lưu.
 
 ## 📞 Support & Feedback
 
-- **GitHub Issues:** [https://github.com/nsmo-public/Web_MeetingNote/issues](https://github.com/nsmo-public/Web_MeetingNote/issues)
-- **Discussions:** [https://github.com/nsmo-public/Web_MeetingNote/discussions](https://github.com/nsmo-public/Web_MeetingNote/discussions)
+- **GitHub Issues:** [https://github.com/nsmo-public/LiveMeetingNotes/issues](https://github.com/nsmo-public/Web_MeetingNote/issues)
+- **Discussions:** [https://github.com/nsmo-public/LiveMeetingNotes/discussions](https://github.com/nsmo-public/Web_MeetingNote/discussions)
 - **Documentation:** [README.md](README.md) | [QUICKSTART.md](QUICKSTART.md) | [PRIVACY.md](PRIVACY.md)
 
 ---

@@ -164,8 +164,8 @@ export class FileManagerService {
             console.log('Loaded metadata.json:', metadataData);
           }
           
-          // Load audio file (.wav)
-          if (name.endsWith('.wav')) {
+          // Load audio file (.webm, .wav, .mp4, .ogg - support multiple formats)
+          if (name.endsWith('.webm') || name.endsWith('.mp3')  || name.endsWith('.wav') || name.endsWith('.mp4') || name.endsWith('.ogg')) {
             audioBlob = file;
             console.log('Loaded audio file:', name, 'size:', audioBlob.size);
           }
@@ -173,7 +173,7 @@ export class FileManagerService {
       }
 
       if (!meetingInfoData || !metadataData || !audioBlob) {
-        throw new Error('Missing required files (meeting_info.json, metadata.json, or .wav file)');
+        throw new Error('Missing required files (meeting_info.json, metadata.json, or audio file)');
       }
 
       console.log('Loaded project data:', {
