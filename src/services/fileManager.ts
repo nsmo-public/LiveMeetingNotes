@@ -15,6 +15,7 @@ function addTimestampPrefix(fileName: string): string {
 export class FileManagerService {
   private dirHandle: FileSystemDirectoryHandle | null = null;
   private parentDirHandle: FileSystemDirectoryHandle | null = null; // Parent of loaded project folder
+  private projectDirHandle: FileSystemDirectoryHandle | null = null; // Loaded project folder itself (fallback)
 
   async selectFolder(): Promise<string | null> {
     try {
@@ -116,16 +117,25 @@ export class FileManagerService {
         mode: 'readwrite' // Need write permission to save changes later
       });
       
-      // Get parent directory handle for saving new versions
+      // Save project folder handle as fallback
+      this.projectDirHandle = projectHandle;
+      console.log('Saved project directory handle:', projectHandle.name);
+      
+      // Try to get parent directory handle for saving new versions (preferred location)
       try {
-        // @ts-ignore - getParent() exists but not in TypeScript types yet
-        const getParent = (projectHandle as any).getParent;
-        if (getParent) {
-          this.parentDirHandle = await getParent.call(projectHandle);
-          console.log('Saved parent directory handle for future saves');
+        // Method 1: Use getParent() if available (Chromium-based browsers)
+        if ('getParent' in projectHandle) {
+          this.parentDirHandle = await (projectHandle as any).getParent();
+          console.log('✓ Got parent directory handle via getParent():', this.parentDirHandle?.name);
+        }
+        // Method 2: Alternative API (if exists in future)
+        else if ('resolve' in projectHandle) {
+          console.log('Trying resolve method...');
+          // This is a potential future API, not currently available
         }
       } catch (err) {
-        console.warn('Could not get parent directory handle:', err);
+        console.warn('⚠️ Could not get parent directory handle (will use project folder as fallback):', err);
+        this.parentDirHandle = null;
       }
 
       const projectName = projectHandle.name;
@@ -192,6 +202,11 @@ export class FileManagerService {
   // Get parent directory handle (for saving changes to loaded project)
   getParentDirHandle(): FileSystemDirectoryHandle | null {
     return this.parentDirHandle;
+  }
+  
+  // Get project directory handle (fallback for saving when parent not available)
+  getProjectDirHandle(): FileSystemDirectoryHandle | null {
+    return this.projectDirHandle;
   }
   
   // Set directory handle (use parent dir when saving changes)

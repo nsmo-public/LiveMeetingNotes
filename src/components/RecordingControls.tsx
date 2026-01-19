@@ -241,12 +241,36 @@ export const RecordingControls: React.FC<Props> = ({
       );
 
       if (FileManagerService.isSupported()) {
-        // Use parent directory from loaded project (same level as original project folder)
+        // Try multiple save locations in order of preference:
+        // 1. User-selected folder via "Select Folder" button (highest priority if user chose new location)
+        // 2. Parent directory of loaded project (same level as original)
+        // 3. Inside loaded project folder itself (fallback - creates subfolder)
         const parentDirHandle = fileManager.getParentDirHandle();
+        const projectDirHandle = fileManager.getProjectDirHandle();
         
-        if (parentDirHandle) {
-          // Save to parent directory (same location as loaded project)
-          fileManager.setDirHandle(parentDirHandle);
+        let saveHandle: FileSystemDirectoryHandle | null = null;
+        let saveLocation = '';
+        
+        // Check if user has manually selected a folder (prioritize user's explicit choice)
+        const hasManualSelection = folderPath && !folderPath.includes('(parent of loaded project)') && !folderPath.includes('(loaded project folder)');
+        
+        if (hasManualSelection) {
+          // User explicitly chose a folder via "Select Folder" - use it
+          saveLocation = 'selected folder';
+          // dirHandle is already set from selectFolder()
+        } else if (parentDirHandle) {
+          saveHandle = parentDirHandle;
+          saveLocation = 'parent directory (same level as loaded project)';
+        } else if (projectDirHandle) {
+          saveHandle = projectDirHandle;
+          saveLocation = 'inside loaded project folder';
+        }
+        
+        if (saveHandle || folderPath) {
+          // Set directory handle if we got one from loaded project
+          if (saveHandle) {
+            fileManager.setDirHandle(saveHandle);
+          }
           
           // Create new project subdirectory
           await fileManager.createProjectDirectory(newProjectName);
@@ -272,31 +296,10 @@ export const RecordingControls: React.FC<Props> = ({
           const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
           await fileManager.saveWordFile(wordBlob, `${newProjectName}.docx`, newProjectName, true);
 
-          message.success(`Changes saved to new folder: ${newProjectName}`);
-          setLastProjectName(newProjectName);
-        } else if (folderPath) {
-          // Fallback to selected folder if no parent handle (old workflow)
-          await fileManager.createProjectDirectory(newProjectName);
-          await fileManager.saveAudioFile(audioBlob, audioFileName, newProjectName, true);
-          await fileManager.saveMetadataFile(
-            metadata.meetingInfo,
-            `${newProjectName}_meeting_info.json`,
-            newProjectName,
-            true
-          );
-          await fileManager.saveMetadataFile(
-            metadata.metadata,
-            `${newProjectName}_metadata.json`,
-            newProjectName,
-            true
-          );
-          const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
-          await fileManager.saveWordFile(wordBlob, `${newProjectName}.docx`, newProjectName, true);
-          
-          message.success(`Changes saved to new folder: ${newProjectName}`);
+          message.success(`Changes saved to ${saveLocation}: ${newProjectName}`);
           setLastProjectName(newProjectName);
         } else {
-          message.error('No save location available. Please use "Select Folder" first.');
+          message.error('No save location available. Please use "Select Folder" first or load a project.');
         }
       } else {
         // Download updated files (fallback for unsupported browsers)
@@ -515,6 +518,17 @@ export const RecordingControls: React.FC<Props> = ({
       // Update local state
       setLastProjectName(projectData.projectName);
       setLastRecordingDuration(durationMs);
+
+      // Update folder path display to show where files will be saved
+      // Priority: Parent folder > Project folder
+      const parentHandle = fileManager.getParentDirHandle();
+      const projectHandle = fileManager.getProjectDirHandle();
+      
+      if (parentHandle) {
+        onFolderSelect(parentHandle.name + ' (parent of loaded project)');
+      } else if (projectHandle) {
+        onFolderSelect(projectHandle.name + ' (loaded project folder)');
+      }
 
       message.success(`Project loaded: ${projectData.projectName}`);
     } catch (error: any) {
