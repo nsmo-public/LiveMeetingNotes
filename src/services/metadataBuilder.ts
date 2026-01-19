@@ -34,6 +34,7 @@ export class MetadataBuilder {
       OriginalFileName: audioFileName,
       AudioFileName: audioFileName,
       Duration: this.formatDurationWithMs(duration),
+      RecordingStartTime: new Date(recordingStartTime).toISOString(), // Lưu thời điểm bắt đầu ghi âm
       Timestamps: timestamps
     };
 

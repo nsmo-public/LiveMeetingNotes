@@ -289,24 +289,8 @@ export const NotesEditor: React.FC<Props> = ({
         }
       });
       
-      // Calculate timestamp for new line (index + 1)
-      const currentTimestamp = lineTimestamps.get(index);
-      const nextTimestamp = lineTimestamps.get(index + 1); // Will be shifted to index + 2
-      
-      if (currentTimestamp) {
-        let newTimestamp: number;
-        if (nextTimestamp) {
-          // Insert timestamp halfway between current and next
-          newTimestamp = currentTimestamp + (nextTimestamp - currentTimestamp) / 2;
-        } else {
-          // No next timestamp, add 3 seconds
-          newTimestamp = currentTimestamp + 3000;
-        }
-        newLineTimestamps.set(index + 1, newTimestamp);
-      } else if (afterCursor.trim().length > 0) {
-        // Current line has no timestamp, create one for new line
-        newLineTimestamps.set(index + 1, Date.now());
-      }
+      // Don't auto-assign timestamp to new line
+      // Timestamp will be created when user types first character (in handleLineChange)
       
       setLineTimestamps(newLineTimestamps);
       

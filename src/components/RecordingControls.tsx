@@ -390,9 +390,20 @@ export const RecordingControls: React.FC<Props> = ({
       const timestampMapData = new Map<number, number>();
       let notesText = '';
       
-      // Calculate recording start time first (needed for timestamp calculation)
+      // Get recording start time - prefer from metadata, fallback to calculation
       let recordingStart = Date.now();
-      if (projectData.metadata.Timestamps && projectData.metadata.Timestamps.length > 0) {
+      
+      if (projectData.metadata.RecordingStartTime) {
+        // Use saved RecordingStartTime from metadata (chuẩn nhất)
+        recordingStart = new Date(projectData.metadata.RecordingStartTime).getTime();
+        
+        console.log('🕐 Using RecordingStartTime from metadata:', {
+          raw: projectData.metadata.RecordingStartTime,
+          parsed: new Date(recordingStart).toISOString(),
+          timestamp: recordingStart
+        });
+      } else if (projectData.metadata.Timestamps && projectData.metadata.Timestamps.length > 0) {
+        // Fallback: Calculate from first timestamp (old projects without RecordingStartTime)
         const firstTimestamp = projectData.metadata.Timestamps[0];
         const firstDatetime = new Date(firstTimestamp.DateTime).getTime();
         // Parse StartTime to get offset (format: HH:MM:SS.NNNNNNN with 7 decimal digits)
@@ -407,7 +418,7 @@ export const RecordingControls: React.FC<Props> = ({
                           ms;
           recordingStart = firstDatetime - offsetMs;
           
-          console.log('🕐 Parse StartTime:', {
+          console.log('🕐 Calculated RecordingStartTime from first block:', {
             raw: firstTimestamp.StartTime,
             fractionalPart,
             parsedMs: ms,
@@ -432,9 +443,22 @@ export const RecordingControls: React.FC<Props> = ({
           // Calculate position at start of this block (after separator if not first)
           const position = notesText.length;
           
-          // Use DateTime as the timestamp value
-          // This will be converted to relative time in formatTimestamp() using recordingStartTime
-          const datetime = new Date(ts.DateTime).getTime();
+          // Parse StartTime (relative time) from metadata and convert to absolute datetime
+          // StartTime format: HH:MM:SS.NNNNNNN (7 decimal digits)
+          let startTimeMs = 0;
+          const startTimeMatch = ts.StartTime.match(/(\d+):(\d+):(\d+)\.(\d+)/);
+          if (startTimeMatch) {
+            const hours = parseInt(startTimeMatch[1]);
+            const minutes = parseInt(startTimeMatch[2]);
+            const seconds = parseInt(startTimeMatch[3]);
+            const fractionalPart = startTimeMatch[4];
+            // Convert to milliseconds: if 7 digits, divide by 10000
+            const ms = fractionalPart.length === 7 ? parseInt(fractionalPart) / 10000 : parseInt(fractionalPart);
+            startTimeMs = hours * 3600000 + minutes * 60000 + seconds * 1000 + ms;
+          }
+          
+          // Convert relative time to absolute datetime using RecordingStartTime
+          const datetime = recordingStart + startTimeMs;
           timestampMapData.set(position, datetime);
           
           // Add text to notes
