@@ -46,48 +46,48 @@ export class WordExporter {
             
             new Paragraph({
               children: [
-                new TextRun({ text: 'Nội dung: ', bold: true }),
-                new TextRun({ text: meetingInfo.title })
+                new TextRun({ text: 'Nội dung: ', bold: true, size: 24 }),
+                new TextRun({ text: meetingInfo.title, size: 24 })
               ],
               spacing: { after: 100 }
             }),
             
             new Paragraph({
               children: [
-                new TextRun({ text: 'Ngày: ', bold: true }),
-                new TextRun({ text: meetingInfo.date })
+                new TextRun({ text: 'Ngày: ', bold: true, size: 24 }),
+                new TextRun({ text: meetingInfo.date, size: 24 })
               ],
               spacing: { after: 100 }
             }),
             
             new Paragraph({
               children: [
-                new TextRun({ text: 'Giờ: ', bold: true }),
-                new TextRun({ text: meetingInfo.time })
+                new TextRun({ text: 'Giờ: ', bold: true, size: 24 }),
+                new TextRun({ text: meetingInfo.time, size: 24 })
               ],
               spacing: { after: 100 }
             }),
             
             new Paragraph({
               children: [
-                new TextRun({ text: 'Địa điểm: ', bold: true }),
-                new TextRun({ text: meetingInfo.location || 'N/A' })
+                new TextRun({ text: 'Địa điểm: ', bold: true, size: 24 }),
+                new TextRun({ text: meetingInfo.location || 'N/A', size: 24 })
               ],
               spacing: { after: 100 }
             }),
             
             new Paragraph({
               children: [
-                new TextRun({ text: 'Chủ trì: ', bold: true }),
-                new TextRun({ text: meetingInfo.host || 'N/A' })
+                new TextRun({ text: 'Chủ trì: ', bold: true, size: 24 }),
+                new TextRun({ text: meetingInfo.host || 'N/A', size: 24 })
               ],
               spacing: { after: 100 }
             }),
             
             new Paragraph({
               children: [
-                new TextRun({ text: 'Thành phần tham dự: ', bold: true }),
-                new TextRun({ text: meetingInfo.attendees || 'N/A' })
+                new TextRun({ text: 'Thành phần tham dự: ', bold: true, size: 24 }),
+                new TextRun({ text: meetingInfo.attendees || 'N/A', size: 24 })
               ],
               spacing: { after: 300 }
             }),
@@ -142,7 +142,9 @@ export class WordExporter {
       if (trimmed) {
         paragraphs.push(
           new Paragraph({
-            text: trimmed,
+            children: [
+              new TextRun({ text: trimmed, size: 24 })
+            ],
             spacing: { after: 100 }
           })
         );
@@ -150,7 +152,9 @@ export class WordExporter {
         // Empty line for spacing
         paragraphs.push(
           new Paragraph({
-            text: '',
+            children: [
+              new TextRun({ text: '', size: 24 })
+            ],
             spacing: { after: 50 }
           })
         );
