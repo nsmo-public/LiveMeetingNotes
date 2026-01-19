@@ -172,15 +172,21 @@ export class FileManagerService {
         }
       }
 
-      if (!meetingInfoData || !metadataData || !audioBlob) {
-        throw new Error('Missing required files (meeting_info.json, metadata.json, or audio file)');
+      if (!meetingInfoData || !metadataData) {
+        throw new Error('Missing required files: meeting_info.json and metadata.json are mandatory');
+      }
+      
+      // Audio file is optional (for notes-only projects)
+      if (!audioBlob) {
+        console.warn('No audio file found - this is a notes-only project');
       }
 
       console.log('Loaded project data:', {
         projectName,
         meetingInfo: meetingInfoData,
         metadata: metadataData,
-        audioSize: audioBlob.size
+        audioSize: audioBlob?.size || 0,
+        hasAudio: audioBlob !== null
       });
 
       return {
