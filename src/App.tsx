@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MetadataPanel } from './components/MetadataPanel';
 import { RecordingControls } from './components/RecordingControls';
 import { NotesEditor } from './components/NotesEditor';
 import { AudioPlayer } from './components/AudioPlayer';
 import { FileManagerService } from './services/fileManager';
+import { saveBackup, loadBackup, clearBackup, hasBackup, getBackupAge } from './services/autoBackup';
 import type { MeetingInfo } from './types/types';
 import './styles/global.css';
 
@@ -26,6 +27,9 @@ export const App: React.FC = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [savedNotesSnapshot, setSavedNotesSnapshot] = useState<string>('');
   const [isLiveMode, setIsLiveMode] = useState(true); // true = live recording, false = loaded project
+  const [showBackupDialog, setShowBackupDialog] = useState(false);
+  const [backupAge, setBackupAge] = useState<number | null>(null);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check browser compatibility
   useEffect(() => {
@@ -34,6 +38,18 @@ export const App: React.FC = () => {
         'File System Access API not supported. Files will be downloaded instead.'
       );
     }
+  }, []);
+  
+  // Check for existing backup on mount
+  useEffect(() => {
+    const checkBackup = async () => {
+      if (hasBackup()) {
+        const age = getBackupAge();
+        setBackupAge(age);
+        setShowBackupDialog(true);
+      }
+    };
+    checkBackup();
   }, []);
 
   // Track unsaved changes
@@ -46,6 +62,40 @@ export const App: React.FC = () => {
     const hasData = isRecording || (!isSaved && (audioBlob !== null || notes.trim().length > 0)) || notesModified;
     setHasUnsavedChanges(hasData);
   }, [isRecording, audioBlob, notes, isSaved, savedNotesSnapshot]);
+  
+  // Auto-save to localStorage with debounce (every 3 seconds after changes)
+  useEffect(() => {
+    // Auto-save whenever there are unsaved changes (including after first save)
+    // Backup will be cleared only when user explicitly saves
+    if (hasUnsavedChanges) {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        const meetingInfoForBackup = {
+          projectName: meetingInfo.title,
+          location: meetingInfo.location,
+          participants: meetingInfo.attendees
+        };
+        
+        saveBackup(
+          meetingInfoForBackup,
+          notes,
+          timestampMap,
+          recordingStartTime,
+          audioBlob,
+          isSaved
+        );
+      }, 3000); // Auto-save 3 seconds after last change
+    }
+    
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [meetingInfo, notes, timestampMap, recordingStartTime, audioBlob, hasUnsavedChanges, isSaved]);
 
   // Switch to live mode when starting a new recording
   useEffect(() => {
@@ -84,6 +134,37 @@ export const App: React.FC = () => {
     setIsSaved(true);
     setHasUnsavedChanges(false);
     setSavedNotesSnapshot(notes); // Save snapshot to detect future changes
+    // Clear auto-backup after successful save
+    clearBackup();
+  };
+  
+  const handleRestoreBackup = async () => {
+    const backup = await loadBackup();
+    if (backup) {
+      setMeetingInfo({
+        title: backup.meetingInfo.projectName,
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toTimeString().slice(0, 5),
+        location: backup.meetingInfo.location,
+        host: '',
+        attendees: backup.meetingInfo.participants
+      });
+      setNotes(backup.notes);
+      setTimestampMap(backup.timestampMap);
+      setRecordingStartTime(backup.recordingStartTime);
+      if (backup.audioBlob) {
+        setAudioBlob(backup.audioBlob);
+      }
+      setIsSaved(backup.isSaved);
+      setShowBackupDialog(false);
+      console.log('✅ Backup restored successfully');
+    }
+  };
+  
+  const handleDiscardBackup = async () => {
+    await clearBackup();
+    setShowBackupDialog(false);
+    console.log('🗑️ Backup discarded');
   };
 
   const handleLoadProject = (loadedData: {
@@ -113,6 +194,74 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-container">
+      {/* Backup Restoration Dialog */}
+      {showBackupDialog && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <div style={{
+            backgroundColor: '#1e1e1e',
+            border: '2px solid #ffa500',
+            borderRadius: '8px',
+            padding: '24px',
+            maxWidth: '500px',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5)'
+          }}>
+            <h2 style={{ marginTop: 0, color: '#ffa500' }}>🔄 Khôi phục dữ liệu</h2>
+            <p style={{ fontSize: '16px', lineHeight: '1.6' }}>
+              Phát hiện dữ liệu tự động sao lưu từ <strong>{backupAge !== null ? `${backupAge} phút` : 'một lúc'}</strong> trước.
+              <br/>
+              Có thể trình duyệt đã bị đóng đột ngột hoặc bạn chưa lưu dữ liệu.
+            </p>
+            <p style={{ fontSize: '14px', color: '#888' }}>
+              Bạn có muốn khôi phục dữ liệu này không?
+            </p>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+              <button
+                onClick={handleRestoreBackup}
+                style={{
+                  flex: 1,
+                  padding: '12px 20px',
+                  backgroundColor: '#1890ff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }}
+              >
+                ✅ Khôi phục
+              </button>
+              <button
+                onClick={handleDiscardBackup}
+                style={{
+                  flex: 1,
+                  padding: '12px 20px',
+                  backgroundColor: '#434343',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '16px',
+                  cursor: 'pointer'
+                }}
+              >
+                🗑️ Bỏ qua
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <header className="app-header">
         <h1>📝 Live Meeting Notes</h1>
         <div className="status-indicator">
