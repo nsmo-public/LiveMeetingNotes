@@ -455,12 +455,14 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
               icon={<ZoomOutOutlined />}
               onClick={handleZoomOut}
               title="Zoom out"
+              style={{ display: 'none' }}
               disabled={zoom <= 10}
             />
             <Button
               icon={<ZoomInOutlined />}
               onClick={handleZoomIn}
               title="Zoom in"
+              style={{ display: 'none' }}
               disabled={zoom >= 200}
             />
           </Space>
