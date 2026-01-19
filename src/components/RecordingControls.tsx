@@ -272,9 +272,18 @@ export const RecordingControls: React.FC<Props> = ({
       // Create project subdirectory
       await fileManager.createProjectDirectory(projectName);
       
-      // Save metadata files
+      // Save metadata files (convert to PascalCase format)
+      const meetingInfoJson = {
+        MeetingTitle: meetingInfo.title,
+        MeetingDate: meetingInfo.date,
+        MeetingTime: meetingInfo.time,
+        Location: meetingInfo.location,
+        Host: meetingInfo.host,
+        Attendees: meetingInfo.attendees,
+      };
+      
       await fileManager.saveMetadataFile(
-        meetingInfo,
+        meetingInfoJson,
         `${projectName}_meeting_info.json`,
         projectName,
         true
@@ -343,9 +352,16 @@ export const RecordingControls: React.FC<Props> = ({
       
       let metadata;
       if (isNotesOnly) {
-        // Notes-only project metadata
+        // Notes-only project metadata (convert to PascalCase format)
         metadata = {
-          meetingInfo: meetingInfo,
+          meetingInfo: {
+            MeetingTitle: meetingInfo.title,
+            MeetingDate: meetingInfo.date,
+            MeetingTime: meetingInfo.time,
+            Location: meetingInfo.location,
+            Host: meetingInfo.host,
+            Attendees: meetingInfo.attendees,
+          },
           metadata: {
             ProjectName: newProjectName,
             Model: 'Notes Only',
