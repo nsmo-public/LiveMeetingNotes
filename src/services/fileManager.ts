@@ -1,5 +1,3 @@
-import type { FileSystemDirectoryHandle } from '../types/types';
-
 // Helper function to add timestamp prefix to filename
 function addTimestampPrefix(fileName: string): string {
   const now = new Date();

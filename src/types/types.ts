@@ -61,29 +61,3 @@ declare global {
     }) => Promise<FileSystemDirectoryHandle>;
   }
 }
-
-export interface FileSystemDirectoryHandle {
-  kind: 'directory';
-  name: string;
-  getFileHandle(
-    name: string,
-    options?: { create?: boolean }
-  ): Promise<FileSystemFileHandle>;
-  getDirectoryHandle(
-    name: string,
-    options?: { create?: boolean }
-  ): Promise<FileSystemDirectoryHandle>;
-}
-
-export interface FileSystemFileHandle {
-  kind: 'file';
-  name: string;
-  getFile(): Promise<File>;
-  createWritable(): Promise<FileSystemWritableFileStream>;
-}
-
-export interface FileSystemWritableFileStream extends WritableStream {
-  write(data: BufferSource | Blob | string): Promise<void>;
-  seek(position: number): Promise<void>;
-  truncate(size: number): Promise<void>;
-}

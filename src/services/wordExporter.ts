@@ -46,7 +46,7 @@ export class WordExporter {
             
             new Paragraph({
               children: [
-                new TextRun({ text: 'Tiêu đề: ', bold: true }),
+                new TextRun({ text: 'Nội dung: ', bold: true }),
                 new TextRun({ text: meetingInfo.title })
               ],
               spacing: { after: 100 }
