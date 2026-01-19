@@ -30,17 +30,19 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
   // Update audio source when blob changes
   useEffect(() => {
     if (audioBlob) {
-      // Revoke previous URL to free memory
-      if (audioUrl) {
-        URL.revokeObjectURL(audioUrl);
-      }
-
       const url = URL.createObjectURL(audioBlob);
       setAudioUrl(url);
 
+      // Only revoke URL on cleanup (when component unmounts or new blob arrives)
       return () => {
         URL.revokeObjectURL(url);
       };
+    } else {
+      // No blob, clear URL
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+        setAudioUrl(null);
+      }
     }
   }, [audioBlob]);
 
