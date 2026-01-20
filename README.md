@@ -13,7 +13,7 @@
 
 ## ✨ Features
 
-- 🎙️ **Audio Recording** - Ghi âm chất lượng cao WAV (44.1kHz stereo)
+- 🎙️ **Audio Recording** - Ghi âm chất lượng cao WebM (Opus codec, ~140MB/2.5h)
 - ⏱️ **Real-time Timestamps** - Nhấn ENTER để chèn timestamp tự động
 - 📝 **Rich Text Editor** - Định dạng văn bản với toolbar đầy đủ (Quill.js)
 - 🎯 **Timestamp Seeking** - Double-click timestamp → jump đến vị trí audio
@@ -63,7 +63,7 @@ npm run deploy
 - **Frontend**: React 18 + TypeScript
 - **UI Framework**: Ant Design
 - **Rich Text Editor**: Quill.js
-- **Audio Recording**: RecordRTC / MediaRecorder API
+- **Audio Recording**: MediaRecorder API (WebM/Opus codec)
 - **Audio Player**: WaveSurfer.js
 - **Build Tool**: Vite
 - **PWA**: vite-plugin-pwa
@@ -80,7 +80,8 @@ src/
 ├── services/            # Business logic
 │   ├── audioRecorder.ts
 │   ├── fileManager.ts
-│   └── metadataBuilder.ts
+│   ├── metadataBuilder.ts
+│   └── wordExporter.ts
 ├── hooks/               # Custom React hooks
 ├── types/               # TypeScript definitions
 └── styles/              # CSS styles
@@ -106,9 +107,10 @@ src/
 
 After recording, the following files are saved:
 
-- `Meeting_[timestamp].wav` - Audio recording (WAV format)
+- `Meeting_[timestamp].webm` - Audio recording (WebM/Opus format, highly compressed)
 - `Meeting_[timestamp]_meeting_info.json` - Meeting metadata
-- `metadata.json` - Notes with timestamps
+- `Meeting_[timestamp]_metadata.json` - Notes with timestamps
+- `Meeting_[timestamp].docx` - Word document export
 
 ### Metadata Format
 
@@ -118,8 +120,8 @@ After recording, the following files are saved:
   "ProjectName": "Meeting_2026-01-18T14-30-00",
   "Model": "Live Recording",
   "Language": "vi",
-  "OriginalFileName": "Meeting_2026-01-18T14-30-00.wav",
-  "AudioFileName": "Meeting_2026-01-18T14-30-00.wav",
+  "OriginalFileName": "Meeting_2026-01-18T14-30-00.webm",
+  "AudioFileName": "Meeting_2026-01-18T14-30-00.webm",
   "Duration": "00:15:30.0000000",
   "Timestamps": [
     {
