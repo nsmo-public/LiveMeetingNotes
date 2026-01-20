@@ -22,7 +22,15 @@ export const NotesEditor: React.FC<Props> = ({
 }) => {
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [editingDatetimeIndex, setEditingDatetimeIndex] = useState<number | null>(null);
-  const [editingDatetimeValue, setEditingDatetimeValue] = useState<string>('');  const containerRef = useRef<HTMLDivElement>(null);
+  const [editingDatetimeValue, setEditingDatetimeValue] = useState<string>('');
+  
+  // Timestamp delay setting (in seconds) - người gõ note thường chậm hơn người nói
+  const [timestampDelay, setTimestampDelay] = useState<number>(() => {
+    const saved = localStorage.getItem('timestampDelay');
+    return saved ? parseInt(saved, 10) : 10; // Mặc định 10 giây
+  });
+  
+  const containerRef = useRef<HTMLDivElement>(null);
   
   // Multi-line selection states
   const [selectedLines, setSelectedLines] = useState<Set<number>>(new Set());
@@ -405,8 +413,8 @@ export const NotesEditor: React.FC<Props> = ({
       const newLineHasContent = value.trim().length > 0;
       
       if (oldLineEmpty && newLineHasContent && !lineTimestamps.has(index)) {
-        // Save current datetime (when recording or just recorded)
-        const currentDatetime = Date.now();
+        // Save datetime with delay offset (người gõ note thường chậm hơn người nói)
+        const currentDatetime = Date.now() - (timestampDelay * 1000);
         
         const newLineTimestamps = new Map(lineTimestamps);
         newLineTimestamps.set(index, currentDatetime);
@@ -685,6 +693,36 @@ export const NotesEditor: React.FC<Props> = ({
               : '💡 Right-click waveform to insert note • Enter/Shift+Enter for line break in text'
             }
           </span>
+          {isLiveMode && (
+            <div className="timestamp-delay-control" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '12px' }}>
+              <label htmlFor="timestamp-delay" style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>
+                ⏱️ Delay:
+              </label>
+              <input
+                id="timestamp-delay"
+                type="number"
+                min="0"
+                max="60"
+                value={timestampDelay}
+                onChange={(e) => {
+                  const value = Math.max(0, Math.min(60, parseInt(e.target.value, 10) || 0));
+                  setTimestampDelay(value);
+                  localStorage.setItem('timestampDelay', value.toString());
+                }}
+                style={{
+                  width: '50px',
+                  padding: '4px 8px',
+                  fontSize: '12px',
+                  border: '1px solid #434343',
+                  borderRadius: '4px',
+                  backgroundColor: '#1e1e1e',
+                  color: '#d4d4d4'
+                }}
+                title="Timestamp sẽ lùi lại bao nhiêu giây (người gõ note thường chậm hơn người nói)"
+              />
+              <span style={{ fontSize: '12px' }}>giây</span>
+            </div>
+          )}
           <button
             className="toggle-timestamps-btn"
             onClick={() => setShowTimestamps(!showTimestamps)}
