@@ -203,6 +203,13 @@ export const RecordingControls: React.FC<Props> = ({
       const segmentEndTime = Date.now();
       onRecordingChange(false);
 
+      // If auto-transcription is active, wait for it to complete
+      if (autoTranscribe && speechToTextService.isProcessing()) {
+        message.loading({ content: '⏳ Đang chờ chuyển đổi giọng nói hoàn tất...', key: 'waitTranscription' });
+        await speechToTextService.waitForCompletion(3000); // Wait up to 3 seconds
+        message.success({ content: '✅ Chuyển đổi giọng nói hoàn tất', key: 'waitTranscription', duration: 2 });
+      }
+
       // Add current recording as a segment
       const currentSegment: AudioSegment = {
         blob: audioBlob,

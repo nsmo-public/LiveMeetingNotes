@@ -418,6 +418,33 @@ export class SpeechToTextService {
   }
 
   /**
+   * Check if transcription is still processing
+   */
+  public isProcessing(): boolean {
+    return this.isTranscribing;
+  }
+
+  /**
+   * Wait for transcription to complete processing
+   * Returns a promise that resolves when transcription is done
+   */
+  public async waitForCompletion(timeoutMs: number = 3000): Promise<void> {
+    return new Promise((resolve) => {
+      const startTime = Date.now();
+      const checkInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        
+        // If not processing anymore, or timeout reached, resolve
+        if (!this.isTranscribing || elapsed >= timeoutMs) {
+          clearInterval(checkInterval);
+          console.log(`✅ Transcription completion wait finished (${elapsed}ms)`);
+          resolve();
+        }
+      }, 100); // Check every 100ms
+    });
+  }
+
+  /**
    * Stop transcription
    */
   public stopTranscription(): void {
