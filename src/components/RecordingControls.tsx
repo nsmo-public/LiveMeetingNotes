@@ -77,7 +77,7 @@ export const RecordingControls: React.FC<Props> = ({
   const [fileManager] = useState(() => new FileManagerService());
   const [lastProjectName, setLastProjectName] = useState<string>('');
   const [lastRecordingDuration, setLastRecordingDuration] = useState<number>(0);
-  const [autoTranscribe, setAutoTranscribe] = useState<boolean>(false);
+  const [autoTranscribe, setAutoTranscribe] = useState<boolean>(true);
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
   
   // Recording segments tracking for multi-part recording

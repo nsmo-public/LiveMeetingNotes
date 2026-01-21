@@ -8,6 +8,9 @@ export class SpeechToTextService {
   private isTranscribing: boolean = false;
   private onTranscriptionCallback: ((result: TranscriptionResult) => void) | null = null;
   private transcriptionIdCounter: number = 0;
+  private lastInterimText: string = '';
+  private lastUpdateTime: number = 0;
+  private segmentCheckInterval: NodeJS.Timeout | null = null;
 
   /**
    * Initialize the service with configuration
@@ -85,6 +88,16 @@ export class SpeechToTextService {
       this.recognition.continuous = true;
       this.recognition.interimResults = true;
       this.recognition.lang = this.config?.languageCode || 'vi-VN';
+      this.recognition.maxAlternatives = 1;
+
+      // Reset tracking variables
+      this.lastInterimText = '';
+      this.lastUpdateTime = Date.now();
+
+      // Start interval to check for segment completion
+      this.segmentCheckInterval = setInterval(() => {
+        this.checkSegmentCompletion(onTranscription);
+      }, 500); // Check every 500ms
 
       this.recognition.onresult = (event: any) => {
         for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -94,16 +107,53 @@ export class SpeechToTextService {
           const isFinal = result.isFinal;
 
           const now = new Date();
-          const transcriptionResult: TranscriptionResult = {
-            id: `transcription-${++this.transcriptionIdCounter}`,
-            text: transcript,
-            startTime: now.toISOString(),
-            endTime: now.toISOString(),
-            confidence: confidence,
-            isFinal: isFinal
-          };
+          this.lastUpdateTime = Date.now();
 
-          onTranscription(transcriptionResult);
+          // Check if we should force segment completion
+          const shouldForceSegment = this.shouldForceSegment(transcript, isFinal);
+
+          if (shouldForceSegment && !isFinal) {
+            // Force this interim result to become final
+            const transcriptionResult: TranscriptionResult = {
+              id: `transcription-${++this.transcriptionIdCounter}`,
+              text: transcript.trim(),
+              startTime: now.toISOString(),
+              endTime: now.toISOString(),
+              confidence: confidence,
+              isFinal: true // Force as final
+            };
+            
+            onTranscription(transcriptionResult);
+            this.lastInterimText = ''; // Reset for next segment
+          } else if (isFinal) {
+            // Natural final result
+            const transcriptionResult: TranscriptionResult = {
+              id: `transcription-${++this.transcriptionIdCounter}`,
+              text: transcript.trim(),
+              startTime: now.toISOString(),
+              endTime: now.toISOString(),
+              confidence: confidence,
+              isFinal: true
+            };
+            
+            onTranscription(transcriptionResult);
+            this.lastInterimText = '';
+          } else {
+            // Interim result - only send if text changed significantly
+            if (transcript !== this.lastInterimText) {
+              const transcriptionResult: TranscriptionResult = {
+                id: `transcription-${this.transcriptionIdCounter + 1}`, // Use next ID but don't increment
+                text: transcript,
+                startTime: now.toISOString(),
+                endTime: now.toISOString(),
+                confidence: confidence,
+                isFinal: false
+              };
+              
+              onTranscription(transcriptionResult);
+              this.lastInterimText = transcript;
+            }
+          }
         }
       };
 
@@ -131,6 +181,58 @@ export class SpeechToTextService {
     } catch (error) {
       console.error('Failed to initialize Web Speech API:', error);
       return false;
+    }
+  }
+
+  /**
+   * Check if current segment should be forced to complete
+   */
+  private shouldForceSegment(transcript: string, isFinal: boolean): boolean {
+    if (isFinal) return false; // Already final, no need to force
+
+    const trimmedText = transcript.trim();
+    
+    // Force segment if text is too long (>150 characters)
+    if (trimmedText.length > 150) {
+      console.log('🔸 Force segment: Text too long (' + trimmedText.length + ' chars)');
+      return true;
+    }
+
+    // Force segment if ends with sentence punctuation + space
+    // This catches natural pauses after complete sentences
+    if (/[.!?]\s+$/.test(transcript)) {
+      console.log('🔸 Force segment: Sentence end with space detected');
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if segment should complete due to silence timeout
+   */
+  private checkSegmentCompletion(onTranscription: (result: TranscriptionResult) => void): void {
+    if (!this.isTranscribing) return;
+    
+    const now = Date.now();
+    const timeSinceLastUpdate = now - this.lastUpdateTime;
+    
+    // If we have interim text and haven't received update for 2 seconds, finalize it
+    if (this.lastInterimText && timeSinceLastUpdate > 2000) {
+      console.log('🔸 Force segment: Silence timeout (2s)');
+      
+      const transcriptionResult: TranscriptionResult = {
+        id: `transcription-${++this.transcriptionIdCounter}`,
+        text: this.lastInterimText.trim(),
+        startTime: new Date().toISOString(),
+        endTime: new Date().toISOString(),
+        confidence: 0.8, // Moderate confidence for timeout-forced segments
+        isFinal: true
+      };
+      
+      onTranscription(transcriptionResult);
+      this.lastInterimText = '';
+      this.lastUpdateTime = now;
     }
   }
 
@@ -285,6 +387,12 @@ export class SpeechToTextService {
   public stopTranscription(): void {
     this.isTranscribing = false;
 
+    // Clear segment check interval
+    if (this.segmentCheckInterval) {
+      clearInterval(this.segmentCheckInterval);
+      this.segmentCheckInterval = null;
+    }
+
     // Stop Web Speech API
     if (this.recognition) {
       try {
@@ -294,6 +402,10 @@ export class SpeechToTextService {
       }
       this.recognition = null;
     }
+
+    // Reset tracking variables
+    this.lastInterimText = '';
+    this.lastUpdateTime = 0;
 
     // Stop MediaRecorder
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {

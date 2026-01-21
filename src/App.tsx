@@ -241,11 +241,47 @@ export const App: React.FC = () => {
   // Handle new transcription result
   const handleNewTranscription = (result: TranscriptionResult) => {
     setTranscriptions(prev => {
-      // Nếu là kết quả final, thêm vào danh sách
+      // Nếu là kết quả final
       if (result.isFinal) {
         // Loại bỏ kết quả tạm thời (nếu có)
-        const filteredPrev = prev.filter(item => item.isFinal);
-        return [...filteredPrev, result];
+        const finalResults = prev.filter(item => item.isFinal);
+        
+        // Kiểm tra xem kết quả mới có phải là phiên bản mở rộng của kết quả cũ không
+        // Nếu kết quả cuối cùng chứa hầu hết text của kết quả mới hoặc ngược lại
+        if (finalResults.length > 0) {
+          const lastResult = finalResults[finalResults.length - 1];
+          const newText = result.text.trim().toLowerCase();
+          const lastText = lastResult.text.trim().toLowerCase();
+          
+          // Case 1: Kết quả mới là phiên bản mở rộng của kết quả cũ
+          // VD: Cũ: "như vậy là", Mới: "như vậy là cái mẫu"
+          if (newText.startsWith(lastText) && newText.length > lastText.length) {
+            console.log('🔄 Replacing with extended version:', {
+              old: lastText.substring(0, 50) + '...',
+              new: newText.substring(0, 50) + '...'
+            });
+            // Thay thế kết quả cũ bằng kết quả mới
+            finalResults[finalResults.length - 1] = result;
+            return finalResults;
+          }
+          
+          // Case 2: Kết quả cũ là phiên bản mở rộng của kết quả mới → bỏ qua kết quả mới
+          // VD: Cũ: "như vậy là cái mẫu", Mới: "như vậy là"
+          if (lastText.startsWith(newText)) {
+            console.log('⏭️ Skipping shorter duplicate');
+            return prev; // Giữ nguyên
+          }
+          
+          // Case 3: Kiểm tra độ tương đồng cao (>80% giống nhau)
+          const similarity = calculateSimilarity(newText, lastText);
+          if (similarity > 0.8) {
+            console.log('⏭️ Skipping similar result (similarity: ' + (similarity * 100).toFixed(0) + '%)');
+            return prev;
+          }
+        }
+        
+        // Thêm kết quả mới
+        return [...finalResults, result];
       } else {
         // Nếu là kết quả tạm thời, chỉ giữ 1 kết quả tạm thời mới nhất
         const finalResults = prev.filter(item => item.isFinal);
@@ -254,8 +290,28 @@ export const App: React.FC = () => {
     });
     
     if (result.isFinal) {
-      console.log('✅ Final transcription:', result.text);
+      console.log('✅ Final transcription:', result.text.substring(0, 50) + '...');
     }
+  };
+
+  // Calculate text similarity (Levenshtein-based)
+  const calculateSimilarity = (text1: string, text2: string): number => {
+    const longer = text1.length > text2.length ? text1 : text2;
+    const shorter = text1.length > text2.length ? text2 : text1;
+    
+    if (longer.length === 0) return 1.0;
+    
+    // Quick check: if one contains the other
+    if (longer.includes(shorter)) {
+      return shorter.length / longer.length;
+    }
+    
+    // Simple word-based similarity
+    const words1 = text1.split(/\s+/);
+    const words2 = text2.split(/\s+/);
+    const commonWords = words1.filter(w => words2.includes(w)).length;
+    
+    return (2 * commonWords) / (words1.length + words2.length);
   };
 
   return (
