@@ -102,46 +102,23 @@ export const RecordingControls: React.FC<Props> = ({
   // Start/stop transcription when recording state or autoTranscribe changes
   useEffect(() => {
     const startTranscription = async () => {
-      if (isRecording && autoTranscribe && transcriptionConfig && navigator.onLine) {
+      if (isRecording && autoTranscribe && transcriptionConfig && navigator.onLine && audioStream) {
         try {
-          // Get audio stream from navigator
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              echoCancellation: true,
-              noiseSuppression: true,
-              sampleRate: 48000
-            }
-          });
-          
-          setAudioStream(stream);
-          
-          // Start transcription
-          await speechToTextService.startTranscription(stream, onNewTranscription);
+          // Use the shared audio stream from recorder
+          await speechToTextService.startTranscription(audioStream, onNewTranscription);
           message.success('🎤 Bắt đầu chuyển đổi giọng nói sang văn bản');
         } catch (error: any) {
           console.error('Failed to start transcription:', error);
           message.error('Không thể bắt đầu chuyển đổi: ' + error.message);
         }
       } else if (!isRecording || !autoTranscribe) {
-        // Stop transcription
-        if (audioStream) {
-          speechToTextService.stopTranscription();
-          audioStream.getTracks().forEach(track => track.stop());
-          setAudioStream(null);
-        }
+        // Stop transcription (but don't stop the stream - recorder owns it)
+        speechToTextService.stopTranscription();
       }
     };
 
     startTranscription();
-
-    // Cleanup on unmount
-    return () => {
-      if (audioStream) {
-        speechToTextService.stopTranscription();
-        audioStream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [isRecording, autoTranscribe, transcriptionConfig]);
+  }, [isRecording, autoTranscribe, transcriptionConfig, audioStream]);
 
   const handleSelectFolder = async () => {
     try {
@@ -160,6 +137,13 @@ export const RecordingControls: React.FC<Props> = ({
       await recorder.startRecording();
       const startTime = Date.now();
       onRecordingStartTimeChange(startTime);
+      
+      // Get the audio stream from recorder to share with transcription
+      const stream = recorder.getStream();
+      if (stream) {
+        setAudioStream(stream);
+      }
+      
       onRecordingChange(true);
       setDuration(0);
       setRecordingSegments([]); // Clear segments for new recording
@@ -173,6 +157,13 @@ export const RecordingControls: React.FC<Props> = ({
   const handleContinueRecording = async () => {
     try {
       await recorder.startRecording();
+      
+      // Get the audio stream from recorder to share with transcription
+      const stream = recorder.getStream();
+      if (stream) {
+        setAudioStream(stream);
+      }
+      
       onRecordingChange(true);
       setIsMultiPartRecording(true);
       message.success('Recording continued');
@@ -209,6 +200,9 @@ export const RecordingControls: React.FC<Props> = ({
         await speechToTextService.waitForCompletion(3000); // Wait up to 3 seconds
         message.success({ content: '✅ Chuyển đổi giọng nói hoàn tất', key: 'waitTranscription', duration: 2 });
       }
+
+      // Note: audioStream is already stopped by recorder.stopRecording()
+      setAudioStream(null);
 
       // Add current recording as a segment
       const currentSegment: AudioSegment = {

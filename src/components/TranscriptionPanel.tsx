@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Collapse, Empty, Tag, Space, Tooltip } from 'antd';
-import { AudioOutlined, ClockCircleOutlined, UserOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Collapse, Empty, Tag, Space, Tooltip, Input, Button } from 'antd';
+import { AudioOutlined, ClockCircleOutlined, UserOutlined, CheckCircleOutlined, EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons';
 import type { TranscriptionResult } from '../types/types';
 
 interface Props {
@@ -8,16 +8,21 @@ interface Props {
   isTranscribing: boolean;
   isOnline: boolean;
   onSeekAudio?: (timeMs: number) => void;
+  onEditTranscription?: (id: string, newText: string, newSpeaker: string) => void;
 }
 
 export const TranscriptionPanel: React.FC<Props> = ({
   transcriptions,
   isTranscribing,
   isOnline,
-  onSeekAudio
+  onSeekAudio,
+  onEditTranscription
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState<number>(300); // Initial height
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState<string>('');
+  const [editSpeaker, setEditSpeaker] = useState<string>('');
 
   // Auto-scroll to bottom when new transcription arrives
   useEffect(() => {
@@ -60,6 +65,27 @@ export const TranscriptionPanel: React.FC<Props> = ({
     if (onSeekAudio) {
       onSeekAudio(timeMs);
     }
+  };
+
+  const handleStartEdit = (item: TranscriptionResult) => {
+    setEditingId(item.id);
+    setEditText(item.text);
+    setEditSpeaker(item.speaker);
+  };
+
+  const handleSaveEdit = (id: string) => {
+    if (onEditTranscription && editText.trim()) {
+      onEditTranscription(id, editText.trim(), editSpeaker.trim() || 'Person1');
+      setEditingId(null);
+      setEditText('');
+      setEditSpeaker('');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditText('');
+    setEditSpeaker('');
   };
 
   const getConfidenceColor = (confidence: number): string => {
@@ -132,13 +158,16 @@ export const TranscriptionPanel: React.FC<Props> = ({
                     }}
                   >
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                      {transcriptions.map((item, index) => (
+                      {transcriptions.map((item, index) => {
+                        const isEditing = editingId === item.id;
+                        
+                        return (
                         <div
                           key={item.id}
                           style={{
                             padding: '12px',
-                            backgroundColor: item.isFinal ? '#f6ffed' : '#e6f7ff',
-                            border: `1px solid ${item.isFinal ? '#b7eb8f' : '#91d5ff'}`,
+                            backgroundColor: item.isFinal ? (item.isManuallyEdited ? '#fff7e6' : '#f6ffed') : '#e6f7ff',
+                            border: `1px solid ${item.isFinal ? (item.isManuallyEdited ? '#ffa940' : '#b7eb8f') : '#91d5ff'}`,
                             borderRadius: '8px',
                             position: 'relative'
                           }}
@@ -208,45 +237,119 @@ export const TranscriptionPanel: React.FC<Props> = ({
                               )}
                             </Space>
 
-                            {/* Index */}
-                            <span style={{ 
-                              fontSize: '11px', 
-                              color: '#999',
-                              fontWeight: 'bold'
-                            }}>
-                              #{index + 1}
-                            </span>
+                            {/* Index and Edit button */}
+                            <Space size="small">
+                              <span style={{ 
+                                fontSize: '11px', 
+                                color: '#999',
+                                fontWeight: 'bold'
+                              }}>
+                                #{index + 1}
+                              </span>
+                              
+                              {/* Edit button - only for final results */}
+                              {item.isFinal && !isEditing && (
+                                <Tooltip title="Sửa nội dung">
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<EditOutlined />}
+                                    onClick={() => handleStartEdit(item)}
+                                    style={{ padding: '0 4px', height: 'auto' }}
+                                  />
+                                </Tooltip>
+                              )}
+                              
+                              {/* Manual edit indicator */}
+                              {item.isManuallyEdited && (
+                                <Tooltip title="Đã chỉnh sửa thủ công">
+                                  <Tag color="orange" style={{ fontSize: '10px', margin: 0 }}>
+                                    ✏️ Edited
+                                  </Tag>
+                                </Tooltip>
+                              )}
+                            </Space>
                           </div>
 
-                          {/* Transcription text */}
-                          <div
-                            style={{
-                              fontSize: '14px',
-                              lineHeight: '1.6',
-                              color: '#262626',
-                              wordWrap: 'break-word',
-                              fontStyle: item.isFinal ? 'normal' : 'italic',
-                              fontWeight: item.isFinal ? 'normal' : '300'
-                            }}
-                          >
-                            {item.text}
-                          </div>
-
-                          {/* Draft indicator - only for interim results */}
-                          {!item.isFinal && (
-                            <div
-                              style={{
-                                marginTop: '8px',
-                                fontSize: '11px',
-                                color: '#1890ff',
-                                fontStyle: 'italic'
-                              }}
-                            >
-                              ⏳ Đang nhận dạng...
+                          {/* Editable content */}
+                          {isEditing ? (
+                            <div style={{ marginTop: '8px' }}>
+                              {/* Edit Speaker */}
+                              <div style={{ marginBottom: '8px' }}>
+                                <label style={{ fontSize: '12px', color: '#666', marginRight: '8px' }}>
+                                  Người nói:
+                                </label>
+                                <Input
+                                  size="small"
+                                  value={editSpeaker}
+                                  onChange={(e) => setEditSpeaker(e.target.value)}
+                                  placeholder="Person1"
+                                  style={{ width: '150px' }}
+                                />
+                              </div>
+                              
+                              {/* Edit Text */}
+                              <Input.TextArea
+                                value={editText}
+                                onChange={(e) => setEditText(e.target.value)}
+                                autoSize={{ minRows: 2, maxRows: 6 }}
+                                style={{ marginBottom: '8px' }}
+                              />
+                              
+                              {/* Edit actions */}
+                              <Space size="small">
+                                <Button
+                                  type="primary"
+                                  size="small"
+                                  icon={<SaveOutlined />}
+                                  onClick={() => handleSaveEdit(item.id)}
+                                >
+                                  Lưu
+                                </Button>
+                                <Button
+                                  size="small"
+                                  icon={<CloseOutlined />}
+                                  onClick={handleCancelEdit}
+                                >
+                                  Hủy
+                                </Button>
+                              </Space>
                             </div>
+                          ) : (
+                            <>
+                              {/* Transcription text */}
+                              <div
+                                style={{
+                                  marginTop: '8px',
+                                  fontSize: '14px',
+                                  lineHeight: '1.6',
+                                  color: '#262626',
+                                  wordWrap: 'break-word',
+                                  fontStyle: item.isFinal ? 'normal' : 'italic',
+                                  fontWeight: item.isFinal ? 'normal' : '300'
+                                }}
+                              >
+                                {item.text}
+                              </div>
+
+                              {/* Draft indicator - only for interim results */}
+                              {!item.isFinal && (
+                                <div
+                                  style={{
+                                    marginTop: '8px',
+                                    fontSize: '11px',
+                                    color: '#1890ff',
+                                    fontStyle: 'italic'
+                                  }}
+                                >
+                                  ⏳ Đang nhận dạng...
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
-                      ))}
+                      );
+                      })}
                     </Space>
                   </div>
 

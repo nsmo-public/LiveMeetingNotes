@@ -239,6 +239,19 @@ export const App: React.FC = () => {
     console.log('✅ Transcription config updated');
   };
 
+  // Handle edit transcription
+  const handleEditTranscription = (id: string, newText: string, newSpeaker: string) => {
+    setTranscriptions(prev => 
+      prev.map(item => 
+        item.id === id 
+          ? { ...item, text: newText, speaker: newSpeaker, isManuallyEdited: true }
+          : item
+      )
+    );
+    setHasUnsavedChanges(true);
+    console.log('✏️ Transcription edited:', { id, newText, newSpeaker });
+  };
+
   // Handle new transcription result
   const handleNewTranscription = (result: TranscriptionResult) => {
     setTranscriptions(prev => {
@@ -446,6 +459,7 @@ export const App: React.FC = () => {
           isTranscribing={isRecording}
           isOnline={isOnline}
           onSeekAudio={handleSeekToAudio}
+          onEditTranscription={handleEditTranscription}
         />
       )}
 

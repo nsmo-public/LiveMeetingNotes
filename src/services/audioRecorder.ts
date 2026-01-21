@@ -77,6 +77,10 @@ export class AudioRecorderService {
     }
   }
 
+  getStream(): MediaStream | null {
+    return this.stream;
+  }
+
   async stopRecording(): Promise<Blob> {
     return new Promise((resolve, reject) => {
       if (!this.mediaRecorder) {

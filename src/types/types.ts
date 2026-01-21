@@ -69,8 +69,9 @@ export interface TranscriptionResult {
   endTime: string;   // ISO format datetime
   audioTimeMs?: number; // Relative time in audio (milliseconds from recording start)
   confidence: number;
-  speaker?: string;  // Speaker identification (if enabled)
+  speaker: string;  // Speaker identification - default "Person1"
   isFinal: boolean;
+  isManuallyEdited?: boolean; // True if user manually edited the text
 }
 
 export interface SpeechRecognitionAlternative {

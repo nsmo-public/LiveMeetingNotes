@@ -149,6 +149,7 @@ export class SpeechToTextService {
               endTime: now.toISOString(),
               audioTimeMs: nowTime - this.transcriptionStartTime, // Time since transcription started
               confidence: confidence,
+              speaker: 'Person1', // Default speaker
               isFinal: true // Force as final
             };
             
@@ -156,12 +157,15 @@ export class SpeechToTextService {
             this.lastInterimText = ''; // Reset for next segment
           } else if (isFinal) {
             // Natural final result
+            const nowTime = Date.now();
             const transcriptionResult: TranscriptionResult = {
               id: `transcription-${++this.transcriptionIdCounter}`,
               text: transcript.trim(),
               startTime: now.toISOString(),
               endTime: now.toISOString(),
+              audioTimeMs: nowTime - this.transcriptionStartTime,
               confidence: confidence,
+              speaker: 'Person1', // Default speaker
               isFinal: true
             };
             
@@ -170,12 +174,15 @@ export class SpeechToTextService {
           } else {
             // Interim result - only send if text changed significantly
             if (transcript !== this.lastInterimText) {
+              const nowTime = Date.now();
               const transcriptionResult: TranscriptionResult = {
                 id: `transcription-${this.transcriptionIdCounter + 1}`, // Use next ID but don't increment
                 text: transcript,
                 startTime: now.toISOString(),
                 endTime: now.toISOString(),
+                audioTimeMs: nowTime - this.transcriptionStartTime,
                 confidence: confidence,
+                speaker: 'Person1', // Default speaker
                 isFinal: false
               };
               
@@ -258,6 +265,7 @@ export class SpeechToTextService {
         endTime: new Date().toISOString(),
         audioTimeMs: nowTime - this.transcriptionStartTime,
         confidence: 0.8, // Moderate confidence for timeout-forced segments
+        speaker: 'Person1', // Default speaker
         isFinal: true
       };
       
@@ -391,7 +399,7 @@ export class SpeechToTextService {
               endTime: new Date().toISOString(),
               audioTimeMs: Date.now() - this.transcriptionStartTime,
               confidence: alternative.confidence || 0,
-              speaker: speaker,
+              speaker: speaker || 'Person1', // Default to Person1 if no speaker identified
               isFinal: true
             };
 
