@@ -899,9 +899,11 @@ export const RecordingControls: React.FC<Props> = ({
           const datetime = recordingStart + startTimeMs;
           timestampMapData.set(position, datetime);
           
-          // Store speaker name if available
+          // Store speaker name using lineIndex (which equals index in sorted array)
+          // Each timestamp entry corresponds to one line in the reconstructed notes
           if (ts.Speaker) {
             speakersMapData.set(index, ts.Speaker);
+            console.log(`📢 Loading speaker for line ${index}:`, ts.Speaker);
           }
           
           // Add text to notes
@@ -913,6 +915,8 @@ export const RecordingControls: React.FC<Props> = ({
           firstTimestamp: sortedTimestamps[0]?.DateTime,
           firstStartTime: sortedTimestamps[0]?.StartTime,
           timestampCount: timestampMapData.size,
+          speakerCount: speakersMapData.size,
+          speakers: Array.from(speakersMapData.entries()),
           sampleTimestamps: Array.from(timestampMapData.entries()).slice(0, 3).map(([pos, time]) => ({
             position: pos,
             datetime: new Date(time).toISOString(),

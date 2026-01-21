@@ -104,6 +104,17 @@ export const NotesEditor: React.FC<Props> = ({
     });
   }, [timestampMap, notes]);
   
+  // Sync lineSpeakers when initialSpeakers changes (e.g., when loading project)
+  React.useEffect(() => {
+    if (initialSpeakers && initialSpeakers.size > 0) {
+      setLineSpeakers(new Map(initialSpeakers));
+      console.log('📢 NotesEditor synced lineSpeakers from initialSpeakers:', {
+        speakersCount: initialSpeakers.size,
+        speakers: Array.from(initialSpeakers.entries())
+      });
+    }
+  }, [initialSpeakers]);
+  
   // Notify parent component when speakers change
   React.useEffect(() => {
     if (onSpeakersChange) {
