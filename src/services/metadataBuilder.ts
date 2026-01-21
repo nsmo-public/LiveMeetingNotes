@@ -56,30 +56,49 @@ export class MetadataBuilder {
     
     // BLOCK_SEPARATOR is used in NotesEditor to separate lines
     const BLOCK_SEPARATOR = '§§§';
-    
-    // Sort timestamps by datetime
-    const sortedTimestamps = Array.from(timestampMap.entries())
-      .sort((a, b) => a[1] - b[1]);
-    
-    // Split notes by BLOCK_SEPARATOR to get individual notes
     const lines = notes.split(BLOCK_SEPARATOR);
-
-    for (let i = 0; i < sortedTimestamps.length; i++) {
-      const [, datetimeMs] = sortedTimestamps[i];
+    
+    // Build map of position to line index
+    const positionToLineIndex = new Map<number, number>();
+    let currentPos = 0;
+    for (let i = 0; i < lines.length; i++) {
+      positionToLineIndex.set(currentPos, i);
+      currentPos += lines[i].length + (i < lines.length - 1 ? BLOCK_SEPARATOR.length : 0);
+    }
+    
+    // Convert timestampMap to array with line indices
+    const lineTimestamps: Array<{ lineIndex: number; datetimeMs: number }> = [];
+    timestampMap.forEach((datetimeMs, position) => {
+      const lineIndex = positionToLineIndex.get(position);
+      if (lineIndex !== undefined) {
+        lineTimestamps.push({ lineIndex, datetimeMs });
+      }
+    });
+    
+    // Sort by datetime
+    lineTimestamps.sort((a, b) => a.datetimeMs - b.datetimeMs);
+    
+    // Generate timestamp entries
+    for (let i = 0; i < lineTimestamps.length; i++) {
+      const { lineIndex, datetimeMs } = lineTimestamps[i];
       
-      // Get text for this timestamp - use line index from sorted order
-      const text = lines[i]?.trim() || '';
+      // Get text and speaker for this line
+      const text = lines[lineIndex]?.trim() || '';
+      const speaker = speakersMap.get(lineIndex) || '';
+      
+      // Skip empty lines
+      if (!text) continue;
       
       // Calculate relative start time from recording start
       const startTimeMs = recordingStartTime > 0 ? Math.max(0, datetimeMs - recordingStartTime) : 0;
       
       // Find next timestamp or use total duration
-      const nextDatetimeMs = i < sortedTimestamps.length - 1 ? sortedTimestamps[i + 1][1] : datetimeMs + 3000;
+      const nextDatetimeMs = i < lineTimestamps.length - 1 ? lineTimestamps[i + 1].datetimeMs : datetimeMs + 3000;
       const endTimeMs = recordingStartTime > 0 ? Math.min(nextDatetimeMs - recordingStartTime, totalDuration) : startTimeMs + 3000;
 
       timestamps.push({
-        Index: i,
-        Speaker: speakersMap.get(i) || '',
+        Index: timestamps.length,
+        Speaker: speaker,
         Text: text,
         DateTime: new Date(datetimeMs).toISOString(),
         StartTime: this.formatDurationWithMs(startTimeMs),

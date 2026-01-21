@@ -479,27 +479,25 @@ export const RecordingControls: React.FC<Props> = ({
         true
       );
       
-      // Create minimal metadata for notes-only project
-      const notesMetadata = {
-        ProjectName: projectName,
-        Model: 'Notes Only',
-        Language: 'vi',
-        OriginalFileName: '',
-        AudioFileName: '',
-        Duration: '00:00:00.0000000',
-        RecordingStartTime: new Date().toISOString(),
-        Timestamps: notes ? [{
-          Index: 0,
-          Text: notes,
-          DateTime: new Date().toISOString(),
-          StartTime: '00:00:00.0000000',
-          EndTime: '00:00:00.0000000',
-          Highlight: false
-        }] : []
-      };
+      // Create metadata using MetadataBuilder (same as recording mode)
+      const metadata = MetadataBuilder.buildMetadata(
+        meetingInfo,
+        notes,
+        timestampMap,
+        speakersMap,
+        0, // No audio duration for notes-only
+        '', // No audio file
+        recordingStartTime || Date.now() // Use recording start time if available, otherwise current time
+      );
+      
+      // Override fields for notes-only mode
+      metadata.metadata.Model = 'Notes Only';
+      metadata.metadata.OriginalFileName = '';
+      metadata.metadata.AudioFileName = '';
+      metadata.metadata.Duration = '00:00:00.0000000';
       
       await fileManager.saveMetadataFile(
-        notesMetadata,
+        metadata.metadata,
         `${projectName}_metadata.json`,
         projectName,
         true

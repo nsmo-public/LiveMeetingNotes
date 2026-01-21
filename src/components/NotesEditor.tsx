@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Input } from 'antd';
+import type { TextAreaRef } from 'antd/es/input/TextArea';
 
 const { TextArea } = Input;
 
@@ -35,6 +36,8 @@ export const NotesEditor: React.FC<Props> = ({
   });
   
   const containerRef = useRef<HTMLDivElement>(null);
+  const speakerRefs = useRef<Map<number, TextAreaRef>>(new Map());
+  const textRefs = useRef<Map<number, TextAreaRef>>(new Map());
   
   // Multi-line selection states
   const [selectedLines, setSelectedLines] = useState<Set<number>>(new Set());
@@ -72,12 +75,7 @@ export const NotesEditor: React.FC<Props> = ({
   // Speaker names for each line (lineIndex → speakerName)
   const [lineSpeakers, setLineSpeakers] = useState<Map<number, string>>(() => {
     // Initialize from initialSpeakers if provided (when loading project)
-    if (initialSpeakers && initialSpeakers.size > 0) {
-      return new Map(initialSpeakers);
-    }
-    // Otherwise try to restore from localStorage
-    const saved = localStorage.getItem('lineSpeakers');
-    return saved ? new Map(JSON.parse(saved)) : new Map();
+    return initialSpeakers ? new Map(initialSpeakers) : new Map();
   });
 
   // Sync lineTimestamps when parent timestampMap changes (e.g., when loading project)
@@ -106,10 +104,8 @@ export const NotesEditor: React.FC<Props> = ({
     });
   }, [timestampMap, notes]);
   
-  // Save lineSpeakers to localStorage whenever it changes
+  // Notify parent component when speakers change
   React.useEffect(() => {
-    localStorage.setItem('lineSpeakers', JSON.stringify(Array.from(lineSpeakers.entries())));
-    // Notify parent component
     if (onSpeakersChange) {
       onSpeakersChange(lineSpeakers);
     }
@@ -157,10 +153,10 @@ export const NotesEditor: React.FC<Props> = ({
       
       // Focus the new line
       setTimeout(() => {
-        const inputs = containerRef.current?.querySelectorAll('textarea');
-        const newInput = inputs?.[insertIndex] as HTMLTextAreaElement;
-        if (newInput) {
-          newInput.focus();
+        const newTextRef = textRefs.current.get(insertIndex);
+        const newText = newTextRef?.resizableTextArea?.textArea;
+        if (newText) {
+          newText.focus();
         }
       }, 50);
     };
@@ -461,10 +457,19 @@ export const NotesEditor: React.FC<Props> = ({
   const syncToParentTimestampMap = (lines: string[], lineTimestamps: Map<number, number>) => {
     const BLOCK_SEPARATOR = '§§§';
     const newMap = new Map<number, number>();
+    
     lineTimestamps.forEach((time, lineIndex) => {
-      const lineStartPos = lines.slice(0, lineIndex).join(BLOCK_SEPARATOR).length + (lineIndex > 0 ? BLOCK_SEPARATOR.length : 0);
-      newMap.set(lineStartPos, time);
+      // Calculate position for this line
+      let pos = 0;
+      for (let i = 0; i < lineIndex && i < lines.length; i++) {
+        pos += lines[i].length;
+        if (i < lines.length - 1) {
+          pos += BLOCK_SEPARATOR.length;
+        }
+      }
+      newMap.set(pos, time);
     });
+    
     onTimestampMapChange(newMap);
   };
   
@@ -500,6 +505,61 @@ export const NotesEditor: React.FC<Props> = ({
     }, 1000); // Save after 1 second of inactivity
   };
 
+  const handleSpeakerKeyDown = (index: number, e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const target = e.target as HTMLTextAreaElement;
+    const cursorPos = target.selectionStart;
+    const speakerText = target.value;
+
+    // Enter (without Shift): Move to text column at end
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const textAreaRef = textRefs.current.get(index);
+      const textArea = textAreaRef?.resizableTextArea?.textArea;
+      if (textArea) {
+        textArea.focus();
+        textArea.setSelectionRange(textArea.value.length, textArea.value.length);
+      }
+      return;
+    }
+    // Shift+Enter: Allow natural newline in speaker textarea (default behavior)
+
+    // ArrowRight: Move to text column if cursor at end
+    if (e.key === 'ArrowRight' && cursorPos === speakerText.length) {
+      e.preventDefault();
+      const textAreaRef = textRefs.current.get(index);
+      const textArea = textAreaRef?.resizableTextArea?.textArea;
+      if (textArea) {
+        textArea.focus();
+        textArea.setSelectionRange(0, 0);
+      }
+      return;
+    }
+
+    // ArrowUp: Move to previous speaker textarea if cursor at beginning of first line
+    if (e.key === 'ArrowUp' && cursorPos === 0 && index > 0) {
+      e.preventDefault();
+      const prevSpeakerRef = speakerRefs.current.get(index - 1);
+      const prevSpeaker = prevSpeakerRef?.resizableTextArea?.textArea;
+      if (prevSpeaker) {
+        prevSpeaker.focus();
+        prevSpeaker.setSelectionRange(prevSpeaker.value.length, prevSpeaker.value.length);
+      }
+      return;
+    }
+
+    // ArrowDown: Move to next speaker textarea if cursor at end of last line
+    if (e.key === 'ArrowDown' && cursorPos === speakerText.length && index < notes.split('§§§').length - 1) {
+      e.preventDefault();
+      const nextSpeakerRef = speakerRefs.current.get(index + 1);
+      const nextSpeaker = nextSpeakerRef?.resizableTextArea?.textArea;
+      if (nextSpeaker) {
+        nextSpeaker.focus();
+        nextSpeaker.setSelectionRange(0, 0);
+      }
+      return;
+    }
+  };
+
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const BLOCK_SEPARATOR = '§§§';
     const lines = notes.split(BLOCK_SEPARATOR);
@@ -507,13 +567,26 @@ export const NotesEditor: React.FC<Props> = ({
     const target = e.target as HTMLTextAreaElement;
     const cursorPos = target.selectionStart;
 
+    // ArrowLeft: Move to speaker column if cursor at beginning
+    if (e.key === 'ArrowLeft' && cursorPos === 0) {
+      e.preventDefault();
+      const speakerAreaRef = speakerRefs.current.get(index);
+      const speakerArea = speakerAreaRef?.resizableTextArea?.textArea;
+      if (speakerArea) {
+        speakerArea.focus();
+        speakerArea.setSelectionRange(speakerArea.value.length, speakerArea.value.length);
+      }
+      return;
+    }
+
     // ArrowUp: Move to previous textarea if cursor at beginning
     if (e.key === 'ArrowUp' && cursorPos === 0 && index > 0) {
       e.preventDefault();
-      const prevInput = containerRef.current?.querySelectorAll('textarea')[index - 1] as HTMLTextAreaElement;
-      if (prevInput) {
-        prevInput.focus();
-        prevInput.setSelectionRange(prevInput.value.length, prevInput.value.length);
+      const prevTextRef = textRefs.current.get(index - 1);
+      const prevText = prevTextRef?.resizableTextArea?.textArea;
+      if (prevText) {
+        prevText.focus();
+        prevText.setSelectionRange(prevText.value.length, prevText.value.length);
       }
       return;
     }
@@ -521,10 +594,11 @@ export const NotesEditor: React.FC<Props> = ({
     // ArrowDown: Move to next textarea if cursor at end
     if (e.key === 'ArrowDown' && cursorPos === currentLine.length && index < lines.length - 1) {
       e.preventDefault();
-      const nextInput = containerRef.current?.querySelectorAll('textarea')[index + 1] as HTMLTextAreaElement;
-      if (nextInput) {
-        nextInput.focus();
-        nextInput.setSelectionRange(0, 0);
+      const nextTextRef = textRefs.current.get(index + 1);
+      const nextText = nextTextRef?.resizableTextArea?.textArea;
+      if (nextText) {
+        nextText.focus();
+        nextText.setSelectionRange(0, 0);
       }
       return;
     }
@@ -569,10 +643,11 @@ export const NotesEditor: React.FC<Props> = ({
       
       // Focus next line after React re-renders
       setTimeout(() => {
-        const nextInput = containerRef.current?.querySelectorAll('textarea')[index + 1] as HTMLTextAreaElement;
-        if (nextInput) {
-          nextInput.focus();
-          nextInput.setSelectionRange(0, 0);
+        const nextTextRef = textRefs.current.get(index + 1);
+        const nextText = nextTextRef?.resizableTextArea?.textArea;
+        if (nextText) {
+          nextText.focus();
+          nextText.setSelectionRange(0, 0);
         }
       }, 10);
     }
@@ -617,10 +692,11 @@ export const NotesEditor: React.FC<Props> = ({
         
         // Focus previous line at end
         setTimeout(() => {
-          const prevInput = containerRef.current?.querySelectorAll('textarea')[index - 1] as HTMLTextAreaElement;
-          if (prevInput) {
-            prevInput.focus();
-            prevInput.setSelectionRange(prevInput.value.length, prevInput.value.length);
+          const prevTextRef = textRefs.current.get(index - 1);
+          const prevText = prevTextRef?.resizableTextArea?.textArea;
+          if (prevText) {
+            prevText.focus();
+            prevText.setSelectionRange(prevText.value.length, prevText.value.length);
           }
         }, 10);
       } else {
@@ -647,10 +723,11 @@ export const NotesEditor: React.FC<Props> = ({
         
         // Focus previous line
         setTimeout(() => {
-          const prevInput = containerRef.current?.querySelectorAll('textarea')[index - 1] as HTMLTextAreaElement;
-          if (prevInput) {
-            prevInput.focus();
-            prevInput.setSelectionRange(prevLength, prevLength);
+          const prevTextRef = textRefs.current.get(index - 1);
+          const prevText = prevTextRef?.resizableTextArea?.textArea;
+          if (prevText) {
+            prevText.focus();
+            prevText.setSelectionRange(prevLength, prevLength);
           }
         }, 10);
       }
@@ -678,10 +755,11 @@ export const NotesEditor: React.FC<Props> = ({
       
       // Focus current position (which will now be the next line)
       setTimeout(() => {
-        const inputs = containerRef.current?.querySelectorAll('textarea');
-        const focusInput = inputs?.[Math.min(index, inputs.length - 1)] as HTMLTextAreaElement;
-        if (focusInput) {
-          focusInput.focus();
+        const focusIndex = Math.min(index, lines.length - 1);
+        const focusTextRef = textRefs.current.get(focusIndex);
+        const focusText = focusTextRef?.resizableTextArea?.textArea;
+        if (focusText) {
+          focusText.focus();
         }
       }, 10);
     }
@@ -829,7 +907,7 @@ export const NotesEditor: React.FC<Props> = ({
                 )}
               </div>
 
-              {/* Speaker Name Input */}
+              {/* Speaker Name TextArea */}
               <div
                 style={{
                   width: '120px',
@@ -842,7 +920,14 @@ export const NotesEditor: React.FC<Props> = ({
                   paddingTop: '8px'
                 }}
               >
-                <Input
+                <TextArea
+                  ref={(el) => {
+                    if (el) {
+                      speakerRefs.current.set(index, el);
+                    } else {
+                      speakerRefs.current.delete(index);
+                    }
+                  }}
                   value={lineSpeakers.get(index) || ''}
                   onChange={(e) => {
                     const newSpeakers = new Map(lineSpeakers);
@@ -853,8 +938,9 @@ export const NotesEditor: React.FC<Props> = ({
                     }
                     setLineSpeakers(newSpeakers);
                   }}
-                  placeholder="Người nói"
-                  size="small"
+                  onKeyDown={(e) => handleSpeakerKeyDown(index, e)}
+                  placeholder="Speaker"
+                  autoSize={{ minRows: 1, maxRows: 10 }}
                   style={{
                     fontFamily: 'monospace',
                     fontSize: '12px',
@@ -863,13 +949,21 @@ export const NotesEditor: React.FC<Props> = ({
                     backgroundColor: '#1e1e1e',
                     color: '#4ec9b0',
                     border: '1px solid #3e3e42',
-                    borderRadius: '3px'
+                    borderRadius: '3px',
+                    resize: 'none'
                   }}
                 />
               </div>
 
               {/* Text Input */}
               <TextArea
+                ref={(el) => {
+                  if (el) {
+                    textRefs.current.set(index, el);
+                  } else {
+                    textRefs.current.delete(index);
+                  }
+                }}
                 value={line}
                 onChange={(e) => handleLineChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
