@@ -92,15 +92,24 @@ export class FileManagerService {
     await writable.close();
   }
 
-  async createProjectDirectory(projectName: string): Promise<void> {
+  async createProjectDirectory(projectName: string): Promise<FileSystemDirectoryHandle> {
     if (!this.dirHandle) {
       throw new Error('No folder selected');
     }
 
-    // Create subdirectory for project
-    await this.dirHandle.getDirectoryHandle(projectName, {
-      create: true
-    });
+    // Support nested paths like "project/backup"
+    const parts = projectName.split('/');
+    let currentHandle = this.dirHandle;
+    
+    for (const part of parts) {
+      if (part) { // Skip empty parts
+        currentHandle = await currentHandle.getDirectoryHandle(part, {
+          create: true
+        });
+      }
+    }
+    
+    return currentHandle;
   }
 
   async loadProjectFromFolder(): Promise<{
@@ -170,7 +179,12 @@ export class FileManagerService {
           if (name.includes('transcription.json')) {
             const text = await file.text();
             transcriptionData = JSON.parse(text);
-            console.log('Loaded transcription.json:', transcriptionData);
+            console.log('Loaded transcription.json:', {
+              totalCount: transcriptionData.transcriptions?.length || 0,
+              sample: transcriptionData.transcriptions?.[0] || null,
+              speakers: transcriptionData.transcriptions ? 
+                [...new Set(transcriptionData.transcriptions.map((t: any) => t.speaker))] : []
+            });
           }
           
           // Load audio file (.webm, .wav, .mp4, .ogg - support multiple formats)
@@ -223,6 +237,11 @@ export class FileManagerService {
   // Get project directory handle (fallback for saving when parent not available)
   getProjectDirHandle(): FileSystemDirectoryHandle | null {
     return this.projectDirHandle;
+  }
+  
+  // Get current directory handle
+  getDirHandle(): FileSystemDirectoryHandle | null {
+    return this.dirHandle;
   }
   
   // Set directory handle (use parent dir when saving changes)

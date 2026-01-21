@@ -87,7 +87,6 @@ export const RecordingControls: React.FC<Props> = ({
     endTime: number;   // absolute timestamp (Date.now())
     duration: number;  // duration in ms
   }>>([]);
-  const [isMultiPartRecording, setIsMultiPartRecording] = useState(false);
 
   useEffect(() => {
     if (!isRecording) return;
@@ -147,7 +146,6 @@ export const RecordingControls: React.FC<Props> = ({
       onRecordingChange(true);
       setDuration(0);
       setRecordingSegments([]); // Clear segments for new recording
-      setIsMultiPartRecording(false);
       message.success('Recording started');
     } catch (error: any) {
       message.error(error.message);
@@ -165,7 +163,6 @@ export const RecordingControls: React.FC<Props> = ({
       }
       
       onRecordingChange(true);
-      setIsMultiPartRecording(true);
       message.success('Recording continued');
     } catch (error: any) {
       message.error(error.message);
@@ -264,14 +261,18 @@ export const RecordingControls: React.FC<Props> = ({
 
       // Save files
       if (FileManagerService.isSupported() && folderPath) {
-        // Create project subdirectory and save all files there
-        await fileManager.createProjectDirectory(projectName);
+        // Create project subdirectory and get its handle
+        const originalHandle = fileManager.getDirHandle(); // Save original handle
+        const projectDirHandle = await fileManager.createProjectDirectory(projectName);
+        console.log('✓ Created project directory:', projectName);
         
         // If multi-part recording, backup original segments
         if (allSegments.length > 1) {
           try {
-            const backupFolderName = `${projectName}/backup`;
-            await fileManager.createProjectDirectory(backupFolderName);
+            // Create backup subdirectory inside project directory
+            fileManager.setDirHandle(projectDirHandle);
+            const backupDirHandle = await fileManager.createProjectDirectory('backup');
+            fileManager.setDirHandle(backupDirHandle);
             
             // Save individual segments to backup folder
             for (let i = 0; i < allSegments.length; i++) {
@@ -279,7 +280,7 @@ export const RecordingControls: React.FC<Props> = ({
               await fileManager.saveAudioFile(
                 allSegments[i].blob, 
                 segmentFileName, 
-                backupFolderName,
+                undefined,
                 false // Don't add time prefix since parent folder already has it
               );
             }
@@ -291,8 +292,12 @@ export const RecordingControls: React.FC<Props> = ({
           }
         }
         
+        // Set dirHandle to project directory for main files
+        fileManager.setDirHandle(projectDirHandle);
+        
         // Save merged/final audio file
-        await fileManager.saveAudioFile(finalAudioBlob, audioFileName, projectName, true);
+        await fileManager.saveAudioFile(finalAudioBlob, audioFileName, undefined, true);
+        console.log('✓ Saved audio file:', audioFileName);
 
         // Build and save metadata
         const metadata = MetadataBuilder.buildMetadata(
@@ -308,15 +313,18 @@ export const RecordingControls: React.FC<Props> = ({
         await fileManager.saveMetadataFile(
           metadata.meetingInfo,
           `${projectName}_meeting_info.json`,
-          projectName,
+          undefined,
           true
         );
+        console.log('✓ Saved meeting_info.json');
+        
         await fileManager.saveMetadataFile(
           metadata.metadata,
           `${projectName}_metadata.json`,
-          projectName,
+          undefined,
           true
         );
+        console.log('✓ Saved metadata.json');
 
         // Save transcription data if available
         if (transcriptions && transcriptions.length > 0) {
@@ -328,7 +336,7 @@ export const RecordingControls: React.FC<Props> = ({
           await fileManager.saveMetadataFile(
             transcriptionData,
             `${projectName}_transcription.json`,
-            projectName,
+            undefined,
             true
           );
           console.log('💾 Transcription data saved:', transcriptionData.totalCount, 'items');
@@ -336,7 +344,13 @@ export const RecordingControls: React.FC<Props> = ({
 
         // Export Word document to same folder
         const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
-        await fileManager.saveWordFile(wordBlob, `${projectName}.docx`, projectName, true);
+        await fileManager.saveWordFile(wordBlob, `${projectName}.docx`, undefined, true);
+        console.log('✓ Saved Word document');
+        
+        // Restore original handle
+        if (originalHandle) {
+          fileManager.setDirHandle(originalHandle);
+        }
 
         message.success(`Recording saved to folder: ${projectName}`);
         setLastProjectName(projectName);
@@ -395,7 +409,6 @@ export const RecordingControls: React.FC<Props> = ({
       // Set audio for playback and clear segments
       onAudioBlobChange(finalAudioBlob);
       setRecordingSegments([]); // Clear segments after successful save
-      setIsMultiPartRecording(false);
     } catch (error: any) {
       message.error(`Failed to stop recording: ${error.message}`);
     }
@@ -460,8 +473,13 @@ export const RecordingControls: React.FC<Props> = ({
       const sanitizedTitle = sanitizeMeetingTitle(meetingInfo.title || 'Meeting');
       const projectName = `${timePrefix}_${sanitizedTitle}`;
       
-      // Create project subdirectory
-      await fileManager.createProjectDirectory(projectName);
+      // Create project subdirectory and get its handle
+      const originalHandle = fileManager.getDirHandle(); // Save original handle
+      const projectDirHandle = await fileManager.createProjectDirectory(projectName);
+      console.log('✓ Created project directory:', projectName);
+      
+      // Temporarily set dirHandle to the project directory for saving files
+      fileManager.setDirHandle(projectDirHandle);
       
       // Save metadata files (convert to PascalCase format)
       const meetingInfoJson = {
@@ -476,9 +494,10 @@ export const RecordingControls: React.FC<Props> = ({
       await fileManager.saveMetadataFile(
         meetingInfoJson,
         `${projectName}_meeting_info.json`,
-        projectName,
+        undefined,
         true
       );
+      console.log('✓ Saved meeting_info.json');
       
       // Create metadata using MetadataBuilder (same as recording mode)
       const metadata = MetadataBuilder.buildMetadata(
@@ -500,18 +519,31 @@ export const RecordingControls: React.FC<Props> = ({
       await fileManager.saveMetadataFile(
         metadata.metadata,
         `${projectName}_metadata.json`,
-        projectName,
+        undefined,
         true
       );
+      console.log('✓ Saved metadata.json');
       
       // Export Word document
       const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
-      await fileManager.saveWordFile(wordBlob, `${projectName}.docx`, projectName, true);
+      await fileManager.saveWordFile(wordBlob, `${projectName}.docx`, undefined, true);
+      console.log('✓ Saved Word document');
+      
+      // Restore original handle
+      if (originalHandle) {
+        fileManager.setDirHandle(originalHandle);
+      }
       
       message.success(`Notes saved to folder: ${projectName}`);
       setLastProjectName(projectName);
       onSaveComplete();
     } catch (error: any) {
+      console.error('Save Notes Error:', error);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
       message.error(`Failed to save notes: ${error.message}`);
     }
   };
@@ -611,32 +643,42 @@ export const RecordingControls: React.FC<Props> = ({
         
         if (saveHandle || folderPath) {
           // Set directory handle if we got one from loaded project
+          const originalHandle = fileManager.getDirHandle(); // Save original handle
           if (saveHandle) {
             fileManager.setDirHandle(saveHandle);
           }
           
-          // Create new project subdirectory
-          await fileManager.createProjectDirectory(newProjectName);
+          // Create new project subdirectory and get its handle
+          const projectDirHandle = await fileManager.createProjectDirectory(newProjectName);
+          console.log('✓ Created project directory:', newProjectName);
+          
+          // Temporarily set dirHandle to the project directory for saving files
+          fileManager.setDirHandle(projectDirHandle);
           
           // Save audio file only if it exists (recording project)
+          // Now save files directly to current directory (no subDir needed)
           if (audioBlob) {
             const audioFileName = `${newProjectName}.webm`;
-            await fileManager.saveAudioFile(audioBlob, audioFileName, newProjectName, true);
+            await fileManager.saveAudioFile(audioBlob, audioFileName, undefined, true);
+            console.log('✓ Saved audio file:', audioFileName);
           }
 
-          // Save metadata files
+          // Save metadata files directly to project directory
           await fileManager.saveMetadataFile(
             metadata.meetingInfo,
             `${newProjectName}_meeting_info.json`,
-            newProjectName,
+            undefined,
             true
           );
+          console.log('✓ Saved meeting_info.json');
+          
           await fileManager.saveMetadataFile(
             metadata.metadata,
             `${newProjectName}_metadata.json`,
-            newProjectName,
+            undefined,
             true
           );
+          console.log('✓ Saved metadata.json');
 
           // Save transcription data if available
           if (transcriptions && transcriptions.length > 0) {
@@ -648,7 +690,7 @@ export const RecordingControls: React.FC<Props> = ({
             await fileManager.saveMetadataFile(
               transcriptionData,
               `${newProjectName}_transcription.json`,
-              newProjectName,
+              undefined,
               true
             );
             console.log('💾 Transcription data saved in Save Changes:', transcriptionData.totalCount, 'items');
@@ -656,7 +698,13 @@ export const RecordingControls: React.FC<Props> = ({
 
           // Export Word document
           const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
-          await fileManager.saveWordFile(wordBlob, `${newProjectName}.docx`, newProjectName, true);
+          await fileManager.saveWordFile(wordBlob, `${newProjectName}.docx`, undefined, true);
+          console.log('✓ Saved Word document');
+          
+          // Restore original handle
+          if (originalHandle) {
+            fileManager.setDirHandle(originalHandle);
+          }
 
           message.success(`Changes saved to ${saveLocation}: ${newProjectName}`);
           setLastProjectName(newProjectName);
@@ -710,6 +758,12 @@ export const RecordingControls: React.FC<Props> = ({
 
       onSaveComplete(); // Notify parent that save is complete
     } catch (error: any) {
+      console.error('Save Changes Error:', error);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
       message.error(`Failed to save changes: ${error.message}`);
     }
   };

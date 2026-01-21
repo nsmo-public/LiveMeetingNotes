@@ -45,7 +45,7 @@ export const NotesEditor: React.FC<Props> = ({
   const [isDragging, setIsDragging] = useState(false);
   
   // Undo/Redo history
-  const [history, setHistory] = useState<Array<{ notes: string; timestamps: Map<number, number> }>>([]);
+  const [history, setHistory] = useState<Array<{ notes: string; timestamps: Map<number, number>; speakers: Map<number, string> }>>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedNotesRef = useRef<string>('');
@@ -147,7 +147,19 @@ export const NotesEditor: React.FC<Props> = ({
       });
       newLineTimestamps.set(insertIndex, timestampMs);
       
+      // Update lineSpeakers: shift existing speakers for lines after insertion point
+      const newLineSpeakers = new Map<number, string>();
+      lineSpeakers.forEach((speaker, lineIndex) => {
+        if (lineIndex < insertIndex) {
+          newLineSpeakers.set(lineIndex, speaker);
+        } else {
+          newLineSpeakers.set(lineIndex + 1, speaker);
+        }
+      });
+      // New line has no speaker initially (empty)
+      
       setLineTimestamps(newLineTimestamps);
+      setLineSpeakers(newLineSpeakers);
       onNotesChange(lines.join(BLOCK_SEPARATOR));
       syncToParentTimestampMap(lines, newLineTimestamps);
       
@@ -333,7 +345,21 @@ export const NotesEditor: React.FC<Props> = ({
       }
     });
     
+    // Update speakers - same logic as timestamps
+    const newLineSpeakers = new Map<number, string>();
+    offset = 0;
+    
+    lineSpeakers.forEach((speaker, lineIndex) => {
+      if (deletedSet.has(lineIndex)) {
+        offset++;
+      } else {
+        const newIndex = lineIndex - offset;
+        newLineSpeakers.set(newIndex, speaker);
+      }
+    });
+    
     setLineTimestamps(newLineTimestamps);
+    setLineSpeakers(newLineSpeakers);
     setSelectedLines(new Set());
     onNotesChange(lines.join(BLOCK_SEPARATOR));
     syncToParentTimestampMap(lines, newLineTimestamps);
@@ -375,6 +401,7 @@ export const NotesEditor: React.FC<Props> = ({
           setHistoryIndex(historyIndex - 1);
           onNotesChange(prevState.notes);
           setLineTimestamps(new Map(prevState.timestamps));
+          setLineSpeakers(new Map(prevState.speakers));
           const lines = prevState.notes.split(BLOCK_SEPARATOR);
           syncToParentTimestampMap(lines, prevState.timestamps);
           // Clear selection after undo
@@ -389,6 +416,7 @@ export const NotesEditor: React.FC<Props> = ({
           setHistoryIndex(historyIndex + 1);
           onNotesChange(nextState.notes);
           setLineTimestamps(new Map(nextState.timestamps));
+          setLineSpeakers(new Map(nextState.speakers));
           const lines = nextState.notes.split(BLOCK_SEPARATOR);
           syncToParentTimestampMap(lines, nextState.timestamps);
           // Clear selection after redo
@@ -483,7 +511,8 @@ export const NotesEditor: React.FC<Props> = ({
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push({
       notes: notes,
-      timestamps: new Map(lineTimestamps)
+      timestamps: new Map(lineTimestamps),
+      speakers: new Map(lineSpeakers)
     });
     // Limit history to 50 entries
     if (newHistory.length > 50) {
@@ -633,10 +662,26 @@ export const NotesEditor: React.FC<Props> = ({
         }
       });
       
+      // Shift speakers for lines after the split
+      const newLineSpeakers = new Map<number, string>();
+      lineSpeakers.forEach((speaker, lineIndex) => {
+        if (lineIndex < index + 1) {
+          newLineSpeakers.set(lineIndex, speaker);
+        } else {
+          newLineSpeakers.set(lineIndex + 1, speaker);
+        }
+      });
+      // New line inherits speaker from current line (optional, or leave empty)
+      const currentSpeaker = lineSpeakers.get(index);
+      if (currentSpeaker) {
+        newLineSpeakers.set(index + 1, currentSpeaker);
+      }
+      
       // Don't auto-assign timestamp to new line
       // Timestamp will be created when user types first character (in handleLineChange)
       
       setLineTimestamps(newLineTimestamps);
+      setLineSpeakers(newLineSpeakers);
       
       onNotesChange(lines.join(BLOCK_SEPARATOR));
       syncToParentTimestampMap(lines, newLineTimestamps);
@@ -687,6 +732,17 @@ export const NotesEditor: React.FC<Props> = ({
         });
         setLineTimestamps(newLineTimestamps);
         
+        // Remove speaker for deleted line and shift others
+        const newLineSpeakers = new Map<number, string>();
+        lineSpeakers.forEach((speaker, lineIndex) => {
+          if (lineIndex < index) {
+            newLineSpeakers.set(lineIndex, speaker);
+          } else if (lineIndex > index) {
+            newLineSpeakers.set(lineIndex - 1, speaker);
+          }
+        });
+        setLineSpeakers(newLineSpeakers);
+        
         onNotesChange(lines.join(BLOCK_SEPARATOR));
         syncToParentTimestampMap(lines, newLineTimestamps);
         
@@ -717,6 +773,17 @@ export const NotesEditor: React.FC<Props> = ({
           }
         });
         setLineTimestamps(newLineTimestamps);
+        
+        // Remove speaker for deleted line and shift others
+        const newLineSpeakers = new Map<number, string>();
+        lineSpeakers.forEach((speaker, lineIndex) => {
+          if (lineIndex < index) {
+            newLineSpeakers.set(lineIndex, speaker);
+          } else if (lineIndex > index) {
+            newLineSpeakers.set(lineIndex - 1, speaker);
+          }
+        });
+        setLineSpeakers(newLineSpeakers);
         
         onNotesChange(lines.join(BLOCK_SEPARATOR));
         syncToParentTimestampMap(lines, newLineTimestamps);
@@ -749,6 +816,17 @@ export const NotesEditor: React.FC<Props> = ({
         }
       });
       setLineTimestamps(newLineTimestamps);
+      
+      // Remove speaker for deleted line and shift others
+      const newLineSpeakers = new Map<number, string>();
+      lineSpeakers.forEach((speaker, lineIndex) => {
+        if (lineIndex < index) {
+          newLineSpeakers.set(lineIndex, speaker);
+        } else if (lineIndex > index) {
+          newLineSpeakers.set(lineIndex - 1, speaker);
+        }
+      });
+      setLineSpeakers(newLineSpeakers);
       
       onNotesChange(lines.join(BLOCK_SEPARATOR));
       syncToParentTimestampMap(lines, newLineTimestamps);

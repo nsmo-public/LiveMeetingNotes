@@ -352,27 +352,6 @@ export const TranscriptionPanel: React.FC<Props> = ({
                       })}
                     </Space>
                   </div>
-
-                  {/* Status footer */}
-                  <div
-                    style={{
-                      borderTop: '1px solid #f0f0f0',
-                      padding: '8px 16px',
-                      backgroundColor: '#fafafa',
-                      fontSize: '12px',
-                      color: '#666',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <span>
-                      Tổng số: <strong>{transcriptions.length}</strong> đoạn
-                    </span>
-                    <span>
-                      Hoàn thành: <strong>{transcriptions.filter(t => t.isFinal).length}</strong> đoạn
-                    </span>
-                  </div>
                 </>
               )}
             </div>
