@@ -638,6 +638,22 @@ export const RecordingControls: React.FC<Props> = ({
             true
           );
 
+          // Save transcription data if available
+          if (transcriptions && transcriptions.length > 0) {
+            const transcriptionData = {
+              transcriptions: transcriptions.filter(t => t.isFinal), // Only save final results
+              totalCount: transcriptions.filter(t => t.isFinal).length,
+              savedAt: new Date().toISOString()
+            };
+            await fileManager.saveMetadataFile(
+              transcriptionData,
+              `${newProjectName}_transcription.json`,
+              newProjectName,
+              true
+            );
+            console.log('💾 Transcription data saved in Save Changes:', transcriptionData.totalCount, 'items');
+          }
+
           // Export Word document
           const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
           await fileManager.saveWordFile(wordBlob, `${newProjectName}.docx`, newProjectName, true);
@@ -666,6 +682,20 @@ export const RecordingControls: React.FC<Props> = ({
           metadata.metadata,
           `${newProjectName}_metadata.json`
         );
+
+        // Save transcription data if available
+        if (transcriptions && transcriptions.length > 0) {
+          const transcriptionData = {
+            transcriptions: transcriptions.filter(t => t.isFinal),
+            totalCount: transcriptions.filter(t => t.isFinal).length,
+            savedAt: new Date().toISOString()
+          };
+          await downloader.downloadMetadataFile(
+            transcriptionData,
+            `${newProjectName}_transcription.json`
+          );
+          console.log('💾 Transcription data downloaded in Save Changes:', transcriptionData.totalCount, 'items');
+        }
 
         
         await WordExporter.exportToWord(

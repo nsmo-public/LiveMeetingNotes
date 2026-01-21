@@ -12,6 +12,7 @@ export class SpeechToTextService {
   private lastUpdateTime: number = 0;
   private segmentCheckInterval: NodeJS.Timeout | null = null;
   private transcriptionStartTime: number = 0; // Track when transcription started
+  private segmentStartTimeMs: number = 0; // Track when current segment started (for fixed audioTimeMs)
 
   /**
    * Initialize the service with configuration
@@ -120,6 +121,7 @@ export class SpeechToTextService {
       // Reset tracking variables
       this.lastInterimText = '';
       this.lastUpdateTime = Date.now();
+      this.segmentStartTimeMs = 0; // Will be set when first text arrives
 
       // Start interval to check for segment completion
       this.segmentCheckInterval = setInterval(() => {
@@ -136,18 +138,25 @@ export class SpeechToTextService {
           const now = new Date();
           this.lastUpdateTime = Date.now();
 
+          // Set segment start time when first text arrives in new segment
+          if (!this.lastInterimText && transcript.trim()) {
+            // Estimate audio start time by subtracting ~1 second (typical speech-to-text delay)
+            this.segmentStartTimeMs = this.lastUpdateTime - this.transcriptionStartTime - 1000;
+            if (this.segmentStartTimeMs < 0) this.segmentStartTimeMs = 0;
+            console.log('🎬 New segment started at audio time:', this.segmentStartTimeMs, 'ms');
+          }
+
           // Check if we should force segment completion
           const shouldForceSegment = this.shouldForceSegment(transcript, isFinal);
 
           if (shouldForceSegment && !isFinal) {
             // Force this interim result to become final
-            const nowTime = Date.now();
             const transcriptionResult: TranscriptionResult = {
               id: `transcription-${++this.transcriptionIdCounter}`,
               text: transcript.trim(),
               startTime: now.toISOString(),
               endTime: now.toISOString(),
-              audioTimeMs: nowTime - this.transcriptionStartTime, // Time since transcription started
+              audioTimeMs: this.segmentStartTimeMs, // Fixed at segment start
               confidence: confidence,
               speaker: 'Person1', // Default speaker
               isFinal: true // Force as final
@@ -155,15 +164,15 @@ export class SpeechToTextService {
             
             onTranscription(transcriptionResult);
             this.lastInterimText = ''; // Reset for next segment
+            this.segmentStartTimeMs = 0; // Reset for next segment
           } else if (isFinal) {
             // Natural final result
-            const nowTime = Date.now();
             const transcriptionResult: TranscriptionResult = {
               id: `transcription-${++this.transcriptionIdCounter}`,
               text: transcript.trim(),
               startTime: now.toISOString(),
               endTime: now.toISOString(),
-              audioTimeMs: nowTime - this.transcriptionStartTime,
+              audioTimeMs: this.segmentStartTimeMs, // Fixed at segment start
               confidence: confidence,
               speaker: 'Person1', // Default speaker
               isFinal: true
@@ -171,16 +180,16 @@ export class SpeechToTextService {
             
             onTranscription(transcriptionResult);
             this.lastInterimText = '';
+            this.segmentStartTimeMs = 0; // Reset for next segment
           } else {
             // Interim result - only send if text changed significantly
             if (transcript !== this.lastInterimText) {
-              const nowTime = Date.now();
               const transcriptionResult: TranscriptionResult = {
                 id: `transcription-${this.transcriptionIdCounter + 1}`, // Use next ID but don't increment
                 text: transcript,
                 startTime: now.toISOString(),
                 endTime: now.toISOString(),
-                audioTimeMs: nowTime - this.transcriptionStartTime,
+                audioTimeMs: this.segmentStartTimeMs, // Use segment start time
                 confidence: confidence,
                 speaker: 'Person1', // Default speaker
                 isFinal: false
@@ -257,13 +266,12 @@ export class SpeechToTextService {
     if (this.lastInterimText && timeSinceLastUpdate > 2000) {
       console.log('🔸 Force segment: Silence timeout (2s)');
       
-      const nowTime = Date.now();
       const transcriptionResult: TranscriptionResult = {
         id: `transcription-${++this.transcriptionIdCounter}`,
         text: this.lastInterimText.trim(),
         startTime: new Date().toISOString(),
         endTime: new Date().toISOString(),
-        audioTimeMs: nowTime - this.transcriptionStartTime,
+        audioTimeMs: this.segmentStartTimeMs, // Fixed at segment start
         confidence: 0.8, // Moderate confidence for timeout-forced segments
         speaker: 'Person1', // Default speaker
         isFinal: true
@@ -271,6 +279,7 @@ export class SpeechToTextService {
       
       onTranscription(transcriptionResult);
       this.lastInterimText = '';
+      this.segmentStartTimeMs = 0; // Reset for next segment
       this.lastUpdateTime = now;
     }
   }
@@ -397,7 +406,8 @@ export class SpeechToTextService {
               text: alternative.transcript,
               startTime: new Date().toISOString(),
               endTime: new Date().toISOString(),
-              audioTimeMs: Date.now() - this.transcriptionStartTime,
+              // Estimate audio time by subtracting processing delay (~2-3 seconds)
+              audioTimeMs: Math.max(0, Date.now() - this.transcriptionStartTime - 2500),
               confidence: alternative.confidence || 0,
               speaker: speaker || 'Person1', // Default to Person1 if no speaker identified
               isFinal: true
