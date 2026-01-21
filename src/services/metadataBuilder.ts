@@ -8,12 +8,13 @@ export class MetadataBuilder {
     meetingInfo: MeetingInfo,
     notes: string,
     timestampMap: Map<number, number>,
+    speakersMap: Map<number, string>,
     duration: number,
     audioFileName: string,
     recordingStartTime: number
   ) {
     // Extract timestamps from notes with proper text content
-    const timestamps = this.extractTimestamps(notes, timestampMap, duration, recordingStartTime);
+    const timestamps = this.extractTimestamps(notes, timestampMap, speakersMap, duration, recordingStartTime);
 
     // Meeting info JSON (compatible with C# SaveMeetingMetadataToJson)
     const meetingInfoJson: MeetingMetadata = {
@@ -47,10 +48,11 @@ export class MetadataBuilder {
   private static extractTimestamps(
     notes: string,
     timestampMap: Map<number, number>,
+    speakersMap: Map<number, string>,
     totalDuration: number,
     recordingStartTime: number
-  ): Array<{ Index: number; Text: string; DateTime: string; StartTime: string; EndTime: string; Highlight: boolean }> {
-    const timestamps: Array<{ Index: number; Text: string; DateTime: string; StartTime: string; EndTime: string; Highlight: boolean }> = [];
+  ): Array<{ Index: number; Speaker: string; Text: string; DateTime: string; StartTime: string; EndTime: string; Highlight: boolean }> {
+    const timestamps: Array<{ Index: number; Speaker: string; Text: string; DateTime: string; StartTime: string; EndTime: string; Highlight: boolean }> = [];
     
     // BLOCK_SEPARATOR is used in NotesEditor to separate lines
     const BLOCK_SEPARATOR = '§§§';
@@ -77,6 +79,7 @@ export class MetadataBuilder {
 
       timestamps.push({
         Index: i,
+        Speaker: speakersMap.get(i) || '',
         Text: text,
         DateTime: new Date(datetimeMs).toISOString(),
         StartTime: this.formatDurationWithMs(startTimeMs),

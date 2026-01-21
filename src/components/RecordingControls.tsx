@@ -14,6 +14,7 @@ import { FileManagerService, FileDownloadService } from '../services/fileManager
 import { MetadataBuilder } from '../services/metadataBuilder';
 import { WordExporter } from '../services/wordExporter';
 import { speechToTextService } from '../services/speechToText';
+import { AudioMerger, AudioSegment } from '../services/audioMerger';
 import type { MeetingInfo, SpeechToTextConfig, TranscriptionResult } from '../types/types';
 
 interface Props {
@@ -27,12 +28,14 @@ interface Props {
     meetingInfo: MeetingInfo;
     notes: string;
     timestampMap: Map<number, number>;
+    speakersMap: Map<number, string>;
     audioBlob: Blob | null;
     recordingStartTime: number;
   }) => void;
   meetingInfo: MeetingInfo;
   notes: string;
   timestampMap: Map<number, number>;
+  speakersMap: Map<number, string>;
   recordingStartTime: number;
   onRecordingStartTimeChange: (time: number) => void;
   audioBlob: Blob | null;
@@ -57,6 +60,7 @@ export const RecordingControls: React.FC<Props> = ({
   meetingInfo,
   notes,
   timestampMap,
+  speakersMap,
   recordingStartTime,
   onRecordingStartTimeChange,
   audioBlob,
@@ -75,6 +79,15 @@ export const RecordingControls: React.FC<Props> = ({
   const [lastRecordingDuration, setLastRecordingDuration] = useState<number>(0);
   const [autoTranscribe, setAutoTranscribe] = useState<boolean>(false);
   const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
+  
+  // Recording segments tracking for multi-part recording
+  const [recordingSegments, setRecordingSegments] = useState<Array<{
+    blob: Blob;
+    startTime: number; // absolute timestamp (Date.now())
+    endTime: number;   // absolute timestamp (Date.now())
+    duration: number;  // duration in ms
+  }>>([]);
+  const [isMultiPartRecording, setIsMultiPartRecording] = useState(false);
 
   useEffect(() => {
     if (!isRecording) return;
@@ -149,7 +162,20 @@ export const RecordingControls: React.FC<Props> = ({
       onRecordingStartTimeChange(startTime);
       onRecordingChange(true);
       setDuration(0);
+      setRecordingSegments([]); // Clear segments for new recording
+      setIsMultiPartRecording(false);
       message.success('Recording started');
+    } catch (error: any) {
+      message.error(error.message);
+    }
+  };
+
+  const handleContinueRecording = async () => {
+    try {
+      await recorder.startRecording();
+      onRecordingChange(true);
+      setIsMultiPartRecording(true);
+      message.success('Recording continued');
     } catch (error: any) {
       message.error(error.message);
     }
@@ -174,10 +200,56 @@ export const RecordingControls: React.FC<Props> = ({
     try {
       const audioBlob = await recorder.stopRecording();
       const recordingDuration = recorder.getCurrentDuration();
+      const segmentEndTime = Date.now();
       onRecordingChange(false);
 
+      // Add current recording as a segment
+      const currentSegment: AudioSegment = {
+        blob: audioBlob,
+        startTime: recordingStartTime,
+        endTime: segmentEndTime,
+        duration: recordingDuration
+      };
+      
+      const allSegments = [...recordingSegments, currentSegment];
+      setRecordingSegments(allSegments);
+
+      // Check if we need to merge multiple segments
+      let finalAudioBlob: Blob = audioBlob;
+      let finalDuration = recordingDuration;
+      let totalRecordingStartTime = recordingStartTime;
+
+      if (allSegments.length > 1) {
+        message.loading({ content: '🔀 Merging audio segments...', key: 'mergeAudio' });
+        
+        try {
+          // Merge all segments
+          const mergeResult = await AudioMerger.mergeSegments(allSegments);
+          finalAudioBlob = mergeResult.mergedBlob;
+          finalDuration = mergeResult.totalDuration;
+          totalRecordingStartTime = allSegments[0].startTime; // Use first segment's start time
+          
+          message.success({ 
+            content: `✅ Merged ${allSegments.length} segments (${(mergeResult.totalDuration / 1000).toFixed(1)}s total)`, 
+            key: 'mergeAudio',
+            duration: 3
+          });
+
+          console.log('📊 Merge info:', {
+            segments: allSegments.length,
+            totalDuration: `${(finalDuration / 1000).toFixed(2)}s`,
+            gaps: mergeResult.gapInfo.length,
+            gapDetails: mergeResult.gapInfo.map(g => `${(g.durationMs / 1000).toFixed(2)}s`)
+          });
+        } catch (error: any) {
+          message.error({ content: `Failed to merge: ${error.message}`, key: 'mergeAudio' });
+          // Continue with last segment only if merge fails
+          console.error('Merge error:', error);
+        }
+      }
+
       // Generate folder and file names with timestamp prefix and meeting title
-      const now = new Date();
+      const now = new Date(totalRecordingStartTime);
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const day = String(now.getDate()).padStart(2, '0');
@@ -193,17 +265,43 @@ export const RecordingControls: React.FC<Props> = ({
       if (FileManagerService.isSupported() && folderPath) {
         // Create project subdirectory and save all files there
         await fileManager.createProjectDirectory(projectName);
-        // Skip prefix for files in subfolder since folder name already has timestamp
-        await fileManager.saveAudioFile(audioBlob, audioFileName, projectName, true);
+        
+        // If multi-part recording, backup original segments
+        if (allSegments.length > 1) {
+          try {
+            const backupFolderName = `${projectName}/backup`;
+            await fileManager.createProjectDirectory(backupFolderName);
+            
+            // Save individual segments to backup folder
+            for (let i = 0; i < allSegments.length; i++) {
+              const segmentFileName = `${projectName}_part${i + 1}.webm`;
+              await fileManager.saveAudioFile(
+                allSegments[i].blob, 
+                segmentFileName, 
+                backupFolderName,
+                false // Don't add time prefix since parent folder already has it
+              );
+            }
+            
+            console.log(`📦 Backed up ${allSegments.length} segments to backup folder`);
+          } catch (error) {
+            console.error('Failed to backup segments:', error);
+            // Don't fail the entire save if backup fails
+          }
+        }
+        
+        // Save merged/final audio file
+        await fileManager.saveAudioFile(finalAudioBlob, audioFileName, projectName, true);
 
         // Build and save metadata
         const metadata = MetadataBuilder.buildMetadata(
           meetingInfo,
           notes,
           timestampMap,
-          recordingDuration,
+          speakersMap,
+          finalDuration,
           audioFileName,
-          recordingStartTime
+          totalRecordingStartTime
         );
 
         await fileManager.saveMetadataFile(
@@ -241,20 +339,21 @@ export const RecordingControls: React.FC<Props> = ({
 
         message.success(`Recording saved to folder: ${projectName}`);
         setLastProjectName(projectName);
-        setLastRecordingDuration(recordingDuration);
+        setLastRecordingDuration(finalDuration);
         onSaveComplete(); // Notify parent that save is complete
       } else {
         // Fallback: download files
         const downloader = new FileDownloadService();
-        await downloader.downloadAudioFile(audioBlob, audioFileName);
+        await downloader.downloadAudioFile(finalAudioBlob, audioFileName);
 
         const metadata = MetadataBuilder.buildMetadata(
           meetingInfo,
           notes,
           timestampMap,
-          recordingDuration,
+          speakersMap,
+          finalDuration,
           audioFileName,
-          recordingStartTime
+          totalRecordingStartTime
         );
 
         await downloader.downloadMetadataFile(
@@ -288,12 +387,14 @@ export const RecordingControls: React.FC<Props> = ({
 
         message.info('Files downloaded. Please save them to your meeting notes folder.');
         setLastProjectName(projectName);
-        setLastRecordingDuration(recordingDuration);
+        setLastRecordingDuration(finalDuration);
         onSaveComplete(); // Notify parent that save is complete
       }
 
-      // Set audio for playback
-      onAudioBlobChange(audioBlob);
+      // Set audio for playback and clear segments
+      onAudioBlobChange(finalAudioBlob);
+      setRecordingSegments([]); // Clear segments after successful save
+      setIsMultiPartRecording(false);
     } catch (error: any) {
       message.error(`Failed to stop recording: ${error.message}`);
     }
@@ -476,6 +577,7 @@ export const RecordingControls: React.FC<Props> = ({
           meetingInfo,
           notes,
           timestampMap,
+          speakersMap,
           lastRecordingDuration,
           audioFileName,
           recordingStartTime
@@ -638,8 +740,9 @@ export const RecordingControls: React.FC<Props> = ({
         'Attendees → attendees': `"${projectData.meetingInfo.Attendees}" → "${loadedMeetingInfo.attendees}"`
       });
 
-      // Parse metadata to reconstruct timestampMap and notes
+      // Parse metadata to reconstruct timestampMap, speakersMap and notes
       const timestampMapData = new Map<number, number>();
+      const speakersMapData = new Map<number, string>();
       let notesText = '';
       
       // Get recording start time - prefer from metadata, fallback to calculation
@@ -713,6 +816,11 @@ export const RecordingControls: React.FC<Props> = ({
           const datetime = recordingStart + startTimeMs;
           timestampMapData.set(position, datetime);
           
+          // Store speaker name if available
+          if (ts.Speaker) {
+            speakersMapData.set(index, ts.Speaker);
+          }
+          
           // Add text to notes
           notesText += ts.Text || '';
         });
@@ -752,6 +860,7 @@ export const RecordingControls: React.FC<Props> = ({
         meetingInfo: loadedMeetingInfo,
         notes: notesText,
         timestampMap: timestampMapData,
+        speakersMap: speakersMapData,
         audioBlob: projectData.audioBlob,
         recordingStartTime: recordingStart
       });
@@ -839,15 +948,30 @@ export const RecordingControls: React.FC<Props> = ({
         </Button>
 
         {!isRecording ? (
-          <Button
-            type="primary"
-            danger
-            icon={<AudioOutlined />}
-            onClick={handleStartRecording}
-            size="large"
-          >
-            Record
-          </Button>
+          <>
+            <Button
+              type="primary"
+              danger
+              icon={<AudioOutlined />}
+              onClick={handleStartRecording}
+              size="large"
+            >
+              Record
+            </Button>
+            
+            {/* Show Continue Recording button if there are segments */}
+            {recordingSegments.length > 0 && (
+              <Button
+                type="primary"
+                icon={<AudioOutlined />}
+                onClick={handleContinueRecording}
+                size="large"
+                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+              >
+                Continue Recording
+              </Button>
+            )}
+          </>
         ) : (
           <Button
             type="primary"

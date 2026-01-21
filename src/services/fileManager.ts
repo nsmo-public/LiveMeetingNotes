@@ -165,14 +165,15 @@ export class FileManagerService {
             metadataData = JSON.parse(text);
             console.log('Loaded metadata.json:', metadataData);
           }
-          transcription.json
+          
+          // Load transcription.json
           if (name.includes('transcription.json')) {
             const text = await file.text();
             transcriptionData = JSON.parse(text);
             console.log('Loaded transcription.json:', transcriptionData);
           }
           
-          // Load 
+          // Load audio file (.webm, .wav, .mp4, .ogg - support multiple formats)
           // Load audio file (.webm, .wav, .mp4, .ogg - support multiple formats)
           if (name.endsWith('.webm') || name.endsWith('.mp3')  || name.endsWith('.wav') || name.endsWith('.mp4') || name.endsWith('.ogg')) {
             audioBlob = file;

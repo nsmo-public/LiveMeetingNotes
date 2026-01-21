@@ -61,7 +61,7 @@ export const TranscriptionPanel: React.FC<Props> = ({
         </Space>
       }
       style={{ 
-        height: '300px',
+        height: '500px',
         display: 'flex',
         flexDirection: 'column'
       }}

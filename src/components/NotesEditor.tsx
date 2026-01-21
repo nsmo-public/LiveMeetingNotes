@@ -10,6 +10,8 @@ interface Props {
   onTimestampMapChange: (map: Map<number, number>) => void;
   recordingStartTime: number;
   isLiveMode?: boolean; // true when recording/just recorded, false when loaded from project
+  onSpeakersChange?: (speakers: Map<number, string>) => void; // Callback to sync speaker data
+  initialSpeakers?: Map<number, string>; // Initial speakers data when loading project
 }
 
 export const NotesEditor: React.FC<Props> = ({
@@ -18,7 +20,9 @@ export const NotesEditor: React.FC<Props> = ({
   timestampMap,
   onTimestampMapChange,
   recordingStartTime,
-  isLiveMode = true
+  isLiveMode = true,
+  onSpeakersChange,
+  initialSpeakers
 }) => {
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [editingDatetimeIndex, setEditingDatetimeIndex] = useState<number | null>(null);
@@ -64,6 +68,17 @@ export const NotesEditor: React.FC<Props> = ({
     
     return initialLineTimestamps;
   });
+  
+  // Speaker names for each line (lineIndex → speakerName)
+  const [lineSpeakers, setLineSpeakers] = useState<Map<number, string>>(() => {
+    // Initialize from initialSpeakers if provided (when loading project)
+    if (initialSpeakers && initialSpeakers.size > 0) {
+      return new Map(initialSpeakers);
+    }
+    // Otherwise try to restore from localStorage
+    const saved = localStorage.getItem('lineSpeakers');
+    return saved ? new Map(JSON.parse(saved)) : new Map();
+  });
 
   // Sync lineTimestamps when parent timestampMap changes (e.g., when loading project)
   React.useEffect(() => {
@@ -90,6 +105,15 @@ export const NotesEditor: React.FC<Props> = ({
       sampleLineTimestamps: Array.from(newLineTimestamps.entries()).slice(0, 3)
     });
   }, [timestampMap, notes]);
+  
+  // Save lineSpeakers to localStorage whenever it changes
+  React.useEffect(() => {
+    localStorage.setItem('lineSpeakers', JSON.stringify(Array.from(lineSpeakers.entries())));
+    // Notify parent component
+    if (onSpeakersChange) {
+      onSpeakersChange(lineSpeakers);
+    }
+  }, [lineSpeakers, onSpeakersChange]);
 
   // Listen for insert-note-at-time event from AudioPlayer
   React.useEffect(() => {
@@ -803,6 +827,45 @@ export const NotesEditor: React.FC<Props> = ({
                 ) : (
                   timeMs !== undefined && showTimestamps ? (isLiveMode ? formatDatetime(timeMs) : formatTimestamp(timeMs)) : '\u00A0'
                 )}
+              </div>
+
+              {/* Speaker Name Input */}
+              <div
+                style={{
+                  width: '120px',
+                  backgroundColor: isSelected ? 'rgba(37, 37, 38, 0.8)' : '#2d2d30',
+                  borderRight: '1px solid #434343',
+                  padding: '4px',
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  paddingTop: '8px'
+                }}
+              >
+                <Input
+                  value={lineSpeakers.get(index) || ''}
+                  onChange={(e) => {
+                    const newSpeakers = new Map(lineSpeakers);
+                    if (e.target.value) {
+                      newSpeakers.set(index, e.target.value);
+                    } else {
+                      newSpeakers.delete(index);
+                    }
+                    setLineSpeakers(newSpeakers);
+                  }}
+                  placeholder="Người nói"
+                  size="small"
+                  style={{
+                    fontFamily: 'monospace',
+                    fontSize: '12px',
+                    padding: '2px 6px',
+                    width: '100%',
+                    backgroundColor: '#1e1e1e',
+                    color: '#4ec9b0',
+                    border: '1px solid #3e3e42',
+                    borderRadius: '3px'
+                  }}
+                />
               </div>
 
               {/* Text Input */}

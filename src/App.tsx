@@ -26,6 +26,7 @@ export const App: React.FC = () => {
   });
   const [notes, setNotes] = useState<string>('');
   const [timestampMap, setTimestampMap] = useState<Map<number, number>>(new Map());
+  const [speakersMap, setSpeakersMap] = useState<Map<number, string>>(new Map());
   const [recordingStartTime, setRecordingStartTime] = useState<number>(0);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -205,6 +206,7 @@ export const App: React.FC = () => {
     meetingInfo: MeetingInfo;
     notes: string;
     timestampMap: Map<number, number>;
+    speakersMap: Map<number, string>;
     audioBlob: Blob | null;
     recordingStartTime: number;
   }) => {
@@ -212,6 +214,7 @@ export const App: React.FC = () => {
       meetingInfo: loadedData.meetingInfo,
       notesLength: loadedData.notes.length,
       timestampMapSize: loadedData.timestampMap.size,
+      speakersMapSize: loadedData.speakersMap.size,
       audioBlobSize: loadedData.audioBlob?.size || 0,
       hasAudio: loadedData.audioBlob !== null
     });
@@ -219,6 +222,7 @@ export const App: React.FC = () => {
     setMeetingInfo(loadedData.meetingInfo);
     setNotes(loadedData.notes);
     setTimestampMap(loadedData.timestampMap);
+    setSpeakersMap(loadedData.speakersMap);
     setAudioBlob(loadedData.audioBlob);
     setRecordingStartTime(loadedData.recordingStartTime);
     setIsSaved(true);
@@ -346,6 +350,7 @@ export const App: React.FC = () => {
         meetingInfo={meetingInfo}
         notes={notes}
         timestampMap={timestampMap}
+        speakersMap={speakersMap}
         recordingStartTime={recordingStartTime}
         onRecordingStartTimeChange={setRecordingStartTime}
         audioBlob={audioBlob}
@@ -365,6 +370,8 @@ export const App: React.FC = () => {
         onTimestampMapChange={setTimestampMap}
         recordingStartTime={recordingStartTime}
         isLiveMode={isLiveMode}
+        onSpeakersChange={setSpeakersMap}
+        initialSpeakers={speakersMap}
       />
 
       {/* Transcription Panel - Only show when online and configured */}
