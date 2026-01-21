@@ -45,12 +45,19 @@ export const TranscriptionConfig: React.FC<Props> = ({
       setIsSaving(true);
 
       const config: SpeechToTextConfig = {
-        apiKey: values.apiKey.trim(),
+        apiKey: values.apiKey?.trim() || '',
         apiEndpoint: values.apiEndpoint.trim(),
         languageCode: values.languageCode,
         enableSpeakerDiarization: values.enableSpeakerDiarization,
         enableAutomaticPunctuation: values.enableAutomaticPunctuation
       };
+
+      // Validate: Speaker diarization requires API Key
+      if (config.enableSpeakerDiarization && !config.apiKey) {
+        message.error('⚠️ Nhận diện người nói yêu cầu Google Cloud API Key');
+        setIsSaving(false);
+        return;
+      }
 
       // Save to localStorage
       SpeechToTextService.saveConfig(config);
@@ -70,7 +77,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
   const handleClearConfig = () => {
     Modal.confirm({
       title: 'Xóa cấu hình?',
-      content: 'Bạn có chắc chắn muốn xóa cấu hình Google Cloud Speech-to-Text?',
+      content: 'Bạn có chắc chắn muốn xóa cấu hình Speech-to-Text?',
       okText: 'Xóa',
       okType: 'danger',
       cancelText: 'Hủy',
@@ -87,7 +94,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
       title={
         <Space>
           <SettingOutlined />
-          <span>Cấu hình Google Cloud Speech-to-Text</span>
+          <span>Cấu hình Speech-to-Text</span>
         </Space>
       }
       open={visible}
@@ -117,16 +124,25 @@ export const TranscriptionConfig: React.FC<Props> = ({
         autoComplete="off"
       >
         <Form.Item
-          label="API Key"
+          label="API Key (Tùy chọn)"
           name="apiKey"
           rules={[
-            { required: true, message: 'Vui lòng nhập API Key' },
             { min: 20, message: 'API Key phải có ít nhất 20 ký tự' }
           ]}
           extra={
             <Space direction="vertical" size="small" style={{ marginTop: 8 }}>
+              <div style={{ fontSize: '12px', color: '#52c41a' }}>
+                ℹ️ <strong>Không bắt buộc:</strong> Nếu để trống, sẽ dùng Web Speech API miễn phí của trình duyệt
+              </div>
               <div style={{ fontSize: '12px', color: '#888' }}>
-                <InfoCircleOutlined /> Lấy API Key từ{' '}
+                <InfoCircleOutlined /> Chỉ cần nhập nếu muốn:
+                <ul style={{ margin: '4px 0', paddingLeft: 20 }}>
+                  <li>Nhận diện người nói (speaker diarization)</li>
+                  <li>Độ chính xác cao hơn với Google Cloud</li>
+                </ul>
+              </div>
+              <div style={{ fontSize: '12px', color: '#888' }}>
+                Lấy API Key từ{' '}
                 <a
                   href="https://console.cloud.google.com/apis/credentials"
                   target="_blank"
@@ -136,13 +152,13 @@ export const TranscriptionConfig: React.FC<Props> = ({
                 </a>
               </div>
               <div style={{ fontSize: '12px', color: '#ff9800' }}>
-                ⚠️ Lưu ý: API Key sẽ được lưu trên trình duyệt của bạn. Không chia sẻ với người khác.
+                ⚠️ API Key sẽ được lưu trên trình duyệt. Không chia sẻ với người khác.
               </div>
             </Space>
           }
         >
           <Input.Password
-            placeholder="Nhập API Key của bạn"
+            placeholder="Để trống để dùng Web Speech API miễn phí"
             autoComplete="off"
           />
         </Form.Item>
@@ -183,7 +199,14 @@ export const TranscriptionConfig: React.FC<Props> = ({
           label="Nhận diện người nói"
           name="enableSpeakerDiarization"
           valuePropName="checked"
-          extra="Tự động phân biệt và gán nhãn cho từng người nói trong cuộc họp"
+          extra={
+            <div>
+              <div style={{ marginTop: 4 }}>Tự động phân biệt và gán nhãn cho từng người nói trong cuộc họp</div>
+              <div style={{ marginTop: 4, color: '#ff9800', fontSize: '12px' }}>
+                ⚠️ Chức năng này chỉ khả dụng với Google Cloud API (có phí). Sẽ không sử dụng Web Speech API miễn phí.
+              </div>
+            </div>
+          }
         >
           <Switch />
         </Form.Item>
@@ -201,21 +224,30 @@ export const TranscriptionConfig: React.FC<Props> = ({
           style={{
             marginTop: 24,
             padding: 16,
-            backgroundColor: '#cba8f8',
+            backgroundColor: '#ee91f7',
             borderLeft: '4px solid #1890ff',
             borderRadius: 4
           }}
         >
-          <h4 style={{ marginTop: 0, color: '#1890ff' }}>📌 Hướng dẫn sử dụng:</h4>
-          <ol style={{ marginBottom: 0, paddingLeft: 20 }}>
-            <li>Truy cập <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer">Google Cloud Console</a></li>
-            <li>Tạo hoặc chọn một project</li>
-            <li>Bật API "Cloud Speech-to-Text API"</li>
-            <li>Tạo API Key tại mục "Credentials"</li>
-            <li>Sao chép API Key và dán vào form này</li>
-            <li>Chọn ngôn ngữ và các tùy chọn khác</li>
-            <li>Nhấn "Lưu cấu hình"</li>
-          </ol>
+          <h4 style={{ marginTop: 0, color: '#1890ff' }}>📌 Hai chế độ hoạt động:</h4>
+          <div style={{ marginBottom: 16 }}>
+            <strong style={{ color: '#52c41a' }}>🆓 Web Speech API (Miễn phí - Mặc định)</strong>
+            <ul style={{ marginBottom: 0, paddingLeft: 20, fontSize: '13px' }}>
+              <li>Không cần API Key</li>
+              <li>Chạy trên trình duyệt Chrome/Edge</li>
+              <li>Miễn phí 100%</li>
+              <li><strong style={{ color: '#ff4d4f' }}>Không</strong> hỗ trợ nhận diện người nói</li>
+            </ul>
+          </div>
+          <div>
+            <strong style={{ color: '#1890ff' }}>💰 Google Cloud API (Có phí - Nâng cao)</strong>
+            <ul style={{ marginBottom: 0, paddingLeft: 20, fontSize: '13px' }}>
+              <li>Cần API Key từ <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer">Google Cloud Console</a></li>
+              <li>Độ chính xác cao hơn</li>
+              <li>Hỗ trợ nhận diện người nói (speaker diarization)</li>
+              <li>Chi phí: ~$0.006/15 giây audio</li>
+            </ul>
+          </div>
         </div>
       </Form>
     </Modal>

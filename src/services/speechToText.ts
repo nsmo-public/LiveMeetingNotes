@@ -28,7 +28,14 @@ export class SpeechToTextService {
    * Check if service is configured
    */
   public isConfigured(): boolean {
-    return this.config !== null && !!this.config.apiKey;
+    return this.config !== null;
+  }
+
+  /**
+   * Check if Google Cloud API is configured with valid API Key
+   */
+  public hasGoogleCloudAPI(): boolean {
+    return this.config !== null && !!this.config.apiKey && this.config.apiKey.length > 0;
   }
 
   /**
@@ -46,7 +53,12 @@ export class SpeechToTextService {
     onTranscription: (result: TranscriptionResult) => void
   ): Promise<void> {
     if (!this.isConfigured()) {
-      throw new Error('Speech-to-Text service not configured. Please set API key first.');
+      throw new Error('Speech-to-Text service not configured. Please configure it first.');
+    }
+
+    // Check if speaker diarization is enabled but no API Key
+    if (this.config?.enableSpeakerDiarization && !this.hasGoogleCloudAPI()) {
+      throw new Error('Speaker diarization requires Google Cloud API Key. Please add API Key in configuration.');
     }
 
     if (this.isTranscribing) {
@@ -58,15 +70,28 @@ export class SpeechToTextService {
     this.isTranscribing = true;
     this.audioChunks = [];
 
-    // Try using Web Speech API first (free, browser-based)
-    if (this.tryWebSpeechAPI(stream, onTranscription)) {
-      console.log('✅ Using Web Speech API for transcription');
+    // Check if speaker diarization is enabled
+    // Web Speech API does NOT support speaker diarization
+    // Must use Google Cloud API for this feature
+    if (this.config?.enableSpeakerDiarization) {
+      console.log('🎯 Speaker diarization enabled - Using Google Cloud Speech-to-Text API');
+      this.startGoogleCloudTranscription(stream);
       return;
     }
 
-    // Fallback to Google Cloud Speech-to-Text API
-    console.log('🌐 Using Google Cloud Speech-to-Text API');
-    this.startGoogleCloudTranscription(stream);
+    // Try using Web Speech API first (free, browser-based)
+    if (this.tryWebSpeechAPI(stream, onTranscription)) {
+      console.log('✅ Using Web Speech API for transcription (FREE)');
+      return;
+    }
+
+    // Fallback to Google Cloud Speech-to-Text API (if API Key available)
+    if (this.hasGoogleCloudAPI()) {
+      console.log('🌐 Using Google Cloud Speech-to-Text API');
+      this.startGoogleCloudTranscription(stream);
+    } else {
+      throw new Error('Web Speech API not available and no Google Cloud API Key configured.');
+    }
   }
 
   /**
@@ -302,8 +327,9 @@ export class SpeechToTextService {
           languageCode: this.config.languageCode,
           enableAutomaticPunctuation: this.config.enableAutomaticPunctuation,
           enableSpeakerDiarization: this.config.enableSpeakerDiarization,
-          diarizationSpeakerCount: this.config.enableSpeakerDiarization ? 2 : undefined,
-          model: 'default'
+          diarizationSpeakerCount: this.config.enableSpeakerDiarization ? 5 : undefined, // Support up to 5 speakers
+          model: 'default',
+          useEnhanced: true // Use enhanced model for better accuracy
         },
         audio: {
           content: base64Audio.split(',')[1] // Remove data:audio/webm;base64, prefix
@@ -335,10 +361,20 @@ export class SpeechToTextService {
             
             // Extract speaker information if available
             let speaker: string | undefined;
+            const speakerTags = new Set<number>();
+            
             if (alternative.words && alternative.words.length > 0) {
-              const speakerTag = alternative.words[0].speakerTag;
-              if (speakerTag !== undefined) {
-                speaker = `Speaker ${speakerTag}`;
+              // Collect all speaker tags in this segment
+              alternative.words.forEach((word: any) => {
+                if (word.speakerTag !== undefined) {
+                  speakerTags.add(word.speakerTag);
+                }
+              });
+              
+              // If multiple speakers in one segment, show all
+              if (speakerTags.size > 0) {
+                const speakers = Array.from(speakerTags).sort().map(tag => `Người ${tag + 1}`);
+                speaker = speakers.join(', ');
               }
             }
 
