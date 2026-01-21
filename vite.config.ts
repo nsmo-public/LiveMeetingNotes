@@ -19,17 +19,17 @@ export default defineConfig({
         background_color: '#1e1e1e',
         display: 'standalone',
         orientation: 'any',
-        scope: '/LiveMeetingNote-Web/',
-        start_url: '/LiveMeetingNote-Web/',
+        scope: '/LiveMeetingNotes/',
+        start_url: '/LiveMeetingNotes/',
         icons: [
           {
-            src: '/LiveMeetingNote-Web/icons/icon-192.svg',
+            src: '/LiveMeetingNotes/icons/icon-192.svg',
             sizes: '192x192',
             type: 'image/svg+xml',
             purpose: 'any maskable'
           },
           {
-            src: '/LiveMeetingNote-Web/icons/icon-512.svg',
+            src: '/LiveMeetingNotes/icons/icon-512.svg',
             sizes: '512x512',
             type: 'image/svg+xml',
             purpose: 'any maskable'

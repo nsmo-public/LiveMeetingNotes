@@ -4,9 +4,12 @@ import { RecordingControls } from './components/RecordingControls';
 import { NotesEditor } from './components/NotesEditor';
 import { AudioPlayer } from './components/AudioPlayer';
 import { HelpButton } from './components/HelpButton';
+import { TranscriptionConfig } from './components/TranscriptionConfig';
+import { TranscriptionPanel } from './components/TranscriptionPanel';
 import { FileManagerService } from './services/fileManager';
 import { saveBackup, loadBackup, clearBackup, hasBackup, getBackupAge } from './services/autoBackup';
-import type { MeetingInfo } from './types/types';
+import { speechToTextService, SpeechToTextService } from './services/speechToText';
+import type { MeetingInfo, SpeechToTextConfig, TranscriptionResult } from './types/types';
 import './styles/global.css';
 
 export const App: React.FC = () => {
@@ -31,6 +34,12 @@ export const App: React.FC = () => {
   const [showBackupDialog, setShowBackupDialog] = useState(false);
   const [backupAge, setBackupAge] = useState<number | null>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Speech-to-Text states
+  const [showTranscriptionConfig, setShowTranscriptionConfig] = useState(false);
+  const [transcriptionConfig, setTranscriptionConfig] = useState<SpeechToTextConfig | null>(null);
+  const [transcriptions, setTranscriptions] = useState<TranscriptionResult[]>([]);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Check browser compatibility
   useEffect(() => {
@@ -39,6 +48,30 @@ export const App: React.FC = () => {
         'File System Access API not supported. Files will be downloaded instead.'
       );
     }
+  }, []);
+  
+  // Load Speech-to-Text config on mount
+  useEffect(() => {
+    const savedConfig = SpeechToTextService.loadConfig();
+    if (savedConfig) {
+      setTranscriptionConfig(savedConfig);
+      speechToTextService.initialize(savedConfig);
+      console.log('🎤 Speech-to-Text config loaded');
+    }
+  }, []);
+  
+  // Monitor online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
   
   // Check for existing backup on mount
@@ -194,6 +227,33 @@ export const App: React.FC = () => {
     setIsLiveMode(false); // Switch to timestamp mode when loading project
   };
 
+  // Handle transcription config save
+  const handleSaveTranscriptionConfig = (config: SpeechToTextConfig) => {
+    setTranscriptionConfig(config);
+    speechToTextService.initialize(config);
+    console.log('✅ Transcription config updated');
+  };
+
+  // Handle new transcription result
+  const handleNewTranscription = (result: TranscriptionResult) => {
+    setTranscriptions(prev => {
+      // Nếu là kết quả final, thêm vào danh sách
+      if (result.isFinal) {
+        // Loại bỏ kết quả tạm thời (nếu có)
+        const filteredPrev = prev.filter(item => item.isFinal);
+        return [...filteredPrev, result];
+      } else {
+        // Nếu là kết quả tạm thời, chỉ giữ 1 kết quả tạm thời mới nhất
+        const finalResults = prev.filter(item => item.isFinal);
+        return [...finalResults, result];
+      }
+    });
+    
+    if (result.isFinal) {
+      console.log('✅ Final transcription:', result.text);
+    }
+  };
+
   return (
     <div className="app-container">
       {/* Backup Restoration Dialog */}
@@ -291,6 +351,11 @@ export const App: React.FC = () => {
         audioBlob={audioBlob}
         isSaved={isSaved}
         hasUnsavedChanges={hasUnsavedChanges}
+        onShowTranscriptionConfig={() => setShowTranscriptionConfig(true)}
+        transcriptionConfig={transcriptionConfig}
+        onNewTranscription={handleNewTranscription}
+        onClearTranscriptions={() => setTranscriptions([])}
+        transcriptions={transcriptions}
       />
 
       <NotesEditor
@@ -302,7 +367,24 @@ export const App: React.FC = () => {
         isLiveMode={isLiveMode}
       />
 
+      {/* Transcription Panel - Only show when online and configured */}
+      {isOnline && transcriptionConfig && (
+        <TranscriptionPanel
+          transcriptions={transcriptions}
+          isTranscribing={isRecording}
+          isOnline={isOnline}
+        />
+      )}
+
       <AudioPlayer audioBlob={audioBlob} />
+
+      {/* Transcription Configuration Modal */}
+      <TranscriptionConfig
+        visible={showTranscriptionConfig}
+        onClose={() => setShowTranscriptionConfig(false)}
+        onSave={handleSaveTranscriptionConfig}
+        currentConfig={transcriptionConfig}
+      />
     </div>
   );
 };

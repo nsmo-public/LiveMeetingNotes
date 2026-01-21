@@ -53,6 +53,43 @@ export interface FileSystemSupport {
   hasFallback: boolean;
 }
 
+// Google Cloud Speech-to-Text types
+export interface SpeechToTextConfig {
+  apiKey: string;
+  apiEndpoint?: string;
+  languageCode: string;
+  enableSpeakerDiarization: boolean;
+  enableAutomaticPunctuation: boolean;
+}
+
+export interface TranscriptionResult {
+  id: string;
+  text: string;
+  startTime: string; // ISO format datetime
+  endTime: string;   // ISO format datetime
+  confidence: number;
+  speaker?: string;  // Speaker identification (if enabled)
+  isFinal: boolean;
+}
+
+export interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+  words?: Array<{
+    word: string;
+    startTime: string;
+    endTime: string;
+    speakerTag?: number;
+  }>;
+}
+
+export interface SpeechRecognitionResult {
+  alternatives: SpeechRecognitionAlternative[];
+  isFinal: boolean;
+  resultEndTime: string;
+  languageCode: string;
+}
+
 // Extend Window interface for File System Access API
 declare global {
   interface Window {

@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Space, message } from 'antd';
+import { Button, Space, message, Switch, Tooltip } from 'antd';
 import {
   FolderOpenOutlined,
   AudioOutlined,
   StopOutlined,
   SaveOutlined,
-  FolderAddOutlined
+  FolderAddOutlined,
+  SettingOutlined,
+  SoundOutlined
 } from '@ant-design/icons';
 import { AudioRecorderService } from '../services/audioRecorder';
 import { FileManagerService, FileDownloadService } from '../services/fileManager';
 import { MetadataBuilder } from '../services/metadataBuilder';
 import { WordExporter } from '../services/wordExporter';
-import type { MeetingInfo } from '../types/types';
+import { speechToTextService } from '../services/speechToText';
+import type { MeetingInfo, SpeechToTextConfig, TranscriptionResult } from '../types/types';
 
 interface Props {
   folderPath: string;
@@ -35,6 +38,12 @@ interface Props {
   audioBlob: Blob | null;
   isSaved: boolean;
   hasUnsavedChanges: boolean;
+  // Speech-to-Text props
+  onShowTranscriptionConfig: () => void;
+  transcriptionConfig: SpeechToTextConfig | null;
+  onNewTranscription: (result: TranscriptionResult) => void;
+  onClearTranscriptions: () => void;
+  transcriptions: TranscriptionResult[];
 }
 
 export const RecordingControls: React.FC<Props> = ({
@@ -52,13 +61,20 @@ export const RecordingControls: React.FC<Props> = ({
   onRecordingStartTimeChange,
   audioBlob,
   isSaved,
-  hasUnsavedChanges
+  hasUnsavedChanges,
+  onShowTranscriptionConfig,
+  transcriptionConfig,
+  onNewTranscription,
+  onClearTranscriptions,
+  transcriptions
 }) => {
   const [duration, setDuration] = useState<number>(0);
   const [recorder] = useState(() => new AudioRecorderService());
   const [fileManager] = useState(() => new FileManagerService());
   const [lastProjectName, setLastProjectName] = useState<string>('');
   const [lastRecordingDuration, setLastRecordingDuration] = useState<number>(0);
+  const [autoTranscribe, setAutoTranscribe] = useState<boolean>(false);
+  const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
 
   useEffect(() => {
     if (!isRecording) return;
@@ -69,6 +85,50 @@ export const RecordingControls: React.FC<Props> = ({
 
     return () => clearInterval(interval);
   }, [isRecording, recorder]);
+
+  // Start/stop transcription when recording state or autoTranscribe changes
+  useEffect(() => {
+    const startTranscription = async () => {
+      if (isRecording && autoTranscribe && transcriptionConfig && navigator.onLine) {
+        try {
+          // Get audio stream from navigator
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              sampleRate: 48000
+            }
+          });
+          
+          setAudioStream(stream);
+          
+          // Start transcription
+          await speechToTextService.startTranscription(stream, onNewTranscription);
+          message.success('🎤 Bắt đầu chuyển đổi giọng nói sang văn bản');
+        } catch (error: any) {
+          console.error('Failed to start transcription:', error);
+          message.error('Không thể bắt đầu chuyển đổi: ' + error.message);
+        }
+      } else if (!isRecording || !autoTranscribe) {
+        // Stop transcription
+        if (audioStream) {
+          speechToTextService.stopTranscription();
+          audioStream.getTracks().forEach(track => track.stop());
+          setAudioStream(null);
+        }
+      }
+    };
+
+    startTranscription();
+
+    // Cleanup on unmount
+    return () => {
+      if (audioStream) {
+        speechToTextService.stopTranscription();
+        audioStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [isRecording, autoTranscribe, transcriptionConfig]);
 
   const handleSelectFolder = async () => {
     try {
@@ -159,6 +219,22 @@ export const RecordingControls: React.FC<Props> = ({
           true
         );
 
+        // Save transcription data if available
+        if (transcriptions && transcriptions.length > 0) {
+          const transcriptionData = {
+            transcriptions: transcriptions.filter(t => t.isFinal), // Only save final results
+            totalCount: transcriptions.filter(t => t.isFinal).length,
+            savedAt: new Date().toISOString()
+          };
+          await fileManager.saveMetadataFile(
+            transcriptionData,
+            `${projectName}_transcription.json`,
+            projectName,
+            true
+          );
+          console.log('💾 Transcription data saved:', transcriptionData.totalCount, 'items');
+        }
+
         // Export Word document to same folder
         const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
         await fileManager.saveWordFile(wordBlob, `${projectName}.docx`, projectName, true);
@@ -189,6 +265,19 @@ export const RecordingControls: React.FC<Props> = ({
           metadata.metadata,
           `${projectName}_metadata.json`
         );
+
+        // Save transcription data if available
+        if (transcriptions && transcriptions.length > 0) {
+          const transcriptionData = {
+            transcriptions: transcriptions.filter(t => t.isFinal),
+            totalCount: transcriptions.filter(t => t.isFinal).length,
+            savedAt: new Date().toISOString()
+          };
+          await downloader.downloadMetadataFile(
+            transcriptionData,
+            `${projectName}_transcription.json`
+          );
+        }
 
         // Export Word document
         await WordExporter.exportToWord(
@@ -667,6 +756,20 @@ export const RecordingControls: React.FC<Props> = ({
         recordingStartTime: recordingStart
       });
 
+      // Load transcription data if available
+      if (projectData.transcriptionData) {
+        console.log('📝 Loading transcription data:', projectData.transcriptionData);
+        onClearTranscriptions(); // Clear existing first
+        
+        // Load each transcription result
+        if (projectData.transcriptionData.transcriptions && Array.isArray(projectData.transcriptionData.transcriptions)) {
+          projectData.transcriptionData.transcriptions.forEach((t: TranscriptionResult) => {
+            onNewTranscription(t);
+          });
+          message.success(`Loaded ${projectData.transcriptionData.transcriptions.length} transcription results`);
+        }
+      }
+
       console.log('Load complete:', {
         meetingInfo: loadedMeetingInfo,
         notesLength: notesText.length,
@@ -787,6 +890,49 @@ export const RecordingControls: React.FC<Props> = ({
           <span className="recording-indicator">🔴 Recording...</span>
         )}
       </Space>
+
+      {/* Speech-to-Text Controls - Only show when online */}
+      {navigator.onLine && (
+        <Space size="middle" wrap style={{ marginTop: '12px' }}>
+          <Button
+            icon={<SettingOutlined />}
+            onClick={onShowTranscriptionConfig}
+            disabled={isRecording}
+            size="large"
+          >
+            Cấu hình Speech-to-Text
+          </Button>
+
+          {transcriptionConfig && (
+            <>
+              <Tooltip title={isRecording ? 'Bật/tắt chuyển đổi giọng nói sang văn bản tự động' : 'Chỉ khả dụng khi đang ghi âm'}>
+                <Space>
+                  <SoundOutlined style={{ fontSize: '18px', color: autoTranscribe ? '#52c41a' : '#999' }} />
+                  <span style={{ fontSize: '14px' }}>Auto Transcribe:</span>
+                  <Switch
+                    checked={autoTranscribe}
+                    onChange={(checked) => {
+                      setAutoTranscribe(checked);
+                      if (!checked) {
+                        onClearTranscriptions();
+                      }
+                    }}
+                    disabled={!isRecording}
+                    checkedChildren="ON"
+                    unCheckedChildren="OFF"
+                  />
+                </Space>
+              </Tooltip>
+            </>
+          )}
+
+          {!transcriptionConfig && (
+            <span style={{ fontSize: '13px', color: '#999', fontStyle: 'italic' }}>
+              ℹ️ Cấu hình Speech-to-Text để sử dụng chức năng chuyển đổi tự động
+            </span>
+          )}
+        </Space>
+      )}
 
       {folderPath && (
         <div className="folder-info">

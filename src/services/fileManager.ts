@@ -108,6 +108,7 @@ export class FileManagerService {
     metadata: any;
     audioBlob: Blob | null;
     projectName: string;
+    transcriptionData?: any;
   } | null> {
     try {
       // Let user select a project folder
@@ -140,6 +141,7 @@ export class FileManagerService {
       let meetingInfoData = null;
       let metadataData = null;
       let audioBlob = null;
+      let transcriptionData = null;
 
       console.log('Loading project from folder:', projectName);
 
@@ -163,7 +165,14 @@ export class FileManagerService {
             metadataData = JSON.parse(text);
             console.log('Loaded metadata.json:', metadataData);
           }
+          transcription.json
+          if (name.includes('transcription.json')) {
+            const text = await file.text();
+            transcriptionData = JSON.parse(text);
+            console.log('Loaded transcription.json:', transcriptionData);
+          }
           
+          // Load 
           // Load audio file (.webm, .wav, .mp4, .ogg - support multiple formats)
           if (name.endsWith('.webm') || name.endsWith('.mp3')  || name.endsWith('.wav') || name.endsWith('.mp4') || name.endsWith('.ogg')) {
             audioBlob = file;
@@ -186,14 +195,16 @@ export class FileManagerService {
         meetingInfo: meetingInfoData,
         metadata: metadataData,
         audioSize: audioBlob?.size || 0,
-        hasAudio: audioBlob !== null
+        hasAudio: audioBlob !== null,
+        hasTranscription: transcriptionData !== null
       });
 
       return {
         meetingInfo: meetingInfoData,
         metadata: metadataData,
         audioBlob: audioBlob,
-        projectName: projectName
+        projectName: projectName,
+        transcriptionData: transcriptionData
       };
     } catch (error: any) {
       if (error.name === 'AbortError') {
