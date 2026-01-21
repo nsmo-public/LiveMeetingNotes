@@ -31,6 +31,7 @@ export const App: React.FC = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [savedNotesSnapshot, setSavedNotesSnapshot] = useState<string>('');
+  const [savedSpeakersSnapshot, setSavedSpeakersSnapshot] = useState<Map<number, string>>(new Map());
   const [isLiveMode, setIsLiveMode] = useState(true); // true = live recording, false = loaded project
   const [showBackupDialog, setShowBackupDialog] = useState(false);
   const [backupAge, setBackupAge] = useState<number | null>(null);
@@ -90,14 +91,26 @@ export const App: React.FC = () => {
 
   // Track unsaved changes
   useEffect(() => {
+    // Check if speakers have been modified
+    const speakersModified = isSaved && !mapsAreEqual(savedSpeakersSnapshot, speakersMap);
+    
     // Có dữ liệu chưa lưu nếu:
     // 1. Đang recording
     // 2. Có audio/notes nhưng chưa save lần đầu
-    // 3. Đã save nhưng notes bị sửa đổi
+    // 3. Đã save nhưng notes hoặc speakers bị sửa đổi
     const notesModified = isSaved && savedNotesSnapshot !== notes;
-    const hasData = isRecording || (!isSaved && (audioBlob !== null || notes.trim().length > 0)) || notesModified;
+    const hasData = isRecording || (!isSaved && (audioBlob !== null || notes.trim().length > 0)) || notesModified || speakersModified;
     setHasUnsavedChanges(hasData);
-  }, [isRecording, audioBlob, notes, isSaved, savedNotesSnapshot]);
+  }, [isRecording, audioBlob, notes, speakersMap, isSaved, savedNotesSnapshot, savedSpeakersSnapshot]);
+  
+  // Helper function to compare two Maps
+  function mapsAreEqual(map1: Map<number, string>, map2: Map<number, string>): boolean {
+    if (map1.size !== map2.size) return false;
+    for (const [key, value] of map1) {
+      if (map2.get(key) !== value) return false;
+    }
+    return true;
+  }
   
   // Auto-save to localStorage with debounce (every 3 seconds after changes)
   useEffect(() => {
@@ -170,6 +183,7 @@ export const App: React.FC = () => {
     setIsSaved(true);
     setHasUnsavedChanges(false);
     setSavedNotesSnapshot(notes); // Save snapshot to detect future changes
+    setSavedSpeakersSnapshot(new Map(speakersMap)); // Save speakers snapshot
     // Clear auto-backup after successful save
     clearBackup();
   };
@@ -229,6 +243,7 @@ export const App: React.FC = () => {
     setIsSaved(true);
     setHasUnsavedChanges(false);
     setSavedNotesSnapshot(loadedData.notes);
+    setSavedSpeakersSnapshot(new Map(loadedData.speakersMap)); // Save speakers snapshot
     setIsLiveMode(false); // Switch to timestamp mode when loading project
   };
 
