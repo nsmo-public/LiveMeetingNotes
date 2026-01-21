@@ -119,24 +119,48 @@ export const NotesEditor: React.FC<Props> = ({
       
       console.log('📝 Insert note at time:', { time, timestampMs, recordingStartTime });
       
-      // Find insertion position based on timestamp order
+      // Build a mapping of line index to timestamp for all current lines
       const lines = notes.split(BLOCK_SEPARATOR);
+      
+      // Build array of [lineIndex, timestamp] for lines with timestamps
+      const timestampedLines: Array<[number, number]> = [];
+      for (let i = 0; i < lines.length; i++) {
+        const ts = lineTimestamps.get(i);
+        if (ts !== undefined) {
+          timestampedLines.push([i, ts]);
+        }
+      }
+      
+      // Sort by timestamp
+      timestampedLines.sort((a, b) => a[1] - b[1]);
+      
+      // Find where to insert in the PHYSICAL array (not the sorted array)
+      // We need to insert after the last line whose timestamp is < timestampMs
       let insertIndex = lines.length; // Default: append at end
       
-      // Find the correct position to insert
-      const sortedTimestamps = Array.from(lineTimestamps.entries()).sort((a, b) => a[1] - b[1]);
-      for (let i = 0; i < sortedTimestamps.length; i++) {
-        const [lineIdx, lineTime] = sortedTimestamps[i];
-        if (timestampMs < lineTime) {
-          insertIndex = lineIdx;
+      for (let i = timestampedLines.length - 1; i >= 0; i--) {
+        const [lineIdx, lineTime] = timestampedLines[i];
+        if (lineTime < timestampMs) {
+          // Insert right after this line
+          insertIndex = lineIdx + 1;
           break;
         }
       }
       
-      // Insert new empty line
+      // If all lines have timestamps > new timestamp, insert at beginning
+      if (insertIndex === lines.length && timestampedLines.length > 0) {
+        const firstLineTime = timestampedLines[0][1];
+        if (timestampMs < firstLineTime) {
+          insertIndex = 0;
+        }
+      }
+      
+      console.log('📍 Inserting at index:', insertIndex, 'with timestamp:', timestampMs);
+      
+      // Insert new empty line at the calculated position
       lines.splice(insertIndex, 0, '');
       
-      // Update lineTimestamps: shift existing and add new
+      // Update lineTimestamps: shift all lines at or after insertIndex
       const newLineTimestamps = new Map<number, number>();
       lineTimestamps.forEach((time, lineIndex) => {
         if (lineIndex < insertIndex) {
@@ -147,7 +171,7 @@ export const NotesEditor: React.FC<Props> = ({
       });
       newLineTimestamps.set(insertIndex, timestampMs);
       
-      // Update lineSpeakers: shift existing speakers for lines after insertion point
+      // Update lineSpeakers: shift all speakers at or after insertIndex
       const newLineSpeakers = new Map<number, string>();
       lineSpeakers.forEach((speaker, lineIndex) => {
         if (lineIndex < insertIndex) {
@@ -157,6 +181,9 @@ export const NotesEditor: React.FC<Props> = ({
         }
       });
       // New line has no speaker initially (empty)
+      
+      console.log('📊 Speaker map before:', Array.from(lineSpeakers.entries()));
+      console.log('📊 Speaker map after:', Array.from(newLineSpeakers.entries()));
       
       setLineTimestamps(newLineTimestamps);
       setLineSpeakers(newLineSpeakers);
@@ -177,7 +204,7 @@ export const NotesEditor: React.FC<Props> = ({
     return () => {
       window.removeEventListener('insert-note-at-time', handleInsertNote as EventListener);
     };
-  }, [notes, lineTimestamps, recordingStartTime]);
+  }, [notes, lineTimestamps, lineSpeakers, recordingStartTime, onNotesChange]);
 
   const formatDatetime = (datetimeMs: number): string => {
     const date = new Date(datetimeMs);
