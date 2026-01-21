@@ -343,7 +343,8 @@ export const RecordingControls: React.FC<Props> = ({
         }
 
         // Export Word document to same folder
-        const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
+        const finalTranscriptions = transcriptions?.filter(t => t.isFinal) || [];
+        const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes, finalTranscriptions);
         await fileManager.saveWordFile(wordBlob, `${projectName}.docx`, undefined, true);
         console.log('✓ Saved Word document');
         
@@ -394,10 +395,12 @@ export const RecordingControls: React.FC<Props> = ({
         }
 
         // Export Word document
+        const finalTranscriptions = transcriptions?.filter(t => t.isFinal) || [];
         await WordExporter.exportToWord(
           meetingInfo,
           notes,
-          `${projectName}.docx`
+          `${projectName}.docx`,
+          finalTranscriptions
         );
 
         message.info('Files downloaded. Please save them to your meeting notes folder.');
@@ -438,10 +441,12 @@ export const RecordingControls: React.FC<Props> = ({
         );
         
         // Export Word document
+        const finalTranscriptions = transcriptions?.filter(t => t.isFinal) || [];
         await WordExporter.exportToWord(
           meetingInfo,
           notes,
-          `${projectName}.docx`
+          `${projectName}.docx`,
+          finalTranscriptions
         );
         
         message.info('Files downloaded. Please save them to your meeting notes folder.');
@@ -525,7 +530,8 @@ export const RecordingControls: React.FC<Props> = ({
       console.log('✓ Saved metadata.json');
       
       // Export Word document
-      const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
+      const finalTranscriptions = transcriptions?.filter(t => t.isFinal) || [];
+      const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes, finalTranscriptions);
       await fileManager.saveWordFile(wordBlob, `${projectName}.docx`, undefined, true);
       console.log('✓ Saved Word document');
       
@@ -746,10 +752,12 @@ export const RecordingControls: React.FC<Props> = ({
         }
 
         
+        const finalTranscriptions = transcriptions?.filter(t => t.isFinal) || [];
         await WordExporter.exportToWord(
           meetingInfo,
           notes,
-          `${newProjectName}.docx`
+          `${newProjectName}.docx`,
+          finalTranscriptions
         );
 
         message.info('Updated files downloaded as new version.');

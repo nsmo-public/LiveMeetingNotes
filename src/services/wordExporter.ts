@@ -1,6 +1,6 @@
 import { Document, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
-import type { MeetingInfo } from '../types/types';
+import type { MeetingInfo, TranscriptionResult } from '../types/types';
 
 // Helper function to add timestamp prefix to filename
 function addTimestampPrefix(fileName: string): string {
@@ -18,10 +18,16 @@ export class WordExporter {
   // Create Word blob without downloading
   static async createWordBlob(
     meetingInfo: MeetingInfo,
-    notesText: string
+    notesText: string,
+    transcriptions?: TranscriptionResult[]
   ): Promise<Blob> {
     // Text is already clean (no timestamps embedded)
     const paragraphs = this.parseTextToParagraphs(notesText);
+    
+    // Add transcription section if available
+    const transcriptionParagraphs = transcriptions && transcriptions.length > 0
+      ? this.createTranscriptionParagraphs(transcriptions)
+      : [];
     
     // Create document
     const doc = new Document({
@@ -99,7 +105,10 @@ export class WordExporter {
               spacing: { before: 200, after: 200 }
             }),
             
-            ...paragraphs
+            ...paragraphs,
+            
+            // Add transcription section if available
+            ...transcriptionParagraphs
           ]
         }
       ]
@@ -114,10 +123,11 @@ export class WordExporter {
   static async exportToWord(
     meetingInfo: MeetingInfo,
     notesText: string,
-    fileName: string
+    fileName: string,
+    transcriptions?: TranscriptionResult[]
   ): Promise<void> {
     const fileNameWithTimestamp = addTimestampPrefix(fileName);
-    const blob = await this.createWordBlob(meetingInfo, notesText);
+    const blob = await this.createWordBlob(meetingInfo, notesText, transcriptions);
     saveAs(blob, fileNameWithTimestamp);
   }
   
@@ -159,6 +169,53 @@ export class WordExporter {
           })
         );
       }
+    });
+    
+    return paragraphs;
+  }
+  
+  // Create paragraphs for transcription results
+  private static createTranscriptionParagraphs(transcriptions: TranscriptionResult[]): Paragraph[] {
+    const paragraphs: Paragraph[] = [];
+    
+    // Add heading
+    paragraphs.push(
+      new Paragraph({
+        text: 'SPEECH-TO-TEXT',
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 400, after: 200 }
+      })
+    );
+    
+    // Add transcription items
+    transcriptions.forEach((item, index) => {
+      // Format audio time if available
+      let timeStr = '';
+      if (item.audioTimeMs !== undefined) {
+        const totalSeconds = Math.floor(item.audioTimeMs / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        
+        if (hours > 0) {
+          timeStr = `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        } else {
+          timeStr = `${minutes}:${String(seconds).padStart(2, '0')}`;
+        }
+      }
+      
+      // Create paragraph with speaker and timestamp
+      const prefix = `[${index + 1}] ${item.speaker}${timeStr ? ` (${timeStr})` : ''}: `;
+      
+      paragraphs.push(
+        new Paragraph({
+          children: [
+            new TextRun({ text: prefix, bold: true, size: 24 }),
+            new TextRun({ text: item.text, size: 24 })
+          ],
+          spacing: { after: 150 }
+        })
+      );
     });
     
     return paragraphs;

@@ -923,7 +923,7 @@ export const NotesEditor: React.FC<Props> = ({
                 max="60"
                 value={timestampDelay}
                 onChange={(e) => {
-                  const value = Math.max(0, Math.min(60, parseInt(e.target.value, 10) || 0));
+                  const value = Math.max(0, Math.min(60, parseInt(e.target.value, 8) || 0));
                   setTimestampDelay(value);
                   localStorage.setItem('timestampDelay', value.toString());
                 }}

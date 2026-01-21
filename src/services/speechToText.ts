@@ -512,6 +512,285 @@ export class SpeechToTextService {
   }
 
   /**
+   * Transcribe entire audio file (for loaded projects)
+   */
+  public async transcribeAudioFile(
+    audioBlob: Blob,
+    onTranscription: (result: TranscriptionResult) => void,
+    onProgress?: (progress: number) => void,
+    onComplete?: () => void
+  ): Promise<void> {
+    if (!this.isConfigured()) {
+      throw new Error('Speech-to-Text service not configured. Please configure it first.');
+    }
+
+    console.log('🎬 Starting audio file transcription:', {
+      size: audioBlob.size,
+      type: audioBlob.type,
+      config: this.config
+    });
+
+    // Reset tracking variables
+    this.transcriptionIdCounter = 0;
+    this.transcriptionStartTime = 0;
+    this.segmentStartTimeMs = 0;
+
+    try {
+      // Use Google Cloud API if available and speaker diarization is enabled
+      if (this.config?.enableSpeakerDiarization && this.hasGoogleCloudAPI()) {
+        console.log('🎯 Using Google Cloud API with speaker diarization');
+        await this.transcribeAudioFileWithGoogleCloud(audioBlob, onTranscription, onProgress, onComplete);
+        return;
+      }
+
+      // Use Web Speech API if available (requires creating audio context and playing silently)
+      if (this.hasWebSpeechAPI()) {
+        console.log('✅ Using Web Speech API');
+        await this.transcribeAudioFileWithWebSpeech(audioBlob, onTranscription, onProgress, onComplete);
+        return;
+      }
+
+      // Fallback to Google Cloud API if available
+      if (this.hasGoogleCloudAPI()) {
+        console.log('🌐 Using Google Cloud API');
+        await this.transcribeAudioFileWithGoogleCloud(audioBlob, onTranscription, onProgress, onComplete);
+        return;
+      }
+
+      throw new Error('No transcription service available. Please configure Speech-to-Text settings.');
+    } catch (error) {
+      console.error('Audio file transcription error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if Web Speech API is available
+   */
+  private hasWebSpeechAPI(): boolean {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    return !!SpeechRecognition;
+  }
+
+  /**
+   * Transcribe audio file using Web Speech API
+   */
+  private async transcribeAudioFileWithWebSpeech(
+    audioBlob: Blob,
+    onTranscription: (result: TranscriptionResult) => void,
+    onProgress?: (progress: number) => void,
+    onComplete?: () => void
+  ): Promise<void> {
+    // Create audio element to play the file
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(audioUrl);
+    
+    // Get audio duration
+    await new Promise<void>((resolve) => {
+      audio.addEventListener('loadedmetadata', () => resolve(), { once: true });
+    });
+    
+    const duration = audio.duration;
+    console.log('Audio duration:', duration, 'seconds');
+
+    // Create audio context and stream
+    const audioContext = new AudioContext();
+    const source = audioContext.createMediaStreamDestination();
+    const mediaElementSource = audioContext.createMediaElementSource(audio);
+    mediaElementSource.connect(source);
+    mediaElementSource.connect(audioContext.destination); // Also play to speakers (silently)
+
+    // Setup Web Speech API
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = false; // Only final results for file transcription
+    recognition.lang = this.config?.languageCode || 'vi-VN';
+    recognition.maxAlternatives = 1;
+
+    let lastResultTime = 0;
+
+    recognition.onresult = (event: any) => {
+      const currentTime = audio.currentTime * 1000; // Convert to ms
+      
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          const transcript = result[0].transcript;
+          const confidence = result[0].confidence || 0;
+
+          const transcriptionResult: TranscriptionResult = {
+            id: `file-${Date.now()}-${this.transcriptionIdCounter++}`,
+            text: transcript,
+            startTime: new Date(Date.now()).toISOString(),
+            endTime: new Date(Date.now()).toISOString(),
+            audioTimeMs: Math.floor(lastResultTime),
+            confidence: confidence,
+            speaker: 'Person1', // Web Speech API doesn't support speaker diarization
+            isFinal: true,
+            isManuallyEdited: false
+          };
+
+          onTranscription(transcriptionResult);
+          lastResultTime = currentTime;
+        }
+      }
+
+      // Update progress
+      if (onProgress && duration > 0) {
+        const progress = Math.min((audio.currentTime / duration) * 100, 100);
+        onProgress(progress);
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+    };
+
+    recognition.onend = () => {
+      console.log('Recognition ended');
+    };
+
+    // Start recognition and play audio
+    recognition.start();
+    audio.volume = 0.01; // Play almost silently
+    await audio.play();
+
+    // Wait for audio to finish
+    await new Promise<void>((resolve) => {
+      audio.addEventListener('ended', () => {
+        recognition.stop();
+        audioContext.close();
+        URL.revokeObjectURL(audioUrl);
+        resolve();
+      }, { once: true });
+    });
+
+    if (onProgress) onProgress(100);
+    if (onComplete) onComplete();
+    
+    console.log('✅ Web Speech API transcription complete');
+  }
+
+  /**
+   * Transcribe audio file using Google Cloud API
+   */
+  private async transcribeAudioFileWithGoogleCloud(
+    audioBlob: Blob,
+    onTranscription: (result: TranscriptionResult) => void,
+    onProgress?: (progress: number) => void,
+    onComplete?: () => void
+  ): Promise<void> {
+    // Convert audio blob to base64
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    const base64Audio = btoa(
+      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+
+    // Prepare request
+    const apiKey = this.config?.apiKey;
+    const languageCode = this.config?.languageCode || 'vi-VN';
+    const enableSpeakerDiarization = this.config?.enableSpeakerDiarization || false;
+
+    const requestBody: any = {
+      config: {
+        encoding: 'WEBM_OPUS',
+        sampleRateHertz: 48000,
+        languageCode: languageCode,
+        enableAutomaticPunctuation: true,
+        model: 'default',
+        useEnhanced: true
+      },
+      audio: {
+        content: base64Audio
+      }
+    };
+
+    // Add speaker diarization if enabled
+    if (enableSpeakerDiarization) {
+      requestBody.config.diarizationConfig = {
+        enableSpeakerDiarization: true,
+        minSpeakerCount: 2,
+        maxSpeakerCount: 6
+      };
+    }
+
+    if (onProgress) onProgress(10);
+
+    try {
+      const response = await fetch(
+        `https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody)
+        }
+      );
+
+      if (onProgress) onProgress(50);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Google Cloud API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      
+      if (onProgress) onProgress(80);
+
+      // Process results
+      if (data.results && Array.isArray(data.results)) {
+        let audioTimeMs = 0;
+        
+        data.results.forEach((result: any) => {
+          if (result.alternatives && result.alternatives.length > 0) {
+            const alternative = result.alternatives[0];
+            let speaker = 'Person1';
+
+            // Extract speaker information if available
+            if (alternative.words && alternative.words.length > 0) {
+              const firstWord = alternative.words[0];
+              if (firstWord.speakerTag !== undefined) {
+                speaker = `Person ${firstWord.speakerTag}`;
+              }
+
+              // Get start time from first word
+              if (firstWord.startTime) {
+                const seconds = parseFloat(firstWord.startTime.replace('s', ''));
+                audioTimeMs = Math.floor(seconds * 1000);
+              }
+            }
+
+            const transcriptionResult: TranscriptionResult = {
+              id: `file-${Date.now()}-${this.transcriptionIdCounter++}`,
+              text: alternative.transcript,
+              startTime: new Date(Date.now()).toISOString(),
+              endTime: new Date(Date.now()).toISOString(),
+              audioTimeMs: audioTimeMs,
+              confidence: alternative.confidence || 0,
+              speaker: speaker,
+              isFinal: true,
+              isManuallyEdited: false
+            };
+
+            onTranscription(transcriptionResult);
+          }
+        });
+      }
+
+      if (onProgress) onProgress(100);
+      if (onComplete) onComplete();
+
+      console.log('✅ Google Cloud API transcription complete');
+    } catch (error) {
+      console.error('Google Cloud API transcription error:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Save configuration to localStorage
    */
   public static saveConfig(config: SpeechToTextConfig): void {

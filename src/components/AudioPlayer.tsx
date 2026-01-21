@@ -149,38 +149,113 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ audioBlob }, ref
     
     waveformContainer.addEventListener('dblclick', handleDoubleClick);
 
-    // Add context menu for inserting notes at specific time
+    // Add context menu with options
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
       const time = wavesurfer.getCurrentTime();
       
-      // Show visual feedback
-      const notification = document.createElement('div');
-      notification.textContent = `📝 Inserting note at ${Math.floor(time / 60)}:${String(Math.floor(time % 60)).padStart(2, '0')}`;
-      notification.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: #1890ff;
-        color: white;
-        padding: 12px 24px;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 500;
-        z-index: 10000;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        animation: fadeInOut 1.5s ease-in-out;
-      `;
-      document.body.appendChild(notification);
-      setTimeout(() => notification.remove(), 1500);
+      // Remove existing menu if any
+      const existingMenu = document.getElementById('audio-context-menu');
+      if (existingMenu) {
+        existingMenu.remove();
+      }
       
-      // Dispatch custom event to insert note at this time
-      window.dispatchEvent(
-        new CustomEvent('insert-note-at-time', {
-          detail: { time }
-        })
-      );
+      // Create context menu
+      const menu = document.createElement('div');
+      menu.id = 'audio-context-menu';
+      menu.style.cssText = `
+        position: fixed;
+        left: ${e.clientX}px;
+        top: ${e.clientY}px;
+        background: white;
+        border: 1px solid #d9d9d9;
+        border-radius: 6px;
+        box-shadow: 0 3px 6px -4px rgba(0,0,0,.12), 0 6px 16px 0 rgba(0,0,0,.08), 0 9px 28px 8px rgba(0,0,0,.05);
+        z-index: 10000;
+        padding: 4px 0;
+        min-width: 200px;
+      `;
+      
+      // Menu items
+      const menuItems = [
+        {
+          label: '📝 Insert note at this time',
+          action: () => {
+            window.dispatchEvent(
+              new CustomEvent('insert-note-at-time', {
+                detail: { time }
+              })
+            );
+            // Show visual feedback
+            const notification = document.createElement('div');
+            notification.textContent = `📝 Inserting note at ${Math.floor(time / 60)}:${String(Math.floor(time % 60)).padStart(2, '0')}`;
+            notification.style.cssText = `
+              position: fixed;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              background: #1890ff;
+              color: white;
+              padding: 12px 24px;
+              border-radius: 6px;
+              font-size: 14px;
+              font-weight: 500;
+              z-index: 10001;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+              animation: fadeInOut 1.5s ease-in-out;
+            `;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 1500);
+          }
+        },
+        {
+          label: '🎤 Transcribe entire audio',
+          action: () => {
+            window.dispatchEvent(new CustomEvent('transcribe-audio'));
+          }
+        }
+      ];
+      
+      menuItems.forEach(item => {
+        const menuItem = document.createElement('div');
+        menuItem.textContent = item.label;
+        menuItem.style.cssText = `
+          padding: 8px 16px;
+          cursor: pointer;
+          font-size: 14px;
+          color: rgba(0, 0, 0, 0.88);
+          transition: background-color 0.2s;
+        `;
+        
+        menuItem.addEventListener('mouseenter', () => {
+          menuItem.style.backgroundColor = '#f5f5f5';
+        });
+        
+        menuItem.addEventListener('mouseleave', () => {
+          menuItem.style.backgroundColor = 'transparent';
+        });
+        
+        menuItem.addEventListener('click', () => {
+          item.action();
+          menu.remove();
+        });
+        
+        menu.appendChild(menuItem);
+      });
+      
+      // Close menu when clicking outside
+      const closeMenu = (evt: MouseEvent) => {
+        if (!menu.contains(evt.target as Node)) {
+          menu.remove();
+          document.removeEventListener('click', closeMenu);
+        }
+      };
+      
+      setTimeout(() => {
+        document.addEventListener('click', closeMenu);
+      }, 0);
+      
+      document.body.appendChild(menu);
     };
     
     waveformContainer.addEventListener('contextmenu', handleContextMenu);

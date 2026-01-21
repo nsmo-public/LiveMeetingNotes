@@ -77,6 +77,88 @@ export const App: React.FC = () => {
     };
   }, []);
   
+  // Handle transcribe-audio event from AudioPlayer
+  useEffect(() => {
+    const handleTranscribeAudio = async () => {
+      if (!audioBlob) {
+        alert('No audio file loaded');
+        return;
+      }
+
+      if (!speechToTextService.isConfigured()) {
+        alert('Please configure Speech-to-Text settings first');
+        setShowTranscriptionConfig(true);
+        return;
+      }
+
+      const confirmed = window.confirm(
+        'This will transcribe the entire audio file and replace existing transcription results. Continue?'
+      );
+      
+      if (!confirmed) return;
+
+      console.log('🎬 Starting audio file transcription...');
+      
+      // Clear existing transcriptions
+      setTranscriptions([]);
+
+      try {
+        // Show progress notification
+        const progressDiv = document.createElement('div');
+        progressDiv.id = 'transcribe-progress';
+        progressDiv.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background: white;
+          padding: 24px;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+          z-index: 10000;
+          min-width: 300px;
+          text-align: center;
+        `;
+        progressDiv.innerHTML = `
+          <div style="font-size: 16px; font-weight: bold; margin-bottom: 12px;">🎤 Transcribing Audio...</div>
+          <div id="progress-text" style="font-size: 14px; color: #666;">Starting...</div>
+          <div style="width: 100%; height: 8px; background: #f0f0f0; border-radius: 4px; margin-top: 12px; overflow: hidden;">
+            <div id="progress-bar" style="width: 0%; height: 100%; background: #1890ff; transition: width 0.3s;"></div>
+          </div>
+        `;
+        document.body.appendChild(progressDiv);
+
+        const updateProgress = (progress: number) => {
+          const progressBar = document.getElementById('progress-bar');
+          const progressText = document.getElementById('progress-text');
+          if (progressBar) progressBar.style.width = `${progress}%`;
+          if (progressText) progressText.textContent = `${Math.floor(progress)}% complete`;
+        };
+
+        await speechToTextService.transcribeAudioFile(
+          audioBlob,
+          handleNewTranscription,
+          updateProgress,
+          () => {
+            progressDiv.remove();
+            setHasUnsavedChanges(true); // Mark as unsaved
+            alert('✅ Transcription complete! Click "Save Changes" to save the results.');
+          }
+        );
+      } catch (error: any) {
+        const progressDiv = document.getElementById('transcribe-progress');
+        if (progressDiv) progressDiv.remove();
+        alert(`Transcription failed: ${error.message}`);
+        console.error('Transcription error:', error);
+      }
+    };
+
+    window.addEventListener('transcribe-audio', handleTranscribeAudio);
+    return () => {
+      window.removeEventListener('transcribe-audio', handleTranscribeAudio);
+    };
+  }, [audioBlob, transcriptionConfig]);
+  
   // Check for existing backup on mount
   useEffect(() => {
     const checkBackup = async () => {
