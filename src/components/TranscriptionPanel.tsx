@@ -7,12 +7,14 @@ interface Props {
   transcriptions: TranscriptionResult[];
   isTranscribing: boolean;
   isOnline: boolean;
+  onSeekAudio?: (timeMs: number) => void;
 }
 
 export const TranscriptionPanel: React.FC<Props> = ({
   transcriptions,
   isTranscribing,
-  isOnline
+  isOnline,
+  onSeekAudio
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState<number>(300); // Initial height
@@ -40,6 +42,24 @@ export const TranscriptionPanel: React.FC<Props> = ({
       minute: '2-digit',
       second: '2-digit'
     });
+  };
+
+  const formatAudioTime = (ms: number): string => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  };
+
+  const handleSeekToTime = (timeMs: number) => {
+    if (onSeekAudio) {
+      onSeekAudio(timeMs);
+    }
   };
 
   const getConfidenceColor = (confidence: number): string => {
@@ -141,6 +161,23 @@ export const TranscriptionPanel: React.FC<Props> = ({
                                   {formatTime(item.startTime)}
                                 </Tag>
                               </Tooltip>
+
+                              {/* Audio Time - Clickable */}
+                              {item.audioTimeMs !== undefined && (
+                                <Tooltip title="Double click để tua đến vị trí này trên audio">
+                                  <Tag 
+                                    color="cyan" 
+                                    style={{ 
+                                      cursor: 'pointer',
+                                      userSelect: 'none',
+                                      fontSize: '11px'
+                                    }}
+                                    onDoubleClick={() => handleSeekToTime(item.audioTimeMs!)}
+                                  >
+                                    📍 {formatAudioTime(item.audioTimeMs)}
+                                  </Tag>
+                                </Tooltip>
+                              )}
 
                               {/* Speaker */}
                               {item.speaker && (

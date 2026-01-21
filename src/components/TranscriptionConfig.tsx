@@ -224,7 +224,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
           style={{
             marginTop: 24,
             padding: 16,
-            backgroundColor: '#ee91f7',
+            backgroundColor: '#19041b',
             borderLeft: '4px solid #1890ff',
             borderRadius: 4
           }}

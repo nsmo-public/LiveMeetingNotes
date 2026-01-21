@@ -927,113 +927,114 @@ export const RecordingControls: React.FC<Props> = ({
 
   return (
     <div className="recording-controls">
-      <Space size="middle" wrap>
-        <Button
-          icon={<FolderOpenOutlined />}
-          onClick={handleSelectFolder}
-          disabled={isRecording}
-          size="large"
-        >
-          Select Folder
-        </Button>
-
-        <Button
-          icon={<FolderAddOutlined />}
-          onClick={() => {
-            console.log('Load Project button clicked');
-            console.log('isRecording:', isRecording);
-            console.log('isSupported:', FileManagerService.isSupported());
-            handleLoadProject();
-          }}
-          disabled={isRecording || !FileManagerService.isSupported()}
-          size="large"
-          type="default"
-        >
-          Load Project
-        </Button>
-
-        {!isRecording ? (
-          <>
-            <Button
-              type="primary"
-              danger
-              icon={<AudioOutlined />}
-              onClick={handleStartRecording}
-              size="large"
-            >
-              Record
-            </Button>
-            
-            {/* Show Continue Recording button if there are segments */}
-            {recordingSegments.length > 0 && (
-              <Button
-                type="primary"
-                icon={<AudioOutlined />}
-                onClick={handleContinueRecording}
-                size="large"
-                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
-              >
-                Continue Recording
-              </Button>
-            )}
-          </>
-        ) : (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
+        {/* Left side: Main controls */}
+        <Space size="middle" wrap>
           <Button
-            type="primary"
-            icon={<StopOutlined />}
-            onClick={handleStopRecording}
-            size="large"
-          >
-            Stop
-          </Button>
-        )}
-
-        {/* Show Save Notes button when has unsaved data but not saved yet */}
-        {!isRecording && !isSaved && hasUnsavedChanges && (
-          <Button
-            type="primary"
-            icon={<SaveOutlined />}
-            onClick={handleSaveNotes}
-            size="large"
-          >
-            Save Notes
-          </Button>
-        )}
-
-        {/* Show Save Changes button when has unsaved changes after first save */}
-        {!isRecording && isSaved && hasUnsavedChanges && (
-          <Button
-            type="default"
-            icon={<SaveOutlined />}
-            onClick={handleSaveChanges}
-            size="large"
-            style={{ backgroundColor: '#52c41a', color: 'white', borderColor: '#52c41a' }}
-          >
-            Save Changes
-          </Button>
-        )}
-
-        <span className="duration-display">⏱ {formatDuration(duration)}</span>
-        
-        {isRecording && (
-          <span className="recording-indicator">🔴 Recording...</span>
-        )}
-      </Space>
-
-      {/* Speech-to-Text Controls - Only show when online */}
-      {navigator.onLine && (
-        <Space size="middle" wrap style={{ marginTop: '12px' }}>
-          <Button
-            icon={<SettingOutlined />}
-            onClick={onShowTranscriptionConfig}
+            icon={<FolderOpenOutlined />}
+            onClick={handleSelectFolder}
             disabled={isRecording}
             size="large"
           >
-            Cấu hình Speech-to-Text
+            Select Folder
           </Button>
 
-          {transcriptionConfig && (
+          <Button
+            icon={<FolderAddOutlined />}
+            onClick={() => {
+              console.log('Load Project button clicked');
+              console.log('isRecording:', isRecording);
+              console.log('isSupported:', FileManagerService.isSupported());
+              handleLoadProject();
+            }}
+            disabled={isRecording || !FileManagerService.isSupported()}
+            size="large"
+            type="default"
+          >
+            Load Project
+          </Button>
+
+          {!isRecording ? (
             <>
+              <Button
+                type="primary"
+                danger
+                icon={<AudioOutlined />}
+                onClick={handleStartRecording}
+                size="large"
+              >
+                Record
+              </Button>
+              
+              {/* Show Continue Recording button if there are segments */}
+              {recordingSegments.length > 0 && (
+                <Button
+                  type="primary"
+                  icon={<AudioOutlined />}
+                  onClick={handleContinueRecording}
+                  size="large"
+                  style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                >
+                  Continue Recording
+                </Button>
+              )}
+            </>
+          ) : (
+            <Button
+              type="primary"
+              icon={<StopOutlined />}
+              onClick={handleStopRecording}
+              size="large"
+            >
+              Stop
+            </Button>
+          )}
+
+          {/* Show Save Notes button when has unsaved data but not saved yet */}
+          {!isRecording && !isSaved && hasUnsavedChanges && (
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              onClick={handleSaveNotes}
+              size="large"
+            >
+              Save Notes
+            </Button>
+          )}
+
+          {/* Show Save Changes button when has unsaved changes after first save */}
+          {!isRecording && isSaved && hasUnsavedChanges && (
+            <Button
+              type="default"
+              icon={<SaveOutlined />}
+              onClick={handleSaveChanges}
+              size="large"
+              style={{ backgroundColor: '#52c41a', color: 'white', borderColor: '#52c41a' }}
+            >
+              Save Changes
+            </Button>
+          )}
+
+          <span className="duration-display">⏱ {formatDuration(duration)}</span>
+          
+          {isRecording && (
+            <span className="recording-indicator">🔴 Recording...</span>
+          )}
+        </Space>
+
+        {/* Right side: Speech-to-Text Controls - Only show when online */}
+        {navigator.onLine && (
+          <Space size="middle" wrap style={{ marginLeft: 'auto' }}>
+            <Button
+              icon={<SettingOutlined />}
+              onClick={onShowTranscriptionConfig}
+              disabled={isRecording}
+              size="large"
+            >
+              Cấu hình Speech-to-Text
+            </Button>
+
+            {transcriptionConfig && (
               <Tooltip title={isRecording ? 'Bật/tắt chuyển đổi giọng nói sang văn bản tự động' : 'Chỉ khả dụng khi đang ghi âm'}>
                 <Space>
                   <SoundOutlined style={{ fontSize: '18px', color: autoTranscribe ? '#52c41a' : '#999' }} />
@@ -1052,16 +1053,16 @@ export const RecordingControls: React.FC<Props> = ({
                   />
                 </Space>
               </Tooltip>
-            </>
-          )}
+            )}
 
-          {!transcriptionConfig && (
-            <span style={{ fontSize: '13px', color: '#999', fontStyle: 'italic' }}>
-              ℹ️ Cấu hình Speech-to-Text để sử dụng chức năng chuyển đổi tự động
-            </span>
-          )}
-        </Space>
-      )}
+            {!transcriptionConfig && (
+              <span style={{ fontSize: '13px', color: '#999', fontStyle: 'italic' }}>
+                ℹ️ Cấu hình để sử dụng
+              </span>
+            )}
+          </Space>
+        )}
+      </div>
 
       {folderPath && (
         <div className="folder-info">

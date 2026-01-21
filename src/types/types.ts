@@ -67,6 +67,7 @@ export interface TranscriptionResult {
   text: string;
   startTime: string; // ISO format datetime
   endTime: string;   // ISO format datetime
+  audioTimeMs?: number; // Relative time in audio (milliseconds from recording start)
   confidence: number;
   speaker?: string;  // Speaker identification (if enabled)
   isFinal: boolean;

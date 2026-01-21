@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { Button, Space, Slider, Select } from 'antd';
 import {
   PlayCircleOutlined,
@@ -15,7 +15,11 @@ interface Props {
   audioBlob: Blob | null;
 }
 
-export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
+export interface AudioPlayerRef {
+  seekTo: (timeMs: number) => void;
+}
+
+export const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ audioBlob }, ref) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
@@ -26,6 +30,17 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [volume, setVolume] = useState(100);
   const [zoom, setZoom] = useState(50);
+
+  // Expose seekTo method to parent
+  useImperativeHandle(ref, () => ({
+    seekTo: (timeMs: number) => {
+      if (wavesurferRef.current && duration > 0) {
+        const timeSeconds = timeMs / 1000;
+        wavesurferRef.current.seekTo(timeSeconds / duration);
+        console.log(`🎵 Seeked to ${timeSeconds.toFixed(2)}s`);
+      }
+    }
+  }));
 
   // Update audio source when blob changes
   useEffect(() => {
@@ -483,4 +498,4 @@ export const AudioPlayer: React.FC<Props> = ({ audioBlob }) => {
       </div>
     </div>
   );
-};
+});

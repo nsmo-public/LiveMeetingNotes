@@ -11,6 +11,7 @@ export class SpeechToTextService {
   private lastInterimText: string = '';
   private lastUpdateTime: number = 0;
   private segmentCheckInterval: NodeJS.Timeout | null = null;
+  private transcriptionStartTime: number = 0; // Track when transcription started
 
   /**
    * Initialize the service with configuration
@@ -69,6 +70,7 @@ export class SpeechToTextService {
     this.onTranscriptionCallback = onTranscription;
     this.isTranscribing = true;
     this.audioChunks = [];
+    this.transcriptionStartTime = Date.now(); // Record start time
 
     // Check if speaker diarization is enabled
     // Web Speech API does NOT support speaker diarization
@@ -139,11 +141,13 @@ export class SpeechToTextService {
 
           if (shouldForceSegment && !isFinal) {
             // Force this interim result to become final
+            const nowTime = Date.now();
             const transcriptionResult: TranscriptionResult = {
               id: `transcription-${++this.transcriptionIdCounter}`,
               text: transcript.trim(),
               startTime: now.toISOString(),
               endTime: now.toISOString(),
+              audioTimeMs: nowTime - this.transcriptionStartTime, // Time since transcription started
               confidence: confidence,
               isFinal: true // Force as final
             };
@@ -246,11 +250,13 @@ export class SpeechToTextService {
     if (this.lastInterimText && timeSinceLastUpdate > 2000) {
       console.log('🔸 Force segment: Silence timeout (2s)');
       
+      const nowTime = Date.now();
       const transcriptionResult: TranscriptionResult = {
         id: `transcription-${++this.transcriptionIdCounter}`,
         text: this.lastInterimText.trim(),
         startTime: new Date().toISOString(),
         endTime: new Date().toISOString(),
+        audioTimeMs: nowTime - this.transcriptionStartTime,
         confidence: 0.8, // Moderate confidence for timeout-forced segments
         isFinal: true
       };
@@ -383,6 +389,7 @@ export class SpeechToTextService {
               text: alternative.transcript,
               startTime: new Date().toISOString(),
               endTime: new Date().toISOString(),
+              audioTimeMs: Date.now() - this.transcriptionStartTime,
               confidence: alternative.confidence || 0,
               speaker: speaker,
               isFinal: true
@@ -449,6 +456,7 @@ export class SpeechToTextService {
    */
   public stopTranscription(): void {
     this.isTranscribing = false;
+    this.transcriptionStartTime = 0; // Reset start time
 
     // Clear segment check interval
     if (this.segmentCheckInterval) {

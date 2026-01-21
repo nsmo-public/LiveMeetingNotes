@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MetadataPanel } from './components/MetadataPanel';
 import { RecordingControls } from './components/RecordingControls';
 import { NotesEditor } from './components/NotesEditor';
-import { AudioPlayer } from './components/AudioPlayer';
+import { AudioPlayer, AudioPlayerRef } from './components/AudioPlayer';
 import { HelpButton } from './components/HelpButton';
 import { TranscriptionConfig } from './components/TranscriptionConfig';
 import { TranscriptionPanel } from './components/TranscriptionPanel';
@@ -35,6 +35,7 @@ export const App: React.FC = () => {
   const [showBackupDialog, setShowBackupDialog] = useState(false);
   const [backupAge, setBackupAge] = useState<number | null>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const audioPlayerRef = useRef<AudioPlayerRef>(null);
   
   // Speech-to-Text states
   const [showTranscriptionConfig, setShowTranscriptionConfig] = useState(false);
@@ -314,6 +315,14 @@ export const App: React.FC = () => {
     return (2 * commonWords) / (words1.length + words2.length);
   };
 
+  // Handle seek to audio time
+  const handleSeekToAudio = (timeMs: number) => {
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.seekTo(timeMs);
+      console.log(`⏭️ Seeking to ${(timeMs / 1000).toFixed(2)}s`);
+    }
+  };
+
   return (
     <div className="app-container">
       {/* Backup Restoration Dialog */}
@@ -436,10 +445,11 @@ export const App: React.FC = () => {
           transcriptions={transcriptions}
           isTranscribing={isRecording}
           isOnline={isOnline}
+          onSeekAudio={handleSeekToAudio}
         />
       )}
 
-      <AudioPlayer audioBlob={audioBlob} />
+      <AudioPlayer ref={audioPlayerRef} audioBlob={audioBlob} />
 
       {/* Transcription Configuration Modal */}
       <TranscriptionConfig
