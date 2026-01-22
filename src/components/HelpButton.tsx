@@ -164,15 +164,9 @@ export const HelpButton: React.FC = () => {
                 <List.Item>4. Click <Tag color="green">Save Changes</Tag> → tạo version mới</List.Item>
               </List>
             </div>
-          </Space>
-        </div>
-      ),
-    },
-    {
-      key: '4',
-      label: '⌨️ Shortcuts',
-      children: (
-        <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '8px' }}>
+
+    <Title level={4}>-------------------------------------------------------</Title>
+            <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '8px' }}>
           <Title level={4}>Keyboard Shortcuts</Title>
           <List>
             <List.Item>
@@ -198,10 +192,12 @@ export const HelpButton: React.FC = () => {
             </List.Item>
           </List>
         </div>
+          </Space>
+        </div>
       ),
     },
     {
-      key: '5',
+      key: '4',
       label: '🌐 Tương thích',
       children: (
         <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '8px' }}>
@@ -249,7 +245,7 @@ export const HelpButton: React.FC = () => {
       ),
     },
     {
-      key: '6',
+      key: '5',
       label: '🔒 Privacy',
       children: (
         <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '8px' }}>
@@ -300,7 +296,7 @@ export const HelpButton: React.FC = () => {
       ),
     },
     {
-      key: '7',
+      key: '6',
       label: '👤 Tác giả',
       children: (
         <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '8px' }}>
