@@ -32,7 +32,7 @@ export const NotesEditor: React.FC<Props> = ({
   // Timestamp delay setting (in seconds) - người gõ note thường chậm hơn người nói
   const [timestampDelay, setTimestampDelay] = useState<number>(() => {
     const saved = localStorage.getItem('timestampDelay');
-    return saved ? parseInt(saved, 10) : 10; // Mặc định 10 giây
+    return saved ? parseInt(saved, 8) : 8; // Mặc định 10 giây
   });
   
   const containerRef = useRef<HTMLDivElement>(null);

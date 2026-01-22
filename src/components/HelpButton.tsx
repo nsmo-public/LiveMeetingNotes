@@ -21,7 +21,8 @@ export const HelpButton: React.FC = () => {
           <List
             dataSource={[
               '🎙️ Ghi âm và đánh dấu thời gian tự động',
-              '📴 Làm việc hoàn toàn offline',
+              '�️ Chuyển đổi giọng nói sang văn bản (Speech-to-Text)',
+              '�📴 Làm việc hoàn toàn offline',
               '💾 Lưu trữ file trực tiếp vào máy tính',
               '🌐 Tương thích đa nền tảng (Chrome, Edge, Firefox, Safari)',
               '🔒 100% bảo mật - Không upload dữ liệu lên server',
@@ -57,6 +58,21 @@ export const HelpButton: React.FC = () => {
                 <List.Item>• Nhấn <Tag color="blue">ENTER</Tag> khi ghi âm → chèn dòng mới → gõ văn bản sẽ tự động chèn nhãn thời gian</List.Item>
                 <List.Item>• <strong>Double-click</strong> vào timestamp → jump đến vị trí đó trong audio</List.Item>
                 <List.Item>• Timestamp ghi lại chính xác thời điểm trong audio</List.Item>
+              </List>
+            </div>
+
+            <Divider style={{ margin: '12px 0' }} />
+
+            <div>
+              <Title level={4}>🗣️ Chuyển đổi giọng nói sang văn bản</Title>
+              <List size="small">
+                <List.Item>• <strong>Yêu cầu:</strong> Kết nối Internet và Google Cloud API Key</List.Item>
+                <List.Item>• Click <Tag color="orange" icon={<span>⚙️</span>}>Transcription Config</Tag> → nhập API Key</List.Item>
+                <List.Item>• Bật <Tag color="cyan">Auto-transcribe</Tag> → tự động chuyển đổi khi ghi âm</List.Item>
+                <List.Item>• Kết quả hiển thị real-time với độ tin cậy (confidence)</List.Item>
+                <List.Item>• Click vào kết quả → seek audio đến vị trí tương ứng</List.Item>
+                <List.Item>• <strong>Sửa & chèn:</strong> Nhấn nút Edit → chỉnh sửa văn bản → Insert vào Notes Editor</List.Item>
+                <List.Item>• Hỗ trợ speaker diarization (nhận diện người nói)</List.Item>
               </List>
             </div>
 
@@ -116,10 +132,12 @@ export const HelpButton: React.FC = () => {
               <List>
                 <List.Item>1. Click <Tag color="blue">Select Folder</Tag> → chọn thư mục lưu file (Chrome/Edge)</List.Item>
                 <List.Item>2. Điền thông tin cuộc họp (Title, Date, Time, Location, Host, Attendees)</List.Item>
-                <List.Item>3. Click <Tag color="red">Record</Tag> → bắt đầu ghi âm</List.Item>
-                <List.Item>4. Gõ notes, nhấn <Tag>ENTER</Tag> để chèn dòng mới kèm nhãn thời gian</List.Item>
-                <List.Item>5. Click <Tag>Stop</Tag> → files tự động lưu vào folder đã chọn</List.Item>
-                <List.Item>6. Playback audio, double-click timestamp để seek</List.Item>
+                <List.Item>3. <strong>(Optional)</strong> Cấu hình Speech-to-Text: Click <Tag color="orange">⚙️ Transcription Config</Tag> → nhập API Key</List.Item>
+                <List.Item>4. Click <Tag color="red">Record</Tag> → bắt đầu ghi âm</List.Item>
+                <List.Item>5. Gõ notes, nhấn <Tag>ENTER</Tag> để chèn dòng mới kèm nhãn thời gian</List.Item>
+                <List.Item>6. <strong>(Optional)</strong> Kết quả Speech-to-Text xuất hiện tự động → click Edit → Insert vào Notes</List.Item>
+                <List.Item>7. Click <Tag>Stop</Tag> → files tự động lưu vào folder đã chọn</List.Item>
+                <List.Item>8. Playback audio, double-click timestamp để seek</List.Item>
               </List>
             </div>
 
@@ -295,7 +313,7 @@ export const HelpButton: React.FC = () => {
           gap: '6px',
         }}
       >
-        Trợ giúp
+        Giới thiệu & Hướng dẫn
       </Button>
 
       <Modal
@@ -306,7 +324,7 @@ export const HelpButton: React.FC = () => {
         width={800}
         centered
       >
-        <Tabs defaultActiveKey="1" items={tabItems} />
+        <Tabs defaultActiveKey="" items={tabItems} />
       </Modal>
     </>
   );

@@ -102,7 +102,7 @@ export const TranscriptionPanel: React.FC<Props> = ({
 
   return (
     <Collapse
-      defaultActiveKey={['1']}
+      defaultActiveKey={[]}
       items={[
         {
           key: '1',

@@ -538,17 +538,6 @@ export const App: React.FC = () => {
         transcriptions={transcriptions}
       />
 
-      <NotesEditor
-        notes={notes}
-        onNotesChange={setNotes}
-        timestampMap={timestampMap}
-        onTimestampMapChange={setTimestampMap}
-        recordingStartTime={recordingStartTime}
-        isLiveMode={isLiveMode}
-        onSpeakersChange={setSpeakersMap}
-        initialSpeakers={speakersMap}
-      />
-
       {/* Transcription Panel - Only show when online and configured */}
       {isOnline && transcriptionConfig && (
         <TranscriptionPanel
@@ -559,6 +548,17 @@ export const App: React.FC = () => {
           onEditTranscription={handleEditTranscription}
         />
       )}
+
+      <NotesEditor
+        notes={notes}
+        onNotesChange={setNotes}
+        timestampMap={timestampMap}
+        onTimestampMapChange={setTimestampMap}
+        recordingStartTime={recordingStartTime}
+        isLiveMode={isLiveMode}
+        onSpeakersChange={setSpeakersMap}
+        initialSpeakers={speakersMap}
+      />
 
       <AudioPlayer ref={audioPlayerRef} audioBlob={audioBlob} />
 
