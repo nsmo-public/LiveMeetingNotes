@@ -579,34 +579,22 @@ export const RecordingControls: React.FC<Props> = ({
       
       let metadata;
       if (isNotesOnly) {
-        // Notes-only project metadata (convert to PascalCase format)
-        metadata = {
-          meetingInfo: {
-            MeetingTitle: meetingInfo.title,
-            MeetingDate: meetingInfo.date,
-            MeetingTime: meetingInfo.time,
-            Location: meetingInfo.location,
-            Host: meetingInfo.host,
-            Attendees: meetingInfo.attendees,
-          },
-          metadata: {
-            ProjectName: newProjectName,
-            Model: 'Notes Only',
-            Language: 'vi',
-            OriginalFileName: '',
-            AudioFileName: '',
-            Duration: '00:00:00.0000000',
-            RecordingStartTime: recordingStartTime ? new Date(recordingStartTime).toISOString() : new Date().toISOString(),
-            Timestamps: notes ? [{
-              Index: 0,
-              Text: notes,
-              DateTime: new Date().toISOString(),
-              StartTime: '00:00:00.0000000',
-              EndTime: '00:00:00.0000000',
-              Highlight: false
-            }] : []
-          }
-        };
+        // Notes-only project - use MetadataBuilder to properly handle timestamps and speakers
+        metadata = MetadataBuilder.buildMetadata(
+          meetingInfo,
+          notes,
+          timestampMap,
+          speakersMap,
+          0, // No audio duration for notes-only
+          '', // No audio file
+          recordingStartTime || Date.now()
+        );
+        
+        // Override fields for notes-only mode
+        metadata.metadata.Model = 'Notes Only';
+        metadata.metadata.OriginalFileName = '';
+        metadata.metadata.AudioFileName = '';
+        metadata.metadata.Duration = '00:00:00.0000000';
       } else {
         // Recording project with audio
         const audioFileName = `${newProjectName}.webm`;

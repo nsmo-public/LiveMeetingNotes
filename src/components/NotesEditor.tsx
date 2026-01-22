@@ -108,20 +108,31 @@ export const NotesEditor: React.FC<Props> = ({
   React.useEffect(() => {
     if (initialSpeakers && initialSpeakers.size > 0) {
       setLineSpeakers(new Map(initialSpeakers));
-      // console.log('📢 NotesEditor synced lineSpeakers from initialSpeakers:', {
-      //   speakersCount: initialSpeakers.size,
-      //   speakers: Array.from(initialSpeakers.entries())
-      // });
     }
   }, [initialSpeakers]);
   
-  // Notify parent component when speakers change
+  // Sync speakers back to parent when they change (with deep equality check to avoid loops)
+  const lastNotifiedSpeakersRef = React.useRef<Map<number, string>>(new Map());
   React.useEffect(() => {
     if (onSpeakersChange) {
-      onSpeakersChange(lineSpeakers);
+      // Deep compare with last notified state
+      let isDifferent = lineSpeakers.size !== lastNotifiedSpeakersRef.current.size;
+      if (!isDifferent) {
+        for (const [key, value] of lineSpeakers.entries()) {
+          if (lastNotifiedSpeakersRef.current.get(key) !== value) {
+            isDifferent = true;
+            break;
+          }
+        }
+      }
+      
+      if (isDifferent) {
+        onSpeakersChange(lineSpeakers);
+        lastNotifiedSpeakersRef.current = new Map(lineSpeakers);
+      }
     }
   }, [lineSpeakers, onSpeakersChange]);
-
+  
   // Listen for insert-note-at-time event from AudioPlayer
   React.useEffect(() => {
     const handleInsertNote = (event: CustomEvent) => {
@@ -709,11 +720,7 @@ export const NotesEditor: React.FC<Props> = ({
           newLineSpeakers.set(lineIndex + 1, speaker);
         }
       });
-      // New line inherits speaker from current line (optional, or leave empty)
-      const currentSpeaker = lineSpeakers.get(index);
-      if (currentSpeaker) {
-        newLineSpeakers.set(index + 1, currentSpeaker);
-      }
+      // New line starts with empty speaker (user can fill in manually)
       
       // Don't auto-assign timestamp to new line
       // Timestamp will be created when user types first character (in handleLineChange)
