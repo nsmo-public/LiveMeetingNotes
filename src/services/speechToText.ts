@@ -62,6 +62,23 @@ export class SpeechToTextService {
       throw new Error('Speaker diarization requires Google Cloud API Key. Please add API Key in configuration.');
     }
 
+    // Nếu bật nhận diện người nói (speaker diarization) thì bắt buộc dùng Google Cloud API
+  if (this.config?.enableSpeakerDiarization && this.hasGoogleCloudAPI()) {
+    this.startGoogleCloudTranscription(stream);
+    return;
+  }
+
+  // Luôn ưu tiên Web Speech API nếu có (miễn phí, realtime, tốt cho ghi âm)
+  if (this.tryWebSpeechAPI(stream, onTranscription)) {
+    return;
+  }
+
+  // Nếu không có Web Speech API, fallback sang Google Cloud API nếu có key
+  if (this.hasGoogleCloudAPI()) {
+    this.startGoogleCloudTranscription(stream);
+  } else {
+    throw new Error('Web Speech API not available and no Google Cloud API Key configured.');
+  }
     if (this.isTranscribing) {
       console.warn('Transcription already in progress');
       return;

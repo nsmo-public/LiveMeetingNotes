@@ -1129,7 +1129,7 @@ export const RecordingControls: React.FC<Props> = ({
                         onClearTranscriptions();
                       }
                     }}
-                    disabled={!isRecording}
+                    disabled={isRecording}
                     checkedChildren="ON"
                     unCheckedChildren="OFF"
                   />
