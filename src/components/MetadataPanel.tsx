@@ -65,13 +65,14 @@ export const MetadataPanel: React.FC<Props> = ({ meetingInfo, onChange }) => {
               </div>
               </div>
 
-              <div className="form-row form-row-split">
+              <div className="form-row form-row-split2" >
                 <div className="form-field">
                   <label>Host:</label>
-                  <Input
+                  <TextArea
                   value={meetingInfo.host}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('host', e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleChange('host', e.target.value)}
                   placeholder="Meeting host name"
+                  rows={1}
                   />
                 </div>
 
@@ -81,7 +82,7 @@ export const MetadataPanel: React.FC<Props> = ({ meetingInfo, onChange }) => {
                   value={meetingInfo.attendees}
                   onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleChange('attendees', e.target.value)}
                   placeholder="Comma-separated names (e.g., Alice, Bob, Charlie)"
-                  rows={2}
+                  rows={1}
                 />
               </div>
               </div>

@@ -124,6 +124,12 @@ body {
   gap: 16px;
 }
 
+.form-row-split2 {
+  display: grid;
+  grid-template-columns: 0.8fr 2.2fr;
+  gap: 16px;
+}
+
 .form-field {
   display: flex;
   flex-direction: column;
