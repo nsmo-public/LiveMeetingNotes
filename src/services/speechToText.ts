@@ -619,6 +619,43 @@ export class SpeechToTextService {
     recognition.lang = this.config?.languageCode || 'vi-VN';
     recognition.maxAlternatives = 1;
 
+    // Xử lý sự kiện lỗi
+    recognition.onerror = function(event: SpeechRecognitionErrorEvent) {
+        if (event.error === 'no-speech') {
+            console.warn('Speech recognition error: No speech detected. Please speak clearly or check your microphone.');
+            // ====> THÊM LOGIC XỬ LÝ TẠI ĐÂY <====
+            // 1. Hiển thị thông báo cho người dùng
+            displayUserMessage("Không phát hiện thấy giọng nói. Hãy kiểm tra micrô của bạn hoặc nói rõ hơn.");
+            // 2. Tùy chọn: Dừng nhận diện hoặc bắt đầu lại sau một khoảng thời gian
+            recognition.stop(); // Dừng phiên hiện tại
+            // setTimeout(() => recognition.start(), 2000); // Thử lại sau 2 giây (cân nhắc xem có nên tự động thử lại không)
+            // 3. Cung cấp phương thức nhập liệu thay thế
+            // showKeyboardInputOption();
+        } else if (event.error === 'not-allowed') {
+            console.error('Speech recognition error: Microphone access denied.');
+            displayUserMessage("Trang web cần quyền truy cập micrô để sử dụng tính năng này. Vui lòng cho phép truy cập micrô trong cài đặt trình duyệt của bạn.");
+        } else {
+            console.error('Speech recognition error:', event.error);
+            displayUserMessage("Đã xảy ra lỗi trong quá trình nhận dạng giọng nói: " + event.error);
+        }
+    };
+        // Ví dụ đơn giản (có thể đặt ở cùng file hoặc một file tiện ích khác và import vào)
+      function displayUserMessage(message: string) {
+          console.log("Thông báo cho người dùng:", message);
+          // Bạn sẽ thay thế dòng console.log này bằng cách thực sự hiển thị thông báo trên UI của ứng dụng.
+          // Ví dụ: cập nhật state của một component React, hiển thị một toast notification, v.v.
+          // Ví dụ với React (trong một component):
+          // setErrorMessage(message); // Cập nhật state để hiển thị lỗi trên UI
+      }
+
+      // Sau đó sử dụng nó trong onerror:
+      recognition.onerror = function(event: SpeechRecognitionErrorEvent) {
+          if (event.error === 'no-speech') {
+              displayUserMessage("Không phát hiện thấy giọng nói. Hãy kiểm tra micrô của bạn hoặc nói rõ hơn.");
+          }
+          // ...
+      };
+        
     let lastResultTime = 0;
 
     recognition.onresult = (event: any) => {
