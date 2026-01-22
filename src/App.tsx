@@ -547,6 +547,7 @@ export const App: React.FC = () => {
         hasUnsavedChanges={hasUnsavedChanges}
         onShowTranscriptionConfig={() => setShowTranscriptionConfig(true)}
         transcriptionConfig={transcriptionConfig}
+        shouldBlink={!transcriptionConfig} 
         onNewTranscription={handleNewTranscription}
         onClearTranscriptions={() => setTranscriptions([])}
         transcriptions={transcriptions}

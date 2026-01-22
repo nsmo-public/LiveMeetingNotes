@@ -44,6 +44,7 @@ interface Props {
   // Speech-to-Text props
   onShowTranscriptionConfig: () => void;
   transcriptionConfig: SpeechToTextConfig | null;
+  shouldBlink?: boolean;
   onNewTranscription: (result: TranscriptionResult) => void;
   onClearTranscriptions: () => void;
   transcriptions: TranscriptionResult[];
@@ -1110,6 +1111,7 @@ export const RecordingControls: React.FC<Props> = ({
               onClick={onShowTranscriptionConfig}
               disabled={isRecording}
               size="large"
+              className={!transcriptionConfig ? 'blink-btn' : ''}
             >
               Cấu hình Speech-to-Text
             </Button>
