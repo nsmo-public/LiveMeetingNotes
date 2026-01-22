@@ -311,8 +311,8 @@ export class SpeechToTextService {
         console.error('MediaRecorder error:', event);
       };
 
-      // Request data every 5 seconds
-      this.mediaRecorder.start(5000);
+      // Request data every 10 seconds (longer chunks = better quality)
+      this.mediaRecorder.start(10000);
       // console.log('📹 MediaRecorder started for Google Cloud transcription');
     } catch (error) {
       console.error('Failed to start Google Cloud transcription:', error);
@@ -340,14 +340,12 @@ export class SpeechToTextService {
       const endpoint = this.config.apiEndpoint || 'https://speech.googleapis.com/v1/speech:recognize';
       const url = `${endpoint}?key=${this.config.apiKey}`;
 
-      const requestBody = {
+      const requestBody: any = {
         config: {
           encoding: 'WEBM_OPUS',
           sampleRateHertz: 48000,
           languageCode: this.config.languageCode,
           enableAutomaticPunctuation: this.config.enableAutomaticPunctuation,
-          enableSpeakerDiarization: this.config.enableSpeakerDiarization,
-          diarizationSpeakerCount: this.config.enableSpeakerDiarization ? 5 : undefined, // Support up to 5 speakers
           model: 'default',
           useEnhanced: true // Use enhanced model for better accuracy
         },
@@ -355,6 +353,15 @@ export class SpeechToTextService {
           content: base64Audio.split(',')[1] // Remove data:audio/webm;base64, prefix
         }
       };
+
+      // Add speaker diarization config if enabled
+      if (this.config.enableSpeakerDiarization) {
+        requestBody.config.diarizationConfig = {
+          enableSpeakerDiarization: true,
+          minSpeakerCount: 2,
+          maxSpeakerCount: 6
+        };
+      }
 
       // Send request
       const response = await fetch(url, {
@@ -368,11 +375,13 @@ export class SpeechToTextService {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Google Cloud API error:', errorData);
+        console.error('Error message:', errorData.error?.message);
         console.error('Request details:', {
           audioSize: audioBlob.size,
           encoding: requestBody.config.encoding,
           sampleRate: requestBody.config.sampleRateHertz,
-          languageCode: requestBody.config.languageCode
+          languageCode: requestBody.config.languageCode,
+          diarizationEnabled: this.config.enableSpeakerDiarization
         });
         return;
       }
