@@ -103,7 +103,7 @@ export const HelpButton: React.FC = () => {
                 <List.Item>📄 <Text code>[ProjectName].webm</Text> - Audio file</List.Item>
                 <List.Item>📄 <Text code>[ProjectName]_meeting_info.json</Text> - Meeting metadata</List.Item>
                 <List.Item>📄 <Text code>[ProjectName]_metadata.json</Text> - Notes + timestamps</List.Item>
-                <List.Item>📄 <Text code>[ProjectName]_metadata.json</Text> - Notes + timestamps</List.Item>
+                <List.Item>📄 <Text code>[ProjectName]_transcription.json</Text> - Notes + timestamps</List.Item>
                 <List.Item>📄 <Text code>[ProjectName].docx</Text> - Word document</List.Item>
               </List>
             </div>
