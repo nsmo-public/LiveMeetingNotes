@@ -556,3 +556,11 @@ body {
     transform: translate(-50%, -50%) scale(0.8);
   }
 }
+
+.blink-btn {
+  animation: blink 1s linear infinite;
+}
+@keyframes blink {
+  0%, 100% { box-shadow: 0 0 8px #1890ff; }
+  50% { box-shadow: 0 0 24px #ff4d4f; }
+}

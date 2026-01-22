@@ -393,6 +393,7 @@ export const RecordingControls: React.FC<Props> = ({
             transcriptionData,
             `${projectName}_transcription.json`
           );
+          // console.log('💾 Transcription data saved:', transcriptionData.totalCount, 'items');
         }
 
         // Export Word document
