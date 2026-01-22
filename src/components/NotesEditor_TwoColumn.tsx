@@ -155,7 +155,7 @@ export const NotesEditor: React.FC<Props> = ({
   return (
     <div className="notes-editor-container">
       <div className="editor-header">
-        <h3>📝 Notes Editor</h3>
+        <h3>📝 Trình soạn thảo ghi chú</h3>
         <div className="editor-controls">
           {isRecording && (
             <span className="recording-hint">
@@ -202,7 +202,7 @@ export const NotesEditor: React.FC<Props> = ({
             onChange={handleTextChange}
             onDoubleClick={handleDoubleClick}
             onScroll={handleScroll}
-            placeholder="Start typing your notes here...&#10;Timestamps will be added automatically when you type at a new line"
+            placeholder="Bắt đầu nhập ghi chú tại đây...&#10;Mốc thời gian sẽ được thêm tự động khi bạn xuống dòng mới"
             className="notes-textarea"
             autoSize={{ minRows: 15, maxRows: 30 }}
             style={{

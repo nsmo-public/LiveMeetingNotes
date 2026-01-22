@@ -24,21 +24,21 @@ export const MetadataPanel: React.FC<Props> = ({ meetingInfo, onChange }) => {
       items={[
         {
           key: '1',
-          label: '📋 Meeting Information',
+          label: '📋 Thông tin cuộc họp',
           children: (
             <div className="metadata-form">
               <div className="form-row">
-                <label>Meeting Title:</label>
+                <label>Tên cuộc họp:</label>
                 <Input
                   value={meetingInfo.title}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('title', e.target.value)}
-                  placeholder="e.g., Weekly Team Meeting"
+                  placeholder="VD: Họp giao ban, thảo luận dự án..."
                 />
               </div>
 
               <div className="form-row form-row-split">
                 <div className="form-field">
-                  <label>Date:</label>
+                  <label>Ngày:</label>
                   <Input
                     type="date"
                     value={meetingInfo.date}
@@ -47,7 +47,7 @@ export const MetadataPanel: React.FC<Props> = ({ meetingInfo, onChange }) => {
                 </div>
 
                 <div className="form-field">
-                  <label>Time:</label>
+                  <label>Giờ:</label>
                   <Input
                     type="time"
                     value={meetingInfo.time}
@@ -56,32 +56,32 @@ export const MetadataPanel: React.FC<Props> = ({ meetingInfo, onChange }) => {
                 </div>
 
                 <div className="form-field">
-                <label>Location:</label>
+                <label>Địa điểm:</label>
                 <Input
                   value={meetingInfo.location}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('location', e.target.value)}
-                  placeholder="e.g., Conference Room A / Zoom"
+                  placeholder="VD: Phòng họp A / Zoom"
                 />
               </div>
               </div>
 
               <div className="form-row form-row-split2" >
                 <div className="form-field">
-                  <label>Host:</label>
+                  <label>Chủ trì:</label>
                   <TextArea
                   value={meetingInfo.host}
                   onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleChange('host', e.target.value)}
-                  placeholder="Meeting host name"
+                  placeholder="Tên người chủ trì"
                   rows={1}
                   />
                 </div>
 
                 <div className="form-field">
-                <label>Attendees:</label>
+                <label>Thành viên tham dự:</label>
                 <TextArea
                   value={meetingInfo.attendees}
                   onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleChange('attendees', e.target.value)}
-                  placeholder="Comma-separated names (e.g., Alice, Bob, Charlie)"
+                  placeholder="Tên cách nhau bởi dấu phẩy (VD: An, Bình, Chi)"
                   rows={1}
                 />
               </div>

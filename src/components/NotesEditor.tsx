@@ -910,18 +910,18 @@ export const NotesEditor: React.FC<Props> = ({
   return (
     <div className="notes-editor-container">
       <div className="editor-header">
-        <h3>📝 Notes Editor</h3>
+        <h3>📝 Ghi chép thủ công</h3>
         <div className="editor-controls">
           <span className="recording-hint">
             {isLiveMode 
-              ? '💡 Type to create datetime • Enter for new line • Shift+Enter for line break'
-              : '💡 Right-click waveform to insert note • Enter/Shift+Enter for line break in text'
+              ? '💡 Gõ để tạo ngày giờ • Enter để xuống dòng mới • Shift+Enter để ngắt dòng'
+              : '💡 Nhấp chuột phải vào sóng âm để chèn ghi chú • Enter/Shift+Enter để ngắt dòng trong văn bản'
             }
           </span>
           {isLiveMode && (
             <div className="timestamp-delay-control" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '12px' }}>
               <label htmlFor="timestamp-delay" style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>
-                ⏱️ Delay:
+                ⏱️ Trễ:
               </label>
               <input
                 id="timestamp-delay"
@@ -946,14 +946,15 @@ export const NotesEditor: React.FC<Props> = ({
                 title="Timestamp sẽ lùi lại bao nhiêu giây (người gõ note thường chậm hơn người nói)"
               />
               <span style={{ fontSize: '12px' }}>giây</span>
+            
             </div>
           )}
           <button
             className="toggle-timestamps-btn"
             onClick={() => setShowTimestamps(!showTimestamps)}
-            title={showTimestamps ? (isLiveMode ? 'Hide DateTimes' : 'Hide TimeStamps') : (isLiveMode ? 'Show DateTimes' : 'Show TimeStamps')}
+            title={showTimestamps ? (isLiveMode ? 'Ẩn ngày giờ' : 'Ẩn mốc thời gian') : (isLiveMode ? 'Hiện ngày giờ' : 'Hiện mốc thời gian')}
           >
-            {showTimestamps ? (isLiveMode ? '👁️ Hide DateTimes' : '👁️ Hide TimeStamps') : (isLiveMode ? '👁️‍🗨️ Show DateTimes' : '👁️‍🗨️ Show TimeStamps')}
+            {showTimestamps ? (isLiveMode ? '👁️ Ẩn ngày giờ' : '👁️ Ẩn mốc thời gian') : (isLiveMode ? '👁️‍🗨️ Hiện ngày giờ' : '👁️‍🗨️ Hiện mốc thời gian')}
           </button>
         </div>
       </div>
@@ -1005,7 +1006,7 @@ export const NotesEditor: React.FC<Props> = ({
                   alignItems: 'flex-start',
                   paddingTop: '8px'
                 }}
-                title={timeMs !== undefined ? (isLiveMode ? 'Click to edit • Double-click to jump to audio' : 'Double-click to jump to audio') : ''}
+                title={timeMs !== undefined ? (isLiveMode ? 'Nhấn để chỉnh sửa • Nhấp đúp để chuyển đến âm thanh' : 'Nhấp đúp để chuyển đến âm thanh') : ''}
               >
                 {editingDatetimeIndex === index && isLiveMode ? (
                   <Input
@@ -1101,7 +1102,7 @@ export const NotesEditor: React.FC<Props> = ({
                   const target = e.target as HTMLTextAreaElement;
                   handleLineChange(index, target.value);
                 }}
-                placeholder={index === 0 ? "Start typing..." : ""}
+                placeholder={index === 0 ? "Bắt đầu nhập..." : ""}
                 autoSize={{ minRows: 1, maxRows: 10 }}
                 style={{
                   flex: 1,

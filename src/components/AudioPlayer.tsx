@@ -463,7 +463,7 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ audioBlob, trans
     return (
       <div className="audio-player disabled">
         <div className="player-info">
-          📢 No audio available. Record a meeting to see playback controls.
+          📢 Không có tệp âm thanh. Hãy ghi âm một cuộc họp để sử dụng các điều khiển phát lại.
         </div>
       </div>
     );

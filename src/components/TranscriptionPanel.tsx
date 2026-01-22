@@ -283,7 +283,7 @@ export const TranscriptionPanel: React.FC<Props> = ({
                                   size="small"
                                   value={editSpeaker}
                                   onChange={(e) => setEditSpeaker(e.target.value)}
-                                  placeholder="Person1"
+                                  placeholder="Người nói 1"
                                   style={{ width: '150px' }}
                                 />
                               </div>

@@ -148,7 +148,7 @@ export const RecordingControls: React.FC<Props> = ({
       onRecordingChange(true);
       setDuration(0);
       setRecordingSegments([]); // Clear segments for new recording
-      message.success('Recording started');
+      message.success('Bắt đầu ghi âm');
     } catch (error: any) {
       message.error(error.message);
     }
@@ -165,7 +165,7 @@ export const RecordingControls: React.FC<Props> = ({
       }
       
       onRecordingChange(true);
-      message.success('Recording continued');
+      message.success('Tiếp tục ghi âm');
     } catch (error: any) {
       message.error(error.message);
     }
@@ -183,7 +183,7 @@ export const RecordingControls: React.FC<Props> = ({
       sanitized = sanitized.substring(0, 50);
     }
     // Fallback if empty after sanitization
-    return sanitized || 'Meeting';
+    return sanitized || 'Cuộc họp';
   };
 
   const handleStopRecording = async () => {
@@ -452,7 +452,7 @@ export const RecordingControls: React.FC<Props> = ({
           finalTranscriptions
         );
         
-        message.info('Files downloaded. Please save them to your meeting notes folder.');
+        message.info('Tệp đã được tải xuống. Vui lòng lưu vào thư mục ghi chú cuộc họp của bạn.');
         setLastProjectName(projectName);
         onSaveComplete();
         return;
@@ -463,7 +463,7 @@ export const RecordingControls: React.FC<Props> = ({
         // No folder selected, prompt user
         const folder = await fileManager.selectFolder();
         if (!folder) {
-          message.info('Please select a folder to save your notes.');
+          message.info('Vui lòng chọn thư mục để lưu ghi chú.');
           return; // User cancelled
         }
         onFolderSelect(folder);
@@ -560,7 +560,7 @@ export const RecordingControls: React.FC<Props> = ({
   const handleSaveChanges = async () => {
     try {
       if (!lastProjectName) {
-        message.error('No project to update');
+        message.error('Không có dự án để cập nhật');
         return;
       }
 
@@ -1017,22 +1017,19 @@ export const RecordingControls: React.FC<Props> = ({
             disabled={isRecording}
             size="large"
           >
-            Select Folder
+            Chọn thư mục
           </Button>
 
           <Button
             icon={<FolderAddOutlined />}
             onClick={() => {
-              // console.log('Load Project button clicked');
-              // console.log('isRecording:', isRecording);
-              // console.log('isSupported:', FileManagerService.isSupported());
               handleLoadProject();
             }}
             disabled={isRecording || !FileManagerService.isSupported()}
             size="large"
             type="default"
           >
-            Load Project
+            Tải dự án đã lưu
           </Button>
 
           {!isRecording ? (
@@ -1120,7 +1117,7 @@ export const RecordingControls: React.FC<Props> = ({
               <Tooltip title={isRecording ? 'Bật/tắt chuyển đổi giọng nói sang văn bản tự động' : 'Chỉ khả dụng khi đang ghi âm'}>
                 <Space>
                   <SoundOutlined style={{ fontSize: '18px', color: autoTranscribe ? '#52c41a' : '#999' }} />
-                  <span style={{ fontSize: '14px' }}>Auto Transcribe:</span>
+                  <span style={{ fontSize: '14px' }}>Tự động chuyển giọng nói thành văn bản:</span>
                   <Switch
                     checked={autoTranscribe}
                     onChange={(checked) => {
