@@ -574,7 +574,7 @@ export const App: React.FC = () => {
         initialSpeakers={speakersMap}
       />
 
-      <AudioPlayer ref={audioPlayerRef} audioBlob={audioBlob} />
+      <AudioPlayer ref={audioPlayerRef} audioBlob={audioBlob} transcriptionConfig={transcriptionConfig} />
 
       {/* Transcription Configuration Modal */}
       <TranscriptionConfig

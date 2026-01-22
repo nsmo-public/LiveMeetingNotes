@@ -13,13 +13,14 @@ import WaveSurfer from 'wavesurfer.js';
 
 interface Props {
   audioBlob: Blob | null;
+  transcriptionConfig?: any;
 }
 
 export interface AudioPlayerRef {
   seekTo: (timeMs: number) => void;
 }
 
-export const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ audioBlob }, ref) => {
+export const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ audioBlob, transcriptionConfig}, ref) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
@@ -179,7 +180,7 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ audioBlob }, ref
       // Menu items
       const menuItems = [
         {
-          label: '📝 Insert note at this time',
+          label: '📝 Insert note at seeked time',
           action: () => {
             window.dispatchEvent(
               new CustomEvent('insert-note-at-time', {
@@ -216,6 +217,11 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ audioBlob }, ref
         }
       ];
       
+      // Only show 'Transcribe entire audio' if API Key is present
+      if (!transcriptionConfig?.apiKey) {
+        menuItems.pop(); // Remove the last item (Transcribe entire audio)
+      }
+
       menuItems.forEach(item => {
         const menuItem = document.createElement('div');
         menuItem.textContent = item.label;
