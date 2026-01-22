@@ -11,7 +11,7 @@ if ('serviceWorker' in navigator) {
       // Unregister old service-worker.js
       if (registration.active?.scriptURL.includes('service-worker.js')) {
         registration.unregister();
-        console.log('Old service worker unregistered');
+        // console.log('Old service worker unregistered');
       }
     });
   });

@@ -30,7 +30,7 @@ export class AudioRecorderService {
       for (const mimeType of mimeTypes) {
         if (MediaRecorder.isTypeSupported(mimeType)) {
           selectedMimeType = mimeType;
-          console.log(`Using audio format: ${mimeType}`);
+          // console.log(`Using audio format: ${mimeType}`);
           break;
         }
       }
@@ -50,10 +50,10 @@ export class AudioRecorderService {
           this.currentChunkSize += event.data.size;
           
           // Log progress for long recordings
-          if (this.audioChunks.length % 10 === 0) {
-            const sizeMB = (this.currentChunkSize / (1024 * 1024)).toFixed(2);
-            console.log(`Recording progress: ${this.audioChunks.length} chunks, ${sizeMB} MB`);
-          }
+          // if (this.audioChunks.length % 10 === 0) {
+          //   const sizeMB = (this.currentChunkSize / (1024 * 1024)).toFixed(2);
+          //   console.log(`Recording progress: ${this.audioChunks.length} chunks, ${sizeMB} MB`);
+          // }
         }
       };
 
@@ -65,7 +65,7 @@ export class AudioRecorderService {
       this.mediaRecorder.start(5000);
       this.startTime = Date.now();
       
-      console.log('Recording started with MediaRecorder');
+      // console.log('Recording started with MediaRecorder');
     } catch (error: any) {
       if (error.name === 'NotAllowedError') {
         throw new Error('Microphone permission denied. Please allow access in browser settings.');
@@ -91,7 +91,7 @@ export class AudioRecorderService {
       const recorder = this.mediaRecorder;
       
       recorder.onstop = () => {
-        console.log(`Recording stopped. Total chunks: ${this.audioChunks.length}, Total size: ${(this.currentChunkSize / (1024 * 1024)).toFixed(2)} MB`);
+        // console.log(`Recording stopped. Total chunks: ${this.audioChunks.length}, Total size: ${(this.currentChunkSize / (1024 * 1024)).toFixed(2)} MB`);
         
         // Combine all chunks into single blob
         const mimeType = recorder.mimeType || 'audio/webm';

@@ -59,7 +59,7 @@ export const App: React.FC = () => {
     if (savedConfig) {
       setTranscriptionConfig(savedConfig);
       speechToTextService.initialize(savedConfig);
-      console.log('🎤 Speech-to-Text config loaded');
+      // console.log('🎤 Speech-to-Text config loaded');
     }
   }, []);
   
@@ -97,7 +97,7 @@ export const App: React.FC = () => {
       
       if (!confirmed) return;
 
-      console.log('🎬 Starting audio file transcription...');
+      // console.log('🎬 Starting audio file transcription...');
       
       // Clear existing transcriptions
       setTranscriptions([]);
@@ -237,7 +237,7 @@ export const App: React.FC = () => {
 
   // Debug: Log when meetingInfo changes
   useEffect(() => {
-    console.log('📝 App meetingInfo state updated:', meetingInfo);
+    // console.log('📝 App meetingInfo state updated:', meetingInfo);
   }, [meetingInfo]);
 
   // Prevent accidental page close/reload when recording or has unsaved data
@@ -289,14 +289,14 @@ export const App: React.FC = () => {
       }
       setIsSaved(backup.isSaved);
       setShowBackupDialog(false);
-      console.log('✅ Backup restored successfully');
+      // console.log('✅ Backup restored successfully');
     }
   };
   
   const handleDiscardBackup = async () => {
     await clearBackup();
     setShowBackupDialog(false);
-    console.log('🗑️ Backup discarded');
+    // console.log('🗑️ Backup discarded');
   };
 
   const handleLoadProject = (loadedData: {
@@ -307,14 +307,14 @@ export const App: React.FC = () => {
     audioBlob: Blob | null;
     recordingStartTime: number;
   }) => {
-    console.log('📂 App.handleLoadProject - Data received:', {
-      meetingInfo: loadedData.meetingInfo,
-      notesLength: loadedData.notes.length,
-      timestampMapSize: loadedData.timestampMap.size,
-      speakersMapSize: loadedData.speakersMap.size,
-      audioBlobSize: loadedData.audioBlob?.size || 0,
-      hasAudio: loadedData.audioBlob !== null
-    });
+    // console.log('📂 App.handleLoadProject - Data received:', {
+    //   meetingInfo: loadedData.meetingInfo,
+    //   notesLength: loadedData.notes.length,
+    //   timestampMapSize: loadedData.timestampMap.size,
+    //   speakersMapSize: loadedData.speakersMap.size,
+    //   audioBlobSize: loadedData.audioBlob?.size || 0,
+    //   hasAudio: loadedData.audioBlob !== null
+    // });
     
     setMeetingInfo(loadedData.meetingInfo);
     setNotes(loadedData.notes);
@@ -333,7 +333,7 @@ export const App: React.FC = () => {
   const handleSaveTranscriptionConfig = (config: SpeechToTextConfig) => {
     setTranscriptionConfig(config);
     speechToTextService.initialize(config);
-    console.log('✅ Transcription config updated');
+    // console.log('✅ Transcription config updated');
   };
 
   // Handle edit transcription
@@ -346,7 +346,7 @@ export const App: React.FC = () => {
       )
     );
     setHasUnsavedChanges(true);
-    console.log('✏️ Transcription edited:', { id, newText, newSpeaker });
+    // console.log('✏️ Transcription edited:', { id, newText, newSpeaker });
   };
 
   // Handle new transcription result
@@ -367,10 +367,10 @@ export const App: React.FC = () => {
           // Case 1: Kết quả mới là phiên bản mở rộng của kết quả cũ
           // VD: Cũ: "như vậy là", Mới: "như vậy là cái mẫu"
           if (newText.startsWith(lastText) && newText.length > lastText.length) {
-            console.log('🔄 Replacing with extended version:', {
-              old: lastText.substring(0, 50) + '...',
-              new: newText.substring(0, 50) + '...'
-            });
+            // console.log('🔄 Replacing with extended version:', {
+            //   old: lastText.substring(0, 50) + '...',
+            //   new: newText.substring(0, 50) + '...'
+            // });
             // Thay thế kết quả cũ bằng kết quả mới
             finalResults[finalResults.length - 1] = result;
             return finalResults;
@@ -379,14 +379,14 @@ export const App: React.FC = () => {
           // Case 2: Kết quả cũ là phiên bản mở rộng của kết quả mới → bỏ qua kết quả mới
           // VD: Cũ: "như vậy là cái mẫu", Mới: "như vậy là"
           if (lastText.startsWith(newText)) {
-            console.log('⏭️ Skipping shorter duplicate');
+            // console.log('⏭️ Skipping shorter duplicate');
             return prev; // Giữ nguyên
           }
           
           // Case 3: Kiểm tra độ tương đồng cao (>80% giống nhau)
           const similarity = calculateSimilarity(newText, lastText);
           if (similarity > 0.8) {
-            console.log('⏭️ Skipping similar result (similarity: ' + (similarity * 100).toFixed(0) + '%)');
+            // console.log('⏭️ Skipping similar result (similarity: ' + (similarity * 100).toFixed(0) + '%)');
             return prev;
           }
         }
@@ -401,7 +401,7 @@ export const App: React.FC = () => {
     });
     
     if (result.isFinal) {
-      console.log('✅ Final transcription:', result.text.substring(0, 50) + '...');
+      // console.log('✅ Final transcription:', result.text.substring(0, 50) + '...');
     }
   };
 
@@ -429,7 +429,7 @@ export const App: React.FC = () => {
   const handleSeekToAudio = (timeMs: number) => {
     if (audioPlayerRef.current) {
       audioPlayerRef.current.seekTo(timeMs);
-      console.log(`⏭️ Seeking to ${(timeMs / 1000).toFixed(2)}s`);
+      // console.log(`⏭️ Seeking to ${(timeMs / 1000).toFixed(2)}s`);
     }
   };
 

@@ -96,22 +96,22 @@ export const NotesEditor: React.FC<Props> = ({
     });
     
     setLineTimestamps(newLineTimestamps);
-    console.log('📊 NotesEditor synced lineTimestamps:', {
-      timestampMapSize: timestampMap.size,
-      lineTimestampsSize: newLineTimestamps.size,
-      linesCount: lines.length,
-      sampleLineTimestamps: Array.from(newLineTimestamps.entries()).slice(0, 3)
-    });
+    // console.log('📊 NotesEditor synced lineTimestamps:', {
+    //   timestampMapSize: timestampMap.size,
+    //   lineTimestampsSize: newLineTimestamps.size,
+    //   linesCount: lines.length,
+    //   sampleLineTimestamps: Array.from(newLineTimestamps.entries()).slice(0, 3)
+    // });
   }, [timestampMap, notes]);
   
   // Sync lineSpeakers when initialSpeakers changes (e.g., when loading project)
   React.useEffect(() => {
     if (initialSpeakers && initialSpeakers.size > 0) {
       setLineSpeakers(new Map(initialSpeakers));
-      console.log('📢 NotesEditor synced lineSpeakers from initialSpeakers:', {
-        speakersCount: initialSpeakers.size,
-        speakers: Array.from(initialSpeakers.entries())
-      });
+      // console.log('📢 NotesEditor synced lineSpeakers from initialSpeakers:', {
+      //   speakersCount: initialSpeakers.size,
+      //   speakers: Array.from(initialSpeakers.entries())
+      // });
     }
   }, [initialSpeakers]);
   
@@ -128,7 +128,7 @@ export const NotesEditor: React.FC<Props> = ({
       const { time } = event.detail; // time in seconds
       const timestampMs = recordingStartTime + time * 1000;
       
-      console.log('📝 Insert note at time:', { time, timestampMs, recordingStartTime });
+      // console.log('📝 Insert note at time:', { time, timestampMs, recordingStartTime });
       
       // Build a mapping of line index to timestamp for all current lines
       const lines = notes.split(BLOCK_SEPARATOR);
@@ -166,7 +166,7 @@ export const NotesEditor: React.FC<Props> = ({
         }
       }
       
-      console.log('📍 Inserting at index:', insertIndex, 'with timestamp:', timestampMs);
+      // console.log('📍 Inserting at index:', insertIndex, 'with timestamp:', timestampMs);
       
       // Insert new empty line at the calculated position
       lines.splice(insertIndex, 0, '');
@@ -193,8 +193,8 @@ export const NotesEditor: React.FC<Props> = ({
       });
       // New line has no speaker initially (empty)
       
-      console.log('📊 Speaker map before:', Array.from(lineSpeakers.entries()));
-      console.log('📊 Speaker map after:', Array.from(newLineSpeakers.entries()));
+      // console.log('📊 Speaker map before:', Array.from(lineSpeakers.entries()));
+      // console.log('📊 Speaker map after:', Array.from(newLineSpeakers.entries()));
       
       setLineTimestamps(newLineTimestamps);
       setLineSpeakers(newLineSpeakers);
@@ -412,7 +412,7 @@ export const NotesEditor: React.FC<Props> = ({
     const textToCopy = selectedIndices.map(idx => lines[idx]).join('\n');
     
     navigator.clipboard.writeText(textToCopy).then(() => {
-      console.log('📋 Copied selected lines to clipboard');
+      // console.log('📋 Copied selected lines to clipboard');
     });
   };
   

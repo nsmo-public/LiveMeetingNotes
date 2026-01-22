@@ -116,7 +116,7 @@ export const saveBackup = async (
       await saveAudioBlob(audioBlob);
     }
     
-    console.log('💾 Auto-backup saved at', new Date().toLocaleTimeString());
+    // console.log('💾 Auto-backup saved at', new Date().toLocaleTimeString());
   } catch (error) {
     console.error('Failed to save backup:', error);
   }
@@ -167,7 +167,7 @@ export const clearBackup = async (): Promise<void> => {
   try {
     localStorage.removeItem(STORAGE_KEY);
     await deleteAudioBlob();
-    console.log('🗑️ Auto-backup cleared');
+    // console.log('🗑️ Auto-backup cleared');
   } catch (error) {
     console.error('Failed to clear backup:', error);
   }

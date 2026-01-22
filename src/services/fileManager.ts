@@ -127,18 +127,18 @@ export class FileManagerService {
       
       // Save project folder handle as fallback
       this.projectDirHandle = projectHandle;
-      console.log('Saved project directory handle:', projectHandle.name);
+      // console.log('Saved project directory handle:', projectHandle.name);
       
       // Try to get parent directory handle for saving new versions (preferred location)
       try {
         // Method 1: Use getParent() if available (Chromium-based browsers)
         if ('getParent' in projectHandle) {
           this.parentDirHandle = await (projectHandle as any).getParent();
-          console.log('✓ Got parent directory handle via getParent():', this.parentDirHandle?.name);
+          // console.log('✓ Got parent directory handle via getParent():', this.parentDirHandle?.name);
         }
         // Method 2: Alternative API (if exists in future)
         else if ('resolve' in projectHandle) {
-          console.log('Trying resolve method...');
+          // console.log('Trying resolve method...');
           // This is a potential future API, not currently available
         }
       } catch (err) {
@@ -152,11 +152,11 @@ export class FileManagerService {
       let audioBlob = null;
       let transcriptionData = null;
 
-      console.log('Loading project from folder:', projectName);
+      // console.log('Loading project from folder:', projectName);
 
       // Read all files in the project directory
       for await (const [name, handle] of (projectHandle as any).entries()) {
-        console.log('Found file:', name, 'kind:', handle.kind);
+        // console.log('Found file:', name, 'kind:', handle.kind);
         
         if (handle.kind === 'file') {
           const file = await handle.getFile();
@@ -165,33 +165,33 @@ export class FileManagerService {
           if (name.includes('meeting_info.json')) {
             const text = await file.text();
             meetingInfoData = JSON.parse(text);
-            console.log('Loaded meeting_info.json:', meetingInfoData);
+            // console.log('Loaded meeting_info.json:', meetingInfoData);
           }
           
           // Load metadata.json (but not meeting_info.json)
           if (name.includes('metadata.json') && !name.includes('meeting_info')) {
             const text = await file.text();
             metadataData = JSON.parse(text);
-            console.log('Loaded metadata.json:', metadataData);
+            // console.log('Loaded metadata.json:', metadataData);
           }
           
           // Load transcription.json
           if (name.includes('transcription.json')) {
             const text = await file.text();
             transcriptionData = JSON.parse(text);
-            console.log('Loaded transcription.json:', {
-              totalCount: transcriptionData.transcriptions?.length || 0,
-              sample: transcriptionData.transcriptions?.[0] || null,
-              speakers: transcriptionData.transcriptions ? 
-                [...new Set(transcriptionData.transcriptions.map((t: any) => t.speaker))] : []
-            });
+            // console.log('Loaded transcription.json:', {
+            //   totalCount: transcriptionData.transcriptions?.length || 0,
+            //   sample: transcriptionData.transcriptions?.[0] || null,
+            //   speakers: transcriptionData.transcriptions ? 
+            //     [...new Set(transcriptionData.transcriptions.map((t: any) => t.speaker))] : []
+            // });
           }
           
           // Load audio file (.webm, .wav, .mp4, .ogg - support multiple formats)
           // Load audio file (.webm, .wav, .mp4, .ogg - support multiple formats)
           if (name.endsWith('.webm') || name.endsWith('.mp3')  || name.endsWith('.wav') || name.endsWith('.mp4') || name.endsWith('.ogg')) {
             audioBlob = file;
-            console.log('Loaded audio file:', name, 'size:', audioBlob.size);
+            // console.log('Loaded audio file:', name, 'size:', audioBlob.size);
           }
         }
       }
@@ -205,14 +205,14 @@ export class FileManagerService {
         console.warn('No audio file found - this is a notes-only project');
       }
 
-      console.log('Loaded project data:', {
-        projectName,
-        meetingInfo: meetingInfoData,
-        metadata: metadataData,
-        audioSize: audioBlob?.size || 0,
-        hasAudio: audioBlob !== null,
-        hasTranscription: transcriptionData !== null
-      });
+      // console.log('Loaded project data:', {
+      //   projectName,
+      //   meetingInfo: meetingInfoData,
+      //   metadata: metadataData,
+      //   audioSize: audioBlob?.size || 0,
+      //   hasAudio: audioBlob !== null,
+      //   hasTranscription: transcriptionData !== null
+      // });
 
       return {
         meetingInfo: meetingInfoData,

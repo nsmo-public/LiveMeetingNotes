@@ -34,15 +34,15 @@ export class AudioMerger {
       };
     }
 
-    console.log('🔀 Merging audio segments:', {
-      segmentCount: segments.length,
-      segments: segments.map((s, i) => ({
-        index: i,
-        startTime: new Date(s.startTime).toISOString(),
-        endTime: new Date(s.endTime).toISOString(),
-        duration: `${(s.duration / 1000).toFixed(2)}s`
-      }))
-    });
+    // console.log('🔀 Merging audio segments:', {
+    //   segmentCount: segments.length,
+    //   segments: segments.map((s, i) => ({
+    //     index: i,
+    //     startTime: new Date(s.startTime).toISOString(),
+    //     endTime: new Date(s.endTime).toISOString(),
+    //     duration: `${(s.duration / 1000).toFixed(2)}s`
+    //   }))
+    // });
 
     try {
       // 1. Decode all audio segments to AudioBuffers
@@ -73,7 +73,7 @@ export class AudioMerger {
             endMs: gapStartMs + gapMs,
             durationMs: gapMs
           });
-          console.log(`⏸️ Gap ${i}: ${(gapMs / 1000).toFixed(2)}s`);
+          // console.log(`⏸️ Gap ${i}: ${(gapMs / 1000).toFixed(2)}s`);
         }
         
         currentTimelinePos += currentSegment.duration + Math.max(0, gapMs);
@@ -83,11 +83,11 @@ export class AudioMerger {
       currentTimelinePos += segments[segments.length - 1].duration;
       const totalDuration = currentTimelinePos;
 
-      console.log('📊 Merge plan:', {
-        totalDuration: `${(totalDuration / 1000).toFixed(2)}s`,
-        gaps: gapInfo.length,
-        totalGapDuration: `${(gapInfo.reduce((sum, g) => sum + g.durationMs, 0) / 1000).toFixed(2)}s`
-      });
+      // console.log('📊 Merge plan:', {
+      //   totalDuration: `${(totalDuration / 1000).toFixed(2)}s`,
+      //   gaps: gapInfo.length,
+      //   totalGapDuration: `${(gapInfo.reduce((sum, g) => sum + g.durationMs, 0) / 1000).toFixed(2)}s`
+      // });
 
       // 3. Create merged AudioBuffer
       const sampleRate = audioBuffers[0].sampleRate;
@@ -132,13 +132,13 @@ export class AudioMerger {
       }
 
       // 5. Encode to WebM
-      console.log('🎵 Encoding merged audio to WebM...');
+      // console.log('🎵 Encoding merged audio to WebM...');
       const mergedBlob = await this.encodeToWebM(mergedBuffer, audioContext);
       
-      console.log('✅ Merge complete:', {
-        outputSize: `${(mergedBlob.size / 1024 / 1024).toFixed(2)} MB`,
-        duration: `${(totalDuration / 1000).toFixed(2)}s`
-      });
+      // console.log('✅ Merge complete:', {
+      //   outputSize: `${(mergedBlob.size / 1024 / 1024).toFixed(2)} MB`,
+      //   duration: `${(totalDuration / 1000).toFixed(2)}s`
+      // });
 
       // Close audio context
       await audioContext.close();

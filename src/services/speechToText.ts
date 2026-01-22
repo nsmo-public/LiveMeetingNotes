@@ -19,11 +19,11 @@ export class SpeechToTextService {
    */
   public initialize(config: SpeechToTextConfig): void {
     this.config = config;
-    console.log('🎤 SpeechToTextService initialized with config:', {
-      languageCode: config.languageCode,
-      enableSpeakerDiarization: config.enableSpeakerDiarization,
-      hasApiKey: !!config.apiKey
-    });
+    // console.log('🎤 SpeechToTextService initialized with config:', {
+    //   languageCode: config.languageCode,
+    //   enableSpeakerDiarization: config.enableSpeakerDiarization,
+    //   hasApiKey: !!config.apiKey
+    // });
   }
 
   /**
@@ -77,20 +77,20 @@ export class SpeechToTextService {
     // Web Speech API does NOT support speaker diarization
     // Must use Google Cloud API for this feature
     if (this.config?.enableSpeakerDiarization) {
-      console.log('🎯 Speaker diarization enabled - Using Google Cloud Speech-to-Text API');
+      // console.log('🎯 Speaker diarization enabled - Using Google Cloud Speech-to-Text API');
       this.startGoogleCloudTranscription(stream);
       return;
     }
 
     // Try using Web Speech API first (free, browser-based)
     if (this.tryWebSpeechAPI(stream, onTranscription)) {
-      console.log('✅ Using Web Speech API for transcription (FREE)');
+      // console.log('✅ Using Web Speech API for transcription (FREE)');
       return;
     }
 
     // Fallback to Google Cloud Speech-to-Text API (if API Key available)
     if (this.hasGoogleCloudAPI()) {
-      console.log('🌐 Using Google Cloud Speech-to-Text API');
+      // console.log('🌐 Using Google Cloud Speech-to-Text API');
       this.startGoogleCloudTranscription(stream);
     } else {
       throw new Error('Web Speech API not available and no Google Cloud API Key configured.');
@@ -143,7 +143,7 @@ export class SpeechToTextService {
             // Estimate audio start time by subtracting ~1 second (typical speech-to-text delay)
             this.segmentStartTimeMs = this.lastUpdateTime - this.transcriptionStartTime - 1000;
             if (this.segmentStartTimeMs < 0) this.segmentStartTimeMs = 0;
-            console.log('🎬 New segment started at audio time:', this.segmentStartTimeMs, 'ms');
+            // console.log('🎬 New segment started at audio time:', this.segmentStartTimeMs, 'ms');
           }
 
           // Check if we should force segment completion
@@ -205,7 +205,7 @@ export class SpeechToTextService {
       this.recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         if (event.error === 'network') {
-          console.log('Network error, falling back to Google Cloud API');
+          // console.log('Network error, falling back to Google Cloud API');
           this.startGoogleCloudTranscription(stream);
         }
       };
@@ -239,14 +239,14 @@ export class SpeechToTextService {
     
     // Force segment if text is too long (>150 characters)
     if (trimmedText.length > 150) {
-      console.log('🔸 Force segment: Text too long (' + trimmedText.length + ' chars)');
+      // console.log('🔸 Force segment: Text too long (' + trimmedText.length + ' chars)');
       return true;
     }
 
     // Force segment if ends with sentence punctuation + space
     // This catches natural pauses after complete sentences
     if (/[.!?]\s+$/.test(transcript)) {
-      console.log('🔸 Force segment: Sentence end with space detected');
+      // console.log('🔸 Force segment: Sentence end with space detected');
       return true;
     }
 
@@ -264,7 +264,7 @@ export class SpeechToTextService {
     
     // If we have interim text and haven't received update for 2 seconds, finalize it
     if (this.lastInterimText && timeSinceLastUpdate > 2000) {
-      console.log('🔸 Force segment: Silence timeout (2s)');
+      // console.log('🔸 Force segment: Silence timeout (2s)');
       
       const transcriptionResult: TranscriptionResult = {
         id: `transcription-${++this.transcriptionIdCounter}`,
@@ -318,7 +318,7 @@ export class SpeechToTextService {
 
       // Request data every 5 seconds
       this.mediaRecorder.start(5000);
-      console.log('📹 MediaRecorder started for Google Cloud transcription');
+      // console.log('📹 MediaRecorder started for Google Cloud transcription');
     } catch (error) {
       console.error('Failed to start Google Cloud transcription:', error);
       throw error;
@@ -462,7 +462,7 @@ export class SpeechToTextService {
         // If not processing anymore, or timeout reached, resolve
         if (!this.isTranscribing || elapsed >= timeoutMs) {
           clearInterval(checkInterval);
-          console.log(`✅ Transcription completion wait finished (${elapsed}ms)`);
+          // console.log(`✅ Transcription completion wait finished (${elapsed}ms)`);
           resolve();
         }
       }, 100); // Check every 100ms
@@ -508,7 +508,7 @@ export class SpeechToTextService {
 
     this.audioChunks = [];
     this.onTranscriptionCallback = null;
-    console.log('🛑 Transcription stopped');
+    // console.log('🛑 Transcription stopped');
   }
 
   /**
@@ -524,11 +524,11 @@ export class SpeechToTextService {
       throw new Error('Speech-to-Text service not configured. Please configure it first.');
     }
 
-    console.log('🎬 Starting audio file transcription:', {
-      size: audioBlob.size,
-      type: audioBlob.type,
-      config: this.config
-    });
+    // console.log('🎬 Starting audio file transcription:', {
+    //   size: audioBlob.size,
+    //   type: audioBlob.type,
+    //   config: this.config
+    // });
 
     // Reset tracking variables
     this.transcriptionIdCounter = 0;
@@ -538,21 +538,21 @@ export class SpeechToTextService {
     try {
       // Use Google Cloud API if available and speaker diarization is enabled
       if (this.config?.enableSpeakerDiarization && this.hasGoogleCloudAPI()) {
-        console.log('🎯 Using Google Cloud API with speaker diarization');
+        // console.log('🎯 Using Google Cloud API with speaker diarization');
         await this.transcribeAudioFileWithGoogleCloud(audioBlob, onTranscription, onProgress, onComplete);
         return;
       }
 
       // Use Web Speech API if available (requires creating audio context and playing silently)
       if (this.hasWebSpeechAPI()) {
-        console.log('✅ Using Web Speech API');
+        // console.log('✅ Using Web Speech API');
         await this.transcribeAudioFileWithWebSpeech(audioBlob, onTranscription, onProgress, onComplete);
         return;
       }
 
       // Fallback to Google Cloud API if available
       if (this.hasGoogleCloudAPI()) {
-        console.log('🌐 Using Google Cloud API');
+        // console.log('🌐 Using Google Cloud API');
         await this.transcribeAudioFileWithGoogleCloud(audioBlob, onTranscription, onProgress, onComplete);
         return;
       }
@@ -591,7 +591,7 @@ export class SpeechToTextService {
     });
     
     const duration = audio.duration;
-    console.log('Audio duration:', duration, 'seconds');
+    // console.log('Audio duration:', duration, 'seconds');
 
     // Create audio context and stream
     const audioContext = new AudioContext();
@@ -648,7 +648,7 @@ export class SpeechToTextService {
     };
 
     recognition.onend = () => {
-      console.log('Recognition ended');
+      // console.log('Recognition ended');
     };
 
     // Start recognition and play audio
@@ -669,7 +669,7 @@ export class SpeechToTextService {
     if (onProgress) onProgress(100);
     if (onComplete) onComplete();
     
-    console.log('✅ Web Speech API transcription complete');
+    // console.log('✅ Web Speech API transcription complete');
   }
 
   /**
@@ -783,7 +783,7 @@ export class SpeechToTextService {
       if (onProgress) onProgress(100);
       if (onComplete) onComplete();
 
-      console.log('✅ Google Cloud API transcription complete');
+      // console.log('✅ Google Cloud API transcription complete');
     } catch (error) {
       console.error('Google Cloud API transcription error:', error);
       throw error;
@@ -796,7 +796,7 @@ export class SpeechToTextService {
   public static saveConfig(config: SpeechToTextConfig): void {
     try {
       localStorage.setItem('speechToTextConfig', JSON.stringify(config));
-      console.log('💾 Speech-to-Text config saved');
+      // console.log('💾 Speech-to-Text config saved');
     } catch (error) {
       console.error('Failed to save config:', error);
     }
@@ -823,7 +823,7 @@ export class SpeechToTextService {
   public static clearConfig(): void {
     try {
       localStorage.removeItem('speechToTextConfig');
-      console.log('🗑️ Speech-to-Text config cleared');
+      // console.log('🗑️ Speech-to-Text config cleared');
     } catch (error) {
       console.error('Failed to clear config:', error);
     }

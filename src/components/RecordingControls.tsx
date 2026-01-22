@@ -233,12 +233,12 @@ export const RecordingControls: React.FC<Props> = ({
             duration: 3
           });
 
-          console.log('📊 Merge info:', {
-            segments: allSegments.length,
-            totalDuration: `${(finalDuration / 1000).toFixed(2)}s`,
-            gaps: mergeResult.gapInfo.length,
-            gapDetails: mergeResult.gapInfo.map(g => `${(g.durationMs / 1000).toFixed(2)}s`)
-          });
+          // console.log('📊 Merge info:', {
+          //   segments: allSegments.length,
+          //   totalDuration: `${(finalDuration / 1000).toFixed(2)}s`,
+          //   gaps: mergeResult.gapInfo.length,
+          //   gapDetails: mergeResult.gapInfo.map(g => `${(g.durationMs / 1000).toFixed(2)}s`)
+          // });
         } catch (error: any) {
           message.error({ content: `Failed to merge: ${error.message}`, key: 'mergeAudio' });
           // Continue with last segment only if merge fails
@@ -264,7 +264,7 @@ export const RecordingControls: React.FC<Props> = ({
         // Create project subdirectory and get its handle
         const originalHandle = fileManager.getDirHandle(); // Save original handle
         const projectDirHandle = await fileManager.createProjectDirectory(projectName);
-        console.log('✓ Created project directory:', projectName);
+        // console.log('✓ Created project directory:', projectName);
         
         // If multi-part recording, backup original segments
         if (allSegments.length > 1) {
@@ -285,7 +285,7 @@ export const RecordingControls: React.FC<Props> = ({
               );
             }
             
-            console.log(`📦 Backed up ${allSegments.length} segments to backup folder`);
+            // console.log(`📦 Backed up ${allSegments.length} segments to backup folder`);
           } catch (error) {
             console.error('Failed to backup segments:', error);
             // Don't fail the entire save if backup fails
@@ -297,7 +297,7 @@ export const RecordingControls: React.FC<Props> = ({
         
         // Save merged/final audio file
         await fileManager.saveAudioFile(finalAudioBlob, audioFileName, undefined, true);
-        console.log('✓ Saved audio file:', audioFileName);
+        // console.log('✓ Saved audio file:', audioFileName);
 
         // Build and save metadata
         const metadata = MetadataBuilder.buildMetadata(
@@ -316,7 +316,7 @@ export const RecordingControls: React.FC<Props> = ({
           undefined,
           true
         );
-        console.log('✓ Saved meeting_info.json');
+        // console.log('✓ Saved meeting_info.json');
         
         await fileManager.saveMetadataFile(
           metadata.metadata,
@@ -324,7 +324,7 @@ export const RecordingControls: React.FC<Props> = ({
           undefined,
           true
         );
-        console.log('✓ Saved metadata.json');
+        // console.log('✓ Saved metadata.json');
 
         // Save transcription data if available
         if (transcriptions && transcriptions.length > 0) {
@@ -339,14 +339,14 @@ export const RecordingControls: React.FC<Props> = ({
             undefined,
             true
           );
-          console.log('💾 Transcription data saved:', transcriptionData.totalCount, 'items');
+          // console.log('💾 Transcription data saved:', transcriptionData.totalCount, 'items');
         }
 
         // Export Word document to same folder
         const finalTranscriptions = transcriptions?.filter(t => t.isFinal) || [];
         const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes, finalTranscriptions);
         await fileManager.saveWordFile(wordBlob, `${projectName}.docx`, undefined, true);
-        console.log('✓ Saved Word document');
+        // console.log('✓ Saved Word document');
         
         // Restore original handle
         if (originalHandle) {
@@ -481,7 +481,7 @@ export const RecordingControls: React.FC<Props> = ({
       // Create project subdirectory and get its handle
       const originalHandle = fileManager.getDirHandle(); // Save original handle
       const projectDirHandle = await fileManager.createProjectDirectory(projectName);
-      console.log('✓ Created project directory:', projectName);
+      // console.log('✓ Created project directory:', projectName);
       
       // Temporarily set dirHandle to the project directory for saving files
       fileManager.setDirHandle(projectDirHandle);
@@ -502,7 +502,7 @@ export const RecordingControls: React.FC<Props> = ({
         undefined,
         true
       );
-      console.log('✓ Saved meeting_info.json');
+      // console.log('✓ Saved meeting_info.json');
       
       // Create metadata using MetadataBuilder (same as recording mode)
       const metadata = MetadataBuilder.buildMetadata(
@@ -527,13 +527,13 @@ export const RecordingControls: React.FC<Props> = ({
         undefined,
         true
       );
-      console.log('✓ Saved metadata.json');
+      // console.log('✓ Saved metadata.json');
       
       // Export Word document
       const finalTranscriptions = transcriptions?.filter(t => t.isFinal) || [];
       const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes, finalTranscriptions);
       await fileManager.saveWordFile(wordBlob, `${projectName}.docx`, undefined, true);
-      console.log('✓ Saved Word document');
+      // console.log('✓ Saved Word document');
       
       // Restore original handle
       if (originalHandle) {
@@ -656,7 +656,7 @@ export const RecordingControls: React.FC<Props> = ({
           
           // Create new project subdirectory and get its handle
           const projectDirHandle = await fileManager.createProjectDirectory(newProjectName);
-          console.log('✓ Created project directory:', newProjectName);
+          // console.log('✓ Created project directory:', newProjectName);
           
           // Temporarily set dirHandle to the project directory for saving files
           fileManager.setDirHandle(projectDirHandle);
@@ -666,7 +666,7 @@ export const RecordingControls: React.FC<Props> = ({
           if (audioBlob) {
             const audioFileName = `${newProjectName}.webm`;
             await fileManager.saveAudioFile(audioBlob, audioFileName, undefined, true);
-            console.log('✓ Saved audio file:', audioFileName);
+            // console.log('✓ Saved audio file:', audioFileName);
           }
 
           // Save metadata files directly to project directory
@@ -676,7 +676,7 @@ export const RecordingControls: React.FC<Props> = ({
             undefined,
             true
           );
-          console.log('✓ Saved meeting_info.json');
+          // console.log('✓ Saved meeting_info.json');
           
           await fileManager.saveMetadataFile(
             metadata.metadata,
@@ -684,7 +684,7 @@ export const RecordingControls: React.FC<Props> = ({
             undefined,
             true
           );
-          console.log('✓ Saved metadata.json');
+          // console.log('✓ Saved metadata.json');
 
           // Save transcription data if available
           if (transcriptions && transcriptions.length > 0) {
@@ -699,13 +699,13 @@ export const RecordingControls: React.FC<Props> = ({
               undefined,
               true
             );
-            console.log('💾 Transcription data saved in Save Changes:', transcriptionData.totalCount, 'items');
+            // console.log('💾 Transcription data saved in Save Changes:', transcriptionData.totalCount, 'items');
           }
 
           // Export Word document
           const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
           await fileManager.saveWordFile(wordBlob, `${newProjectName}.docx`, undefined, true);
-          console.log('✓ Saved Word document');
+          // console.log('✓ Saved Word document');
           
           // Restore original handle
           if (originalHandle) {
@@ -748,7 +748,7 @@ export const RecordingControls: React.FC<Props> = ({
             transcriptionData,
             `${newProjectName}_transcription.json`
           );
-          console.log('💾 Transcription data downloaded in Save Changes:', transcriptionData.totalCount, 'items');
+          // console.log('💾 Transcription data downloaded in Save Changes:', transcriptionData.totalCount, 'items');
         }
 
         
@@ -777,33 +777,33 @@ export const RecordingControls: React.FC<Props> = ({
   };
 
   const handleLoadProject = async () => {
-    console.log('handleLoadProject called');
+    // console.log('handleLoadProject called');
     
     try {
       if (!FileManagerService.isSupported()) {
-        console.error('Browser not supported');
+        // console.error('Browser not supported');
         message.error('Your browser does not support loading projects. Please use Chrome or Edge.');
         return;
       }
 
-      console.log('Checking unsaved changes...');
+      // console.log('Checking unsaved changes...');
       if (hasUnsavedChanges) {
         const confirmed = window.confirm(
           'Bạn có dữ liệu chưa lưu. Tải project mới sẽ mất dữ liệu hiện tại. Tiếp tục?'
         );
         if (!confirmed) {
-          console.log('User cancelled due to unsaved changes');
+          // console.log('User cancelled due to unsaved changes');
           return;
         }
       }
 
-      console.log('Calling fileManager.loadProjectFromFolder...');
+      // console.log('Calling fileManager.loadProjectFromFolder...');
       const projectData = await fileManager.loadProjectFromFolder();
       
-      console.log('fileManager returned:', projectData);
+      // console.log('fileManager returned:', projectData);
       
       if (!projectData) {
-        console.log('User cancelled folder selection');
+        // console.log('User cancelled folder selection');
         return; // User cancelled
       }
 
@@ -817,19 +817,19 @@ export const RecordingControls: React.FC<Props> = ({
         attendees: projectData.meetingInfo.Attendees || ''
       };
 
-      console.log('📋 Mapping meetingInfo from file:', {
-        rawData: projectData.meetingInfo,
-        mapped: loadedMeetingInfo
-      });
+      // console.log('📋 Mapping meetingInfo from file:', {
+      //   rawData: projectData.meetingInfo,
+      //   mapped: loadedMeetingInfo
+      // });
       
-      console.log('🔍 Individual field mapping:', {
-        'MeetingTitle → title': `"${projectData.meetingInfo.MeetingTitle}" → "${loadedMeetingInfo.title}"`,
-        'MeetingDate → date': `"${projectData.meetingInfo.MeetingDate}" → "${loadedMeetingInfo.date}"`,
-        'MeetingTime → time': `"${projectData.meetingInfo.MeetingTime}" → "${loadedMeetingInfo.time}"`,
-        'Location → location': `"${projectData.meetingInfo.Location}" → "${loadedMeetingInfo.location}"`,
-        'Host → host': `"${projectData.meetingInfo.Host}" → "${loadedMeetingInfo.host}"`,
-        'Attendees → attendees': `"${projectData.meetingInfo.Attendees}" → "${loadedMeetingInfo.attendees}"`
-      });
+      // console.log('🔍 Individual field mapping:', {
+      //   'MeetingTitle → title': `"${projectData.meetingInfo.MeetingTitle}" → "${loadedMeetingInfo.title}"`,
+      //   'MeetingDate → date': `"${projectData.meetingInfo.MeetingDate}" → "${loadedMeetingInfo.date}"`,
+      //   'MeetingTime → time': `"${projectData.meetingInfo.MeetingTime}" → "${loadedMeetingInfo.time}"`,
+      //   'Location → location': `"${projectData.meetingInfo.Location}" → "${loadedMeetingInfo.location}"`,
+      //   'Host → host': `"${projectData.meetingInfo.Host}" → "${loadedMeetingInfo.host}"`,
+      //   'Attendees → attendees': `"${projectData.meetingInfo.Attendees}" → "${loadedMeetingInfo.attendees}"`
+      // });
 
       // Parse metadata to reconstruct timestampMap, speakersMap and notes
       const timestampMapData = new Map<number, number>();
@@ -843,11 +843,11 @@ export const RecordingControls: React.FC<Props> = ({
         // Use saved RecordingStartTime from metadata (chuẩn nhất)
         recordingStart = new Date(projectData.metadata.RecordingStartTime).getTime();
         
-        console.log('🕐 Using RecordingStartTime from metadata:', {
-          raw: projectData.metadata.RecordingStartTime,
-          parsed: new Date(recordingStart).toISOString(),
-          timestamp: recordingStart
-        });
+        // console.log('🕐 Using RecordingStartTime from metadata:', {
+        //   raw: projectData.metadata.RecordingStartTime,
+        //   parsed: new Date(recordingStart).toISOString(),
+        //   timestamp: recordingStart
+        // });
       } else if (projectData.metadata.Timestamps && projectData.metadata.Timestamps.length > 0) {
         // Fallback: Calculate from first timestamp (old projects without RecordingStartTime)
         const firstTimestamp = projectData.metadata.Timestamps[0];
@@ -864,14 +864,14 @@ export const RecordingControls: React.FC<Props> = ({
                           ms;
           recordingStart = firstDatetime - offsetMs;
           
-          console.log('🕐 Calculated RecordingStartTime from first block:', {
-            raw: firstTimestamp.StartTime,
-            fractionalPart,
-            parsedMs: ms,
-            totalOffsetMs: offsetMs,
-            firstDatetime: new Date(firstDatetime).toISOString(),
-            calculatedRecordingStart: new Date(recordingStart).toISOString()
-          });
+          // console.log('🕐 Calculated RecordingStartTime from first block:', {
+          //   raw: firstTimestamp.StartTime,
+          //   fractionalPart,
+          //   parsedMs: ms,
+          //   totalOffsetMs: offsetMs,
+          //   firstDatetime: new Date(firstDatetime).toISOString(),
+          //   calculatedRecordingStart: new Date(recordingStart).toISOString()
+          // });
         }
       }
       
@@ -911,27 +911,27 @@ export const RecordingControls: React.FC<Props> = ({
           // Each timestamp entry corresponds to one line in the reconstructed notes
           if (ts.Speaker) {
             speakersMapData.set(index, ts.Speaker);
-            console.log(`📢 Loading speaker for line ${index}:`, ts.Speaker);
+            // console.log(`📢 Loading speaker for line ${index}:`, ts.Speaker);
           }
           
           // Add text to notes
           notesText += ts.Text || '';
         });
         
-        console.log('🕐 Timestamp reconstruction:', {
-          recordingStart,
-          firstTimestamp: sortedTimestamps[0]?.DateTime,
-          firstStartTime: sortedTimestamps[0]?.StartTime,
-          timestampCount: timestampMapData.size,
-          speakerCount: speakersMapData.size,
-          speakers: Array.from(speakersMapData.entries()),
-          sampleTimestamps: Array.from(timestampMapData.entries()).slice(0, 3).map(([pos, time]) => ({
-            position: pos,
-            datetime: new Date(time).toISOString(),
-            relativeMs: time - recordingStart,
-            relativeFormatted: `${String(Math.floor((time - recordingStart) / 3600000)).padStart(2, '0')}:${String(Math.floor(((time - recordingStart) % 3600000) / 60000)).padStart(2, '0')}:${String(Math.floor(((time - recordingStart) % 60000) / 1000)).padStart(2, '0')}`
-          }))
-        });
+        // console.log('🕐 Timestamp reconstruction:', {
+        //   recordingStart,
+        //   firstTimestamp: sortedTimestamps[0]?.DateTime,
+        //   firstStartTime: sortedTimestamps[0]?.StartTime,
+        //   timestampCount: timestampMapData.size,
+        //   speakerCount: speakersMapData.size,
+        //   speakers: Array.from(speakersMapData.entries()),
+        //   sampleTimestamps: Array.from(timestampMapData.entries()).slice(0, 3).map(([pos, time]) => ({
+        //     position: pos,
+        //     datetime: new Date(time).toISOString(),
+        //     relativeMs: time - recordingStart,
+        //     relativeFormatted: `${String(Math.floor((time - recordingStart) / 3600000)).padStart(2, '0')}:${String(Math.floor(((time - recordingStart) % 3600000) / 60000)).padStart(2, '0')}:${String(Math.floor(((time - recordingStart) % 60000) / 1000)).padStart(2, '0')}`
+        //   }))
+        // });
       }
 
       // Parse duration string to milliseconds (format: HH:MM:SS.NNNNNNN with 7 decimal digits)
@@ -962,7 +962,7 @@ export const RecordingControls: React.FC<Props> = ({
 
       // Load transcription data if available
       if (projectData.transcriptionData) {
-        console.log('📝 Loading transcription data:', projectData.transcriptionData);
+        // console.log('📝 Loading transcription data:', projectData.transcriptionData);
         onClearTranscriptions(); // Clear existing first
         
         // Load each transcription result
@@ -974,13 +974,13 @@ export const RecordingControls: React.FC<Props> = ({
         }
       }
 
-      console.log('Load complete:', {
-        meetingInfo: loadedMeetingInfo,
-        notesLength: notesText.length,
-        timestampCount: timestampMapData.size,
-        timestampMap: Array.from(timestampMapData.entries()),
-        recordingStart
-      });
+      // console.log('Load complete:', {
+      //   meetingInfo: loadedMeetingInfo,
+      //   notesLength: notesText.length,
+      //   timestampCount: timestampMapData.size,
+      //   timestampMap: Array.from(timestampMapData.entries()),
+      //   recordingStart
+      // });
 
       // Update local state
       setLastProjectName(projectData.projectName);
@@ -1032,9 +1032,9 @@ export const RecordingControls: React.FC<Props> = ({
           <Button
             icon={<FolderAddOutlined />}
             onClick={() => {
-              console.log('Load Project button clicked');
-              console.log('isRecording:', isRecording);
-              console.log('isSupported:', FileManagerService.isSupported());
+              // console.log('Load Project button clicked');
+              // console.log('isRecording:', isRecording);
+              // console.log('isSupported:', FileManagerService.isSupported());
               handleLoadProject();
             }}
             disabled={isRecording || !FileManagerService.isSupported()}

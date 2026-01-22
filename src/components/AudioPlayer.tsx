@@ -37,7 +37,7 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ audioBlob }, ref
       if (wavesurferRef.current && duration > 0) {
         const timeSeconds = timeMs / 1000;
         wavesurferRef.current.seekTo(timeSeconds / duration);
-        console.log(`🎵 Seeked to ${timeSeconds.toFixed(2)}s`);
+        // console.log(`🎵 Seeked to ${timeSeconds.toFixed(2)}s`);
       }
     }
   }));
