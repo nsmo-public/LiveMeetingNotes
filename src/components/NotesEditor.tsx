@@ -1063,7 +1063,7 @@ export const NotesEditor: React.FC<Props> = ({
                     setLineSpeakers(newSpeakers);
                   }}
                   onKeyDown={(e) => handleSpeakerKeyDown(index, e)}
-                  placeholder="Speaker"
+                  placeholder="Người nói"
                   autoSize={{ minRows: 1, maxRows: 10 }}
                   style={{
                     fontFamily: 'monospace',
