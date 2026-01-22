@@ -299,6 +299,56 @@ export const HelpButton: React.FC = () => {
         </div>
       ),
     },
+    {
+      key: '7',
+      label: '👤 Tác giả',
+      children: (
+        <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '8px' }}>
+          <Title level={4}>Tác giả ứng dụng LiveMeetingNote</Title>
+          <Paragraph>
+            Xin chào! Mình là <Text strong>NguyenDacHung</Text>, tác giả của ứng dụng này.<br />
+            <br />
+            <Text>
+              <strong>LiveMeetingNote</strong> được phát triển với mong muốn chia sẻ miễn phí một công cụ hữu ích giúp mọi người ghi chép, lưu trữ và quản lý nội dung cuộc họp một cách chuyên nghiệp, bảo mật và tiện lợi nhất.<br />
+              <br />
+              Ứng dụng được cung cấp <Text strong>miễn phí 100% và không vì mục đích thương mại</Text>. Nếu bạn cảm thấy công cụ mang lại giá trị và muốn động viên tác giả trong quá trình duy trì, phát triển, rất hoan nghênh việc kết nối, trao đổi hoặc mời mình cốc coffee nhé ^.^!
+            </Text>
+          </Paragraph>
+          <Divider />
+          <List
+            size="small"
+            header={<Text strong>Thông tin liên hệ</Text>}
+            dataSource={[
+              <>
+                <Text strong>Facebook:</Text>{' '}
+                <a href="https://facebook.com/dachungbka" target="_blank" rel="noopener noreferrer">
+                  https://facebook.com/dachungbka
+                </a>
+              </>,
+              <>
+                <Text strong>Telegram:</Text>{' '}
+                <a href="https://t.me/hungnd99" target="_blank" rel="noopener noreferrer">
+                  https://t.me/hungnd99
+                </a>
+              </>,
+              <>
+                <Text strong>Email:</Text> <a href="mailto:dachungbka@gmail.com">dachungbk@gmail.com</a>
+              </>,
+              <>
+                <Text strong>Ngân hàng:</Text> BIDV - Nguyen Dac Hung<br />
+                <Text strong>Số tài khoản:</Text> <Text copyable>2610308803</Text>
+              </>,
+              <>
+                <Text type="secondary" italic>
+                  Xin cảm ơn mọi sự ủng hộ! Chúc bạn sử dụng hiệu quả và lan tỏa giá trị tích cực đến cộng đồng. <span style={{color: 'red'}}>❤️</span>
+                </Text>
+              </>
+            ]}
+            renderItem={item => <List.Item>{item}</List.Item>}
+          />
+        </div>
+      ),
+    },
   ];
 
   return (
