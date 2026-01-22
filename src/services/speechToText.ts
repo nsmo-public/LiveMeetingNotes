@@ -4,7 +4,6 @@ export class SpeechToTextService {
   private config: SpeechToTextConfig | null = null;
   private recognition: any = null;
   private mediaRecorder: MediaRecorder | null = null;
-  private audioChunks: Blob[] = [];
   private isTranscribing: boolean = false;
   private onTranscriptionCallback: ((result: TranscriptionResult) => void) | null = null;
   private transcriptionIdCounter: number = 0;
@@ -70,7 +69,6 @@ export class SpeechToTextService {
 
     this.onTranscriptionCallback = onTranscription;
     this.isTranscribing = true;
-    this.audioChunks = [];
     this.transcriptionStartTime = Date.now(); // Record start time
 
     // Check if speaker diarization is enabled
@@ -303,12 +301,9 @@ export class SpeechToTextService {
 
       this.mediaRecorder.ondataavailable = async (event) => {
         if (event.data.size > 0 && this.isTranscribing) {
-          this.audioChunks.push(event.data);
-          
-          // Send to Google Cloud API every 5 seconds
-          if (this.audioChunks.length >= 1) {
-            await this.sendToGoogleCloudAPI();
-          }
+          // Don't accumulate chunks - send each chunk individually
+          // Each chunk is ~5 seconds (safe for Google Cloud API limit)
+          await this.sendToGoogleCloudAPI(event.data);
         }
       };
 
@@ -328,13 +323,15 @@ export class SpeechToTextService {
   /**
    * Send audio data to Google Cloud Speech-to-Text API
    */
-  private async sendToGoogleCloudAPI(): Promise<void> {
-    if (!this.config || this.audioChunks.length === 0) return;
+  private async sendToGoogleCloudAPI(audioBlob: Blob): Promise<void> {
+    if (!this.config) return;
 
     try {
-      // Combine audio chunks
-      const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-      this.audioChunks = [];
+      // Skip if audio is too small (< 0.5 seconds worth)
+      if (audioBlob.size < 1000) {
+        console.warn('⚠️ Audio chunk too small, skipping:', audioBlob.size, 'bytes');
+        return;
+      }
 
       // Convert to base64
       const base64Audio = await this.blobToBase64(audioBlob);
@@ -371,6 +368,12 @@ export class SpeechToTextService {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Google Cloud API error:', errorData);
+        console.error('Request details:', {
+          audioSize: audioBlob.size,
+          encoding: requestBody.config.encoding,
+          sampleRate: requestBody.config.sampleRateHertz,
+          languageCode: requestBody.config.languageCode
+        });
         return;
       }
 
@@ -506,7 +509,6 @@ export class SpeechToTextService {
       this.mediaRecorder = null;
     }
 
-    this.audioChunks = [];
     this.onTranscriptionCallback = null;
     // console.log('🛑 Transcription stopped');
   }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Select, Switch, Button, message, Space } from 'antd';
+import { Modal, Form, Input, Select, Switch, Button, Space, App } from 'antd';
 import { SettingOutlined, SaveOutlined, DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import type { SpeechToTextConfig } from '../types/types';
 import { SpeechToTextService } from '../services/speechToText';
@@ -17,6 +17,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
   onSave,
   currentConfig
 }) => {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [isSaving, setIsSaving] = useState(false);
 

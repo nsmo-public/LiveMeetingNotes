@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Space, message, Switch, Tooltip } from 'antd';
+import { Button, Space, Switch, Tooltip, App } from 'antd';
 import {
   FolderOpenOutlined,
   AudioOutlined,
@@ -72,6 +72,7 @@ export const RecordingControls: React.FC<Props> = ({
   onClearTranscriptions,
   transcriptions
 }) => {
+  const { message } = App.useApp();
   const [duration, setDuration] = useState<number>(0);
   const [recorder] = useState(() => new AudioRecorderService());
   const [fileManager] = useState(() => new FileManagerService());
