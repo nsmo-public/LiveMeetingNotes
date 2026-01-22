@@ -1,15 +1,14 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App as MainApp } from './App';
-import { ConfigProvider, theme, App } from 'antd';
+import { ConfigProvider, theme, App as AntdApp } from 'antd';
 import './styles/global.css';
 
 // Unregister old service worker if exists
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     registrations.forEach((registration) => {
-      // Unregister old service-worker.js
-      if (registration.active?.scriptURL.includes('service-worker.js')) {
+      if (registration.active?.scriptURL?.includes('service-worker.js')) {
         registration.unregister();
         // console.log('Old service worker unregistered');
       }
@@ -33,9 +32,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         }
       }}
     >
-      <App>
+      <AntdApp>
         <MainApp />
-      </App>
+      </AntdApp>
     </ConfigProvider>
   </React.StrictMode>
 );

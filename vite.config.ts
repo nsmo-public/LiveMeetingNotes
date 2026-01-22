@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  base: '/LiveMeetingNotes/', // GitHub Pages base URL
+  base: '/LiveMeetingNotes/', // Đảm bảo đúng tên repo
   plugins: [
     react(),
     VitePWA({
