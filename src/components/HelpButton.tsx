@@ -305,9 +305,9 @@ export const HelpButton: React.FC = () => {
             Xin chào! Mình là <Text strong>NguyenDacHung</Text>, tác giả của ứng dụng này.<br />
             <br />
             <Text>
-              <strong>LiveMeetingNote</strong> được phát triển với mong muốn chia sẻ miễn phí một công cụ hữu ích giúp mọi người ghi chép, lưu trữ và quản lý nội dung cuộc họp một cách chuyên nghiệp, bảo mật và tiện lợi nhất.<br />
+              <strong>LiveMeetingNote</strong> được phát triển với mong muốn chia sẻ miễn phí một ứng dụng hữu ích giúp mọi người ghi chép, lưu trữ và quản lý nội dung cuộc họp một cách chuyên nghiệp, bảo mật và tiện lợi nhất.<br />
               <br />
-              Ứng dụng được cung cấp <Text strong>miễn phí 100% và không vì mục đích thương mại</Text>. Nếu bạn cảm thấy công cụ mang lại giá trị và muốn động viên tác giả trong quá trình duy trì, phát triển, rất hoan nghênh việc kết nối, trao đổi hoặc mời mình cốc coffee nhé ^.^!
+              Ứng dụng này được cung cấp <Text strong>miễn phí 100% và không vì mục đích thương mại</Text>. Nếu bạn cảm thấy ứng dụng mang lại giá trị và muốn động viên tác giả trong quá trình duy trì, phát triển, rất hoan nghênh việc kết nối, giao lưu hoặc mời mình cốc coffee nhé <span role="img" aria-label="coffee">🧋</span> <span role="img" aria-label="donate">💸</span> ^.^!
             </Text>
           </Paragraph>
           <Divider />
@@ -316,22 +316,22 @@ export const HelpButton: React.FC = () => {
             header={<Text strong>Thông tin liên hệ</Text>}
             dataSource={[
               <>
-                <Text strong>Facebook:</Text>{' '}
+                <Text strong>✌️Facebook:</Text>{' '}
                 <a href="https://facebook.com/dachungbka" target="_blank" rel="noopener noreferrer">
                   https://facebook.com/dachungbka
                 </a>
               </>,
               <>
-                <Text strong>Telegram:</Text>{' '}
+                <Text strong>🌀Telegram:</Text>{' '}
                 <a href="https://t.me/hungnd99" target="_blank" rel="noopener noreferrer">
                   https://t.me/hungnd99
                 </a>
               </>,
               <>
-                <Text strong>Email:</Text> <a href="mailto:dachungbka@gmail.com">dachungbk@gmail.com</a>
+                <Text strong>📬Email:</Text> <a href="mailto:dachungbka@gmail.com">dachungbk@gmail.com</a>
               </>,
               <>
-                <Text strong>Ngân hàng:</Text> BIDV - Nguyen Dac Hung<br />
+                <Text strong>🏦Ngân hàng:</Text> BIDV - Nguyen Dac Hung<br />
                 <Text strong>Số tài khoản:</Text> <Text copyable>2610308803</Text>
               </>,
               <>
