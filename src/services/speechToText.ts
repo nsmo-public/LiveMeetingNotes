@@ -681,6 +681,23 @@ export class SpeechToTextService {
     onProgress?: (progress: number) => void,
     onComplete?: () => void
   ): Promise<void> {
+    // Get audio duration first
+    const audioDuration = await this.getAudioDuration(audioBlob);
+    console.log(`🎵 Audio duration: ${audioDuration.toFixed(1)}s`);
+
+    // Google Cloud API limit: 60 seconds for sync recognize
+    const MAX_DURATION_SECONDS = 58; // Use 58s to be safe
+
+    if (audioDuration > MAX_DURATION_SECONDS) {
+      // For long audio, split into chunks
+      console.log(`⚠️ Audio is ${audioDuration.toFixed(1)}s, splitting into chunks...`);
+      await this.transcribeLongAudioWithGoogleCloud(audioBlob, audioDuration, onTranscription, onProgress, onComplete);
+      return;
+    }
+
+    // For short audio (< 60s), use normal sync API
+    console.log(`✅ Audio is ${audioDuration.toFixed(1)}s, using sync API`);
+    
     // Convert audio blob to base64
     const arrayBuffer = await audioBlob.arrayBuffer();
     const base64Audio = btoa(
@@ -787,6 +804,277 @@ export class SpeechToTextService {
     } catch (error) {
       console.error('Google Cloud API transcription error:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get audio duration from blob
+   */
+  private async getAudioDuration(audioBlob: Blob): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const audio = new Audio();
+      audio.preload = 'metadata';
+      
+      audio.onloadedmetadata = () => {
+        URL.revokeObjectURL(audio.src);
+        resolve(audio.duration);
+      };
+      
+      audio.onerror = () => {
+        URL.revokeObjectURL(audio.src);
+        reject(new Error('Failed to load audio metadata'));
+      };
+      
+      audio.src = URL.createObjectURL(audioBlob);
+    });
+  }
+
+  /**
+   * Transcribe long audio by splitting into chunks
+   */
+  private async transcribeLongAudioWithGoogleCloud(
+    audioBlob: Blob,
+    totalDuration: number,
+    onTranscription: (result: TranscriptionResult) => void,
+    onProgress?: (progress: number) => void,
+    onComplete?: () => void
+  ): Promise<void> {
+    const CHUNK_DURATION = 55; // 55 seconds per chunk (safe margin)
+    const numChunks = Math.ceil(totalDuration / CHUNK_DURATION);
+    
+    console.log(`📦 Splitting into ${numChunks} chunks (${CHUNK_DURATION}s each)`);
+    
+    try {
+      // Load audio into AudioContext
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const audioContext = new AudioContext();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      
+      const sampleRate = audioBuffer.sampleRate;
+      const channelData = audioBuffer.getChannelData(0); // Get first channel
+      
+      // Process each chunk
+      for (let i = 0; i < numChunks; i++) {
+        const startTime = i * CHUNK_DURATION;
+        const endTime = Math.min((i + 1) * CHUNK_DURATION, totalDuration);
+        
+        console.log(`🔄 Processing chunk ${i + 1}/${numChunks}: ${startTime.toFixed(1)}s - ${endTime.toFixed(1)}s`);
+        
+        // Calculate progress
+        const baseProgress = 10 + (i / numChunks) * 80;
+        if (onProgress) onProgress(Math.round(baseProgress));
+        
+        // Extract chunk samples
+        const startSample = Math.floor(startTime * sampleRate);
+        const endSample = Math.floor(endTime * sampleRate);
+        const chunkSamples = channelData.slice(startSample, endSample);
+        
+        // Create new AudioBuffer for this chunk
+        const chunkBuffer = audioContext.createBuffer(1, chunkSamples.length, sampleRate);
+        chunkBuffer.copyToChannel(chunkSamples, 0);
+        
+        // Convert to WAV blob
+        const chunkBlob = await this.audioBufferToWavBlob(chunkBuffer);
+        
+        // Transcribe this chunk
+        await this.transcribeSingleChunk(chunkBlob, i, startTime, onTranscription);
+      }
+      
+      if (onProgress) onProgress(100);
+      if (onComplete) onComplete();
+      
+      console.log(`✅ All ${numChunks} chunks transcribed successfully`);
+      
+    } catch (error) {
+      console.error('Error transcribing long audio:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Transcribe a single audio chunk
+   */
+  private async transcribeSingleChunk(
+    chunkBlob: Blob,
+    chunkIndex: number,
+    chunkStartTime: number,
+    onTranscription: (result: TranscriptionResult) => void
+  ): Promise<void> {
+    // Convert to base64
+    const arrayBuffer = await chunkBlob.arrayBuffer();
+    const base64Audio = btoa(
+      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+
+    const apiKey = this.config?.apiKey;
+    const languageCode = this.config?.languageCode || 'vi-VN';
+    const enableSpeakerDiarization = this.config?.enableSpeakerDiarization || false;
+
+    const requestBody: any = {
+      config: {
+        encoding: 'LINEAR16',
+        sampleRateHertz: 16000,
+        languageCode: languageCode,
+        enableAutomaticPunctuation: true,
+        model: 'default',
+        useEnhanced: true
+      },
+      audio: {
+        content: base64Audio
+      }
+    };
+
+    if (enableSpeakerDiarization) {
+      requestBody.config.diarizationConfig = {
+        enableSpeakerDiarization: true,
+        minSpeakerCount: 2,
+        maxSpeakerCount: 6
+      };
+    }
+
+    const response = await fetch(
+      `https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Chunk ${chunkIndex} failed: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+
+    // Process results
+    if (data.results && Array.isArray(data.results)) {
+      data.results.forEach((result: any) => {
+        if (result.alternatives && result.alternatives.length > 0) {
+          const alternative = result.alternatives[0];
+          let speaker = 'Person1';
+          let wordStartTime = 0;
+
+          if (alternative.words && alternative.words.length > 0) {
+            const firstWord = alternative.words[0];
+            if (firstWord.speakerTag !== undefined) {
+              speaker = `Person ${firstWord.speakerTag}`;
+            }
+            if (firstWord.startTime) {
+              const seconds = parseFloat(firstWord.startTime.replace('s', ''));
+              wordStartTime = seconds;
+            }
+          }
+
+          // Calculate absolute time by adding chunk start time
+          const audioTimeMs = Math.floor((chunkStartTime + wordStartTime) * 1000);
+
+          const transcriptionResult: TranscriptionResult = {
+            id: `chunk-${chunkIndex}-${Date.now()}-${this.transcriptionIdCounter++}`,
+            text: alternative.transcript,
+            startTime: new Date(Date.now()).toISOString(),
+            endTime: new Date(Date.now()).toISOString(),
+            audioTimeMs: audioTimeMs,
+            confidence: alternative.confidence || 0,
+            speaker: speaker,
+            isFinal: true,
+            isManuallyEdited: false
+          };
+
+          onTranscription(transcriptionResult);
+        }
+      });
+    }
+  }
+
+  /**
+   * Convert AudioBuffer to WAV Blob
+   */
+  private async audioBufferToWavBlob(audioBuffer: AudioBuffer): Promise<Blob> {
+    const numberOfChannels = 1;
+    const sampleRate = 16000; // Downsample to 16kHz for API
+    const format = 1; // PCM
+    const bitDepth = 16;
+
+    const channelData = audioBuffer.getChannelData(0);
+    
+    // Resample to 16kHz
+    const resampledData = this.resampleAudio(channelData, audioBuffer.sampleRate, sampleRate);
+    
+    // Convert to 16-bit PCM
+    const pcmData = new Int16Array(resampledData.length);
+    for (let i = 0; i < resampledData.length; i++) {
+      const s = Math.max(-1, Math.min(1, resampledData[i]));
+      pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+
+    // Create WAV header
+    const dataLength = pcmData.length * 2;
+    const buffer = new ArrayBuffer(44 + dataLength);
+    const view = new DataView(buffer);
+
+    // RIFF chunk descriptor
+    this.writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + dataLength, true);
+    this.writeString(view, 8, 'WAVE');
+
+    // fmt sub-chunk
+    this.writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true); // Subchunk1Size
+    view.setUint16(20, format, true);
+    view.setUint16(22, numberOfChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * numberOfChannels * bitDepth / 8, true); // ByteRate
+    view.setUint16(32, numberOfChannels * bitDepth / 8, true); // BlockAlign
+    view.setUint16(34, bitDepth, true);
+
+    // data sub-chunk
+    this.writeString(view, 36, 'data');
+    view.setUint32(40, dataLength, true);
+
+    // Write PCM samples
+    const offset = 44;
+    for (let i = 0; i < pcmData.length; i++) {
+      view.setInt16(offset + i * 2, pcmData[i], true);
+    }
+
+    return new Blob([buffer], { type: 'audio/wav' });
+  }
+
+  /**
+   * Simple audio resampling
+   */
+  private resampleAudio(buffer: Float32Array, fromSampleRate: number, toSampleRate: number): Float32Array {
+    if (fromSampleRate === toSampleRate) {
+      return buffer;
+    }
+
+    const ratio = fromSampleRate / toSampleRate;
+    const newLength = Math.round(buffer.length / ratio);
+    const result = new Float32Array(newLength);
+
+    for (let i = 0; i < newLength; i++) {
+      const srcIndex = i * ratio;
+      const srcIndexFloor = Math.floor(srcIndex);
+      const srcIndexCeil = Math.min(srcIndexFloor + 1, buffer.length - 1);
+      const t = srcIndex - srcIndexFloor;
+
+      // Linear interpolation
+      result[i] = buffer[srcIndexFloor] * (1 - t) + buffer[srcIndexCeil] * t;
+    }
+
+    return result;
+  }
+
+  /**
+   * Write string to DataView
+   */
+  private writeString(view: DataView, offset: number, string: string): void {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
     }
   }
 

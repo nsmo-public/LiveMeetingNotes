@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { App } from './App';
-import { ConfigProvider, theme } from 'antd';
+import { App as MainApp } from './App';
+import { ConfigProvider, theme, App } from 'antd';
 import './styles/global.css';
 
 // Unregister old service worker if exists
@@ -33,7 +33,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         }
       }}
     >
-      <App />
+      <App>
+        <MainApp />
+      </App>
     </ConfigProvider>
   </React.StrictMode>
 );

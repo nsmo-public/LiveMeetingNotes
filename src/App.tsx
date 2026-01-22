@@ -351,6 +351,12 @@ export const App: React.FC = () => {
 
   // Handle new transcription result
   const handleNewTranscription = (result: TranscriptionResult) => {
+    // Validate result has text
+    if (!result || !result.text) {
+      console.warn('⚠️ Received invalid transcription result:', result);
+      return;
+    }
+
     setTranscriptions(prev => {
       // Nếu là kết quả final
       if (result.isFinal) {
@@ -361,6 +367,14 @@ export const App: React.FC = () => {
         // Nếu kết quả cuối cùng chứa hầu hết text của kết quả mới hoặc ngược lại
         if (finalResults.length > 0) {
           const lastResult = finalResults[finalResults.length - 1];
+          
+          // Validate both texts exist
+          if (!lastResult.text) {
+            // If last result has no text, replace it with new result
+            finalResults[finalResults.length - 1] = result;
+            return finalResults;
+          }
+          
           const newText = result.text.trim().toLowerCase();
           const lastText = lastResult.text.trim().toLowerCase();
           
