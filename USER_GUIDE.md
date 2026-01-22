@@ -5,7 +5,7 @@
 **LiveMeetingNote** là ứng dụng web Progressive Web App (PWA) chuyên nghiệp giúp ghi chép cuộc họp với các khả năng:
 
 - 🎙️ Ghi âm chất lượng cao và đánh dấu thời gian tự động
-- 📴 Làm việc hoàn toàn offline
+- 📴 Có khả năng làm việc Offline hoàn toàn
 - 💾 Lưu trữ file trực tiếp vào máy tính
 - 🌐 Tương thích đa nền tảng (Chrome, Edge, Firefox, Safari)
 - 🔒 100% bảo mật - Không upload dữ liệu lên server

@@ -21,8 +21,8 @@ export const HelpButton: React.FC = () => {
           <List
             dataSource={[
               '🎙️ Ghi âm và đánh dấu thời gian tự động',
-              '�️ Chuyển đổi giọng nói sang văn bản (Speech-to-Text)',
-              '�📴 Làm việc hoàn toàn offline',
+              '�️ Chuyển đổi giọng nói sang văn bản (Speech-to-Text) - cần internet',
+              '�📴 Có khả năng làm việc Offline hoàn toàn',
               '💾 Lưu trữ file trực tiếp vào máy tính',
               '🌐 Tương thích đa nền tảng (Chrome, Edge, Firefox, Safari)',
               '🔒 100% bảo mật - Không upload dữ liệu lên server',
@@ -100,8 +100,9 @@ export const HelpButton: React.FC = () => {
               </Paragraph>
               <Paragraph><strong>Files output:</strong></Paragraph>
               <List size="small">
-                <List.Item>📄 <Text code>[ProjectName].wav</Text> - Audio file</List.Item>
+                <List.Item>📄 <Text code>[ProjectName].webm</Text> - Audio file</List.Item>
                 <List.Item>📄 <Text code>[ProjectName]_meeting_info.json</Text> - Meeting metadata</List.Item>
+                <List.Item>📄 <Text code>[ProjectName]_metadata.json</Text> - Notes + timestamps</List.Item>
                 <List.Item>📄 <Text code>[ProjectName]_metadata.json</Text> - Notes + timestamps</List.Item>
                 <List.Item>📄 <Text code>[ProjectName].docx</Text> - Word document</List.Item>
               </List>

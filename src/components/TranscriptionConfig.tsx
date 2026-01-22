@@ -90,6 +90,39 @@ export const TranscriptionConfig: React.FC<Props> = ({
     });
   };
 
+  // Function to handle speech recognition errors
+  const handleRecognitionError = (error: SpeechRecognitionErrorEvent) => {
+    switch (error.error) {
+      case 'no-speech':
+        message.warning('⚠️ Không phát hiện giọng nói. Vui lòng thử lại.');
+        break;
+      case 'audio-capture':
+        message.error('❌ Không tìm thấy thiết bị microphone. Vui lòng kiểm tra kết nối.');
+        break;
+      case 'not-allowed':
+        message.error('❌ Quyền truy cập microphone bị từ chối. Vui lòng cấp quyền và thử lại.');
+        break;
+      default:
+        message.error(`❌ Lỗi không xác định: ${error.error}`);
+        break;
+    }
+  };
+
+  // Example usage of the error handler in speech recognition setup
+  useEffect(() => {
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      handleRecognitionError(event);
+    };
+
+    // Cleanup on component unmount
+    return () => {
+      recognition.abort();
+    };
+  }, []);
+
   return (
     <Modal
       title={

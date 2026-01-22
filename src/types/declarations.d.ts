@@ -67,3 +67,15 @@ declare module 'docx' {
     static toBlob(doc: Document): Promise<Blob>;
   }
 }
+
+// Add type declarations for SpeechRecognition and webkitSpeechRecognition
+declare interface Window {
+  SpeechRecognition: typeof SpeechRecognition;
+  webkitSpeechRecognition: typeof SpeechRecognition;
+}
+
+declare class SpeechRecognition {
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  // Add other properties and methods as needed
+  abort(): void;
+}
