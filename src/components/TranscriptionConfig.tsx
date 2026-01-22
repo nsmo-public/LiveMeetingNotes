@@ -246,7 +246,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
               <li>Cần API Key từ <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer">Google Cloud Console</a></li>
               <li>Độ chính xác cao hơn</li>
               <li>Hỗ trợ nhận diện người nói (speaker diarization)</li>
-              <li>Chi phí: ~$0.006/15 giây audio</li>
+              <li>Chi phí: ~$0.006/15 giây audio (theo biểu giá của Google Cloud)</li>
             </ul>
           </div>
         </div>
