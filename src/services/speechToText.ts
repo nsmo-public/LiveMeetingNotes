@@ -206,22 +206,8 @@ export class SpeechToTextService {
         if (event.error === 'no-speech') {
           console.warn('No speech detected. Prompting user to check microphone.');
           console.log('Không phát hiện thấy giọng nói. Vui lòng kiểm tra micrô hoặc thử lại.');
-
-          // Không chuyển sang Google Cloud API nếu không có API Key
-          if (this.hasGoogleCloudAPI()) {
-            console.log('Falling back to Google Cloud API...');
-            this.startGoogleCloudTranscription(stream);
-          } else {
-            console.warn('Google Cloud API Key is not configured. Cannot fall back.');
-          }
         } else if (event.error === 'network') {
           console.error('Network error occurred.');
-          if (this.hasGoogleCloudAPI()) {
-            console.log('Falling back to Google Cloud API...');
-            this.startGoogleCloudTranscription(stream);
-          } else {
-            console.warn('Google Cloud API Key is not configured. Cannot fall back.');
-          }
         } else if (event.error === 'not-allowed') {
           console.error('Microphone access denied. Prompting user to allow access.');
           console.log('Vui lòng cấp quyền truy cập micrô trong cài đặt trình duyệt.');
@@ -344,7 +330,7 @@ export class SpeechToTextService {
    * Send audio data to Google Cloud Speech-to-Text API
    */
   private async sendToGoogleCloudAPI(audioBlob: Blob): Promise<void> {
-    if (!this.config) return;
+    if (!this.hasGoogleCloudAPI()) return;
 
     try {
       // Skip if audio is too small (< 0.5 seconds worth)
