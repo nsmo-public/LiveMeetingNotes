@@ -618,33 +618,22 @@ export class SpeechToTextService {
     recognition.interimResults = false; // Only final results for file transcription
     recognition.lang = this.config?.languageCode || 'vi-VN';
     recognition.maxAlternatives = 1;
-    function displayUserMessage(message: string) 
-    {
-          console.log("Thông báo cho người dùng:", message);
-          // Bạn sẽ thay thế dòng console.log này bằng cách thực sự hiển thị thông báo trên UI của ứng dụng.
-          // Ví dụ: cập nhật state của một component React, hiển thị một toast notification, v.v.
-          // Ví dụ với React (trong một component):
-          // setErrorMessage(message); // Cập nhật state để hiển thị lỗi trên UI
-      } 
-    // Xử lý sự kiện lỗi
-    recognition.onerror = function(event: SpeechRecognitionErrorEvent) {
-        if (event.error === 'no-speech') {
-            console.warn('Speech recognition error: No speech detected. Please speak clearly or check your microphone.');
-            // ====> THÊM LOGIC XỬ LÝ TẠI ĐÂY <====
-            // 1. Hiển thị thông báo cho người dùng
-            displayUserMessage("Không phát hiện thấy giọng nói. Hãy kiểm tra micrô của bạn hoặc nói rõ hơn.");
-            // 2. Tùy chọn: Dừng nhận diện hoặc bắt đầu lại sau một khoảng thời gian
-            recognition.stop(); // Dừng phiên hiện tại
-            // setTimeout(() => recognition.start(), 2000); // Thử lại sau 2 giây (cân nhắc xem có nên tự động thử lại không)
-            // 3. Cung cấp phương thức nhập liệu thay thế
-            // showKeyboardInputOption();
-        } else if (event.error === 'not-allowed') {
-            console.error('Speech recognition error: Microphone access denied.');
-            displayUserMessage("Trang web cần quyền truy cập micrô để sử dụng tính năng này. Vui lòng cho phép truy cập micrô trong cài đặt trình duyệt của bạn.");
-        } else {
-            console.error('Speech recognition error:', event.error);
-            displayUserMessage("Đã xảy ra lỗi trong quá trình nhận dạng giọng nói: " + event.error);
-        }
+    // Xử lý sự kiện lỗi từ Web Speech API
+    recognition.onerror = (event: any) => {
+      if (event.error === 'no-speech') {
+        console.warn('Speech recognition error: No speech detected.');
+        // Hiển thị thông báo cho người dùng
+        console.log('Không phát hiện thấy giọng nói. Vui lòng kiểm tra micrô hoặc thử lại.');
+        // Tùy chọn: Dừng nhận diện hoặc tự động thử lại
+        recognition.stop();
+        setTimeout(() => recognition.start(), 2000); // Thử lại sau 2 giây
+      } else if (event.error === 'not-allowed') {
+        console.error('Speech recognition error: Microphone access denied.');
+        console.log('Vui lòng cấp quyền truy cập micrô trong cài đặt trình duyệt.');
+      } else {
+        console.error('Speech recognition error:', event.error);
+        console.log('Đã xảy ra lỗi: ' + event.error);
+      }
     };
         
     let lastResultTime = 0;
@@ -762,7 +751,6 @@ export class SpeechToTextService {
       }
     };
 
-    // Add speaker diarization if enabled
     if (enableSpeakerDiarization) {
       requestBody.config.diarizationConfig = {
         enableSpeakerDiarization: true,

@@ -1102,7 +1102,7 @@ export const NotesEditor: React.FC<Props> = ({
                   const target = e.target as HTMLTextAreaElement;
                   handleLineChange(index, target.value);
                 }}
-                placeholder={index === 0 ? "Bắt đầu nhập..." : ""}
+                placeholder={index === 0 ? "Nhập ghi chú ..." : ""}
                 autoSize={{ minRows: 1, maxRows: 10 }}
                 style={{
                   flex: 1,
