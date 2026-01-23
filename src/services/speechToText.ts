@@ -170,7 +170,7 @@ export class SpeechToTextService {
               text: transcript.trim(),
               startTime: now.toISOString(),
               endTime: now.toISOString(),
-              audioTimeMs: this.segmentStartTimeMs, // Fixed at segment start
+              //audioTimeMs: this.segmentStartTimeMs, // Fixed at segment start
               confidence: confidence,
               speaker: 'Person1', // Default speaker
               isFinal: true
