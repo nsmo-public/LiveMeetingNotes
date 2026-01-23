@@ -618,7 +618,14 @@ export class SpeechToTextService {
     recognition.interimResults = false; // Only final results for file transcription
     recognition.lang = this.config?.languageCode || 'vi-VN';
     recognition.maxAlternatives = 1;
-
+    function displayUserMessage(message: string) 
+    {
+          console.log("Thông báo cho người dùng:", message);
+          // Bạn sẽ thay thế dòng console.log này bằng cách thực sự hiển thị thông báo trên UI của ứng dụng.
+          // Ví dụ: cập nhật state của một component React, hiển thị một toast notification, v.v.
+          // Ví dụ với React (trong một component):
+          // setErrorMessage(message); // Cập nhật state để hiển thị lỗi trên UI
+      } 
     // Xử lý sự kiện lỗi
     recognition.onerror = function(event: SpeechRecognitionErrorEvent) {
         if (event.error === 'no-speech') {
@@ -639,22 +646,6 @@ export class SpeechToTextService {
             displayUserMessage("Đã xảy ra lỗi trong quá trình nhận dạng giọng nói: " + event.error);
         }
     };
-        // Ví dụ đơn giản (có thể đặt ở cùng file hoặc một file tiện ích khác và import vào)
-      function displayUserMessage(message: string) {
-          console.log("Thông báo cho người dùng:", message);
-          // Bạn sẽ thay thế dòng console.log này bằng cách thực sự hiển thị thông báo trên UI của ứng dụng.
-          // Ví dụ: cập nhật state của một component React, hiển thị một toast notification, v.v.
-          // Ví dụ với React (trong một component):
-          // setErrorMessage(message); // Cập nhật state để hiển thị lỗi trên UI
-      }
-
-      // Sau đó sử dụng nó trong onerror:
-      recognition.onerror = function(event: SpeechRecognitionErrorEvent) {
-          if (event.error === 'no-speech') {
-              displayUserMessage("Không phát hiện thấy giọng nói. Hãy kiểm tra micrô của bạn hoặc nói rõ hơn.");
-          }
-          // ...
-      };
         
     let lastResultTime = 0;
 

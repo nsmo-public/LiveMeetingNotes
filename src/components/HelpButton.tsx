@@ -301,14 +301,13 @@ export const HelpButton: React.FC = () => {
       label: '👤 Tác giả',
       children: (
         <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '8px' }}>
-          <Title level={4}>Tác giả ứng dụng LiveMeetingNote</Title>
           <Paragraph>
             Xin chào! Mình là <Text strong>NguyenDacHung</Text>, tác giả của ứng dụng này.<br />
             <br />
             <Text>
-              <strong>LiveMeetingNote</strong> được phát triển với mong muốn chia sẻ miễn phí một ứng dụng hữu ích giúp mọi người ghi chép, lưu trữ và quản lý nội dung cuộc họp một cách chuyên nghiệp, bảo mật và tiện lợi nhất.<br />
+              <strong>LiveMeetingNotes</strong> được phát triển với mong muốn chia sẻ miễn phí một ứng dụng hữu ích giúp mọi người ghi chép, lưu trữ và quản lý nội dung cuộc họp một cách chuyên nghiệp, bảo mật và tiện lợi nhất.<br />
               <br />
-              Ứng dụng này được cung cấp <Text strong>miễn phí 100% và không vì mục đích thương mại</Text>. Nếu bạn cảm thấy ứng dụng mang lại giá trị và muốn động viên tác giả trong quá trình duy trì, phát triển, rất hoan nghênh việc kết nối, giao lưu hoặc mời mình cốc coffee nhé <span role="img" aria-label="coffee">🧋</span> <span role="img" aria-label="donate">💸</span> ^.^!
+              Ứng dụng này được cung cấp <Text strong>hoàn toàn miễn phí, không vì mục đích thương mại</Text>. Nếu bạn cảm thấy ứng dụng mang lại giá trị và muốn động viên tác giả trong quá trình duy trì, phát triển, rất hoan nghênh việc kết nối, giao lưu hoặc mời mình cốc coffee nhé <span role="img" aria-label="coffee">🧋</span> <span role="img" aria-label="donate">💸</span> ^.^!
             </Text>
           </Paragraph>
           <Divider />
@@ -364,7 +363,7 @@ export const HelpButton: React.FC = () => {
       </Button>
 
       <Modal
-        title="📚 Hướng dẫn sử dụng LiveMeetingNote"
+        title="📚 Hướng dẫn sử dụng LiveMeetingNotes"
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
