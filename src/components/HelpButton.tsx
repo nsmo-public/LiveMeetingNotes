@@ -328,7 +328,7 @@ export const HelpButton: React.FC = () => {
                 </a>
               </>,
               <>
-                <Text strong>📬Email:</Text> <a href="mailto:dachungbka@gmail.com">dachungbk@gmail.com</a>
+                <Text strong>📬Email:</Text> <a href="mailto:dachungbk@gmail.com">dachungbk@gmail.com</a>
               </>,
               <>
                 <Text strong>🏦Ngân hàng:</Text> BIDV - Nguyen Dac Hung<br />
