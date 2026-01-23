@@ -104,7 +104,7 @@ export class SpeechToTextService {
   ): boolean {
     // Check if Web Speech API is available
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    
+
     if (!SpeechRecognition) {
       return false;
     }
@@ -119,12 +119,12 @@ export class SpeechToTextService {
       // Reset tracking variables
       this.lastInterimText = '';
       this.lastUpdateTime = Date.now();
-      this.segmentStartTimeMs = 0; // Will be set when first text arrives
+      this.segmentStartTimeMs = 0;
 
       // Start interval to check for segment completion
       this.segmentCheckInterval = setInterval(() => {
         this.checkSegmentCompletion(onTranscription);
-      }, 500); // Check every 500ms
+      }, 500);
 
       this.recognition.onresult = (event: any) => {
         for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -159,7 +159,7 @@ export class SpeechToTextService {
               speaker: 'Person1', // Default speaker
               isFinal: true // Force as final
             };
-            
+
             onTranscription(transcriptionResult);
             this.lastInterimText = ''; // Reset for next segment
             this.segmentStartTimeMs = 0; // Reset for next segment
@@ -175,7 +175,7 @@ export class SpeechToTextService {
               speaker: 'Person1', // Default speaker
               isFinal: true
             };
-            
+
             onTranscription(transcriptionResult);
             this.lastInterimText = '';
             this.segmentStartTimeMs = 0; // Reset for next segment
@@ -192,7 +192,7 @@ export class SpeechToTextService {
                 speaker: 'Person1', // Default speaker
                 isFinal: false
               };
-              
+
               onTranscription(transcriptionResult);
               this.lastInterimText = transcript;
             }
@@ -202,14 +202,36 @@ export class SpeechToTextService {
 
       this.recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
-        if (event.error === 'network') {
-          // console.log('Network error, falling back to Google Cloud API');
-          this.startGoogleCloudTranscription(stream);
+
+        if (event.error === 'no-speech') {
+          console.warn('No speech detected. Prompting user to check microphone.');
+          console.log('Không phát hiện thấy giọng nói. Vui lòng kiểm tra micrô hoặc thử lại.');
+
+          // Không chuyển sang Google Cloud API nếu không có API Key
+          if (this.hasGoogleCloudAPI()) {
+            console.log('Falling back to Google Cloud API...');
+            this.startGoogleCloudTranscription(stream);
+          } else {
+            console.warn('Google Cloud API Key is not configured. Cannot fall back.');
+          }
+        } else if (event.error === 'network') {
+          console.error('Network error occurred.');
+          if (this.hasGoogleCloudAPI()) {
+            console.log('Falling back to Google Cloud API...');
+            this.startGoogleCloudTranscription(stream);
+          } else {
+            console.warn('Google Cloud API Key is not configured. Cannot fall back.');
+          }
+        } else if (event.error === 'not-allowed') {
+          console.error('Microphone access denied. Prompting user to allow access.');
+          console.log('Vui lòng cấp quyền truy cập micrô trong cài đặt trình duyệt.');
+        } else {
+          console.error('Unhandled speech recognition error:', event.error);
         }
       };
 
       this.recognition.onend = () => {
-        // Restart if still transcribing
+        console.log('Speech recognition ended.');
         if (this.isTranscribing) {
           try {
             this.recognition.start();
@@ -234,7 +256,7 @@ export class SpeechToTextService {
     if (isFinal) return false; // Already final, no need to force
 
     const trimmedText = transcript.trim();
-    
+
     // Force segment if text is too long (>150 characters)
     if (trimmedText.length > 150) {
       // console.log('🔸 Force segment: Text too long (' + trimmedText.length + ' chars)');
@@ -256,10 +278,10 @@ export class SpeechToTextService {
    */
   private checkSegmentCompletion(onTranscription: (result: TranscriptionResult) => void): void {
     if (!this.isTranscribing) return;
-    
+
     const now = Date.now();
     const timeSinceLastUpdate = now - this.lastUpdateTime;
-    
+
     // If we have interim text and haven't received update for 2 seconds, finalize it
     if (this.lastInterimText && timeSinceLastUpdate > 2000) {
       // console.log('🔸 Force segment: Silence timeout (2s)');
@@ -286,10 +308,12 @@ export class SpeechToTextService {
    * Start Google Cloud Speech-to-Text transcription
    */
   private async startGoogleCloudTranscription(stream: MediaStream): Promise<void> {
-    if (!this.config) return;
+    if (!this.hasGoogleCloudAPI()) {
+      console.warn('Google Cloud API Key is not configured. Cannot start transcription.');
+      return;
+    }
 
     try {
-      // Create MediaRecorder to capture audio chunks
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
         : 'audio/webm';
@@ -301,8 +325,6 @@ export class SpeechToTextService {
 
       this.mediaRecorder.ondataavailable = async (event) => {
         if (event.data.size > 0 && this.isTranscribing) {
-          // Don't accumulate chunks - send each chunk individually
-          // Each chunk is ~5 seconds (safe for Google Cloud API limit)
           await this.sendToGoogleCloudAPI(event.data);
         }
       };
@@ -311,9 +333,7 @@ export class SpeechToTextService {
         console.error('MediaRecorder error:', event);
       };
 
-      // Request data every 10 seconds (longer chunks = better quality)
-      this.mediaRecorder.start(10000);
-      // console.log('📹 MediaRecorder started for Google Cloud transcription');
+      this.mediaRecorder.start(10000); // Request data every 10 seconds
     } catch (error) {
       console.error('Failed to start Google Cloud transcription:', error);
       throw error;
@@ -387,17 +407,17 @@ export class SpeechToTextService {
       }
 
       const data = await response.json();
-      
+
       // Process results
       if (data.results && data.results.length > 0) {
         data.results.forEach((result: any) => {
           if (result.alternatives && result.alternatives.length > 0) {
             const alternative = result.alternatives[0];
-            
+
             // Extract speaker information if available
             let speaker: string | undefined;
             const speakerTags = new Set<number>();
-            
+
             if (alternative.words && alternative.words.length > 0) {
               // Collect all speaker tags in this segment
               alternative.words.forEach((word: any) => {
@@ -405,7 +425,7 @@ export class SpeechToTextService {
                   speakerTags.add(word.speakerTag);
                 }
               });
-              
+
               // If multiple speakers in one segment, show all
               if (speakerTags.size > 0) {
                 const speakers = Array.from(speakerTags).sort().map(tag => `Người ${tag + 1}`);
@@ -470,7 +490,7 @@ export class SpeechToTextService {
       const startTime = Date.now();
       const checkInterval = setInterval(() => {
         const elapsed = Date.now() - startTime;
-        
+
         // If not processing anymore, or timeout reached, resolve
         if (!this.isTranscribing || elapsed >= timeoutMs) {
           clearInterval(checkInterval);
@@ -595,12 +615,12 @@ export class SpeechToTextService {
     // Create audio element to play the file
     const audioUrl = URL.createObjectURL(audioBlob);
     const audio = new Audio(audioUrl);
-    
+
     // Get audio duration
     await new Promise<void>((resolve) => {
       audio.addEventListener('loadedmetadata', () => resolve(), { once: true });
     });
-    
+
     const duration = audio.duration;
     // console.log('Audio duration:', duration, 'seconds');
 
@@ -618,6 +638,7 @@ export class SpeechToTextService {
     recognition.interimResults = false; // Only final results for file transcription
     recognition.lang = this.config?.languageCode || 'vi-VN';
     recognition.maxAlternatives = 1;
+
     // Xử lý sự kiện lỗi từ Web Speech API
     recognition.onerror = (event: any) => {
       if (event.error === 'no-speech') {
@@ -635,12 +656,12 @@ export class SpeechToTextService {
         console.log('Đã xảy ra lỗi: ' + event.error);
       }
     };
-        
+
     let lastResultTime = 0;
 
     recognition.onresult = (event: any) => {
       const currentTime = audio.currentTime * 1000; // Convert to ms
-      
+
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
         if (result.isFinal) {
@@ -696,7 +717,7 @@ export class SpeechToTextService {
 
     if (onProgress) onProgress(100);
     if (onComplete) onComplete();
-    
+
     // console.log('✅ Web Speech API transcription complete');
   }
 
@@ -725,7 +746,7 @@ export class SpeechToTextService {
 
     // For short audio (< 60s), use normal sync API
     console.log(`✅ Audio is ${audioDuration.toFixed(1)}s, using sync API`);
-    
+
     // Convert audio blob to base64
     const arrayBuffer = await audioBlob.arrayBuffer();
     const base64Audio = btoa(
@@ -744,7 +765,7 @@ export class SpeechToTextService {
         languageCode: languageCode,
         enableAutomaticPunctuation: true,
         model: 'default',
-        useEnhanced: true
+        useEnhanced: true // Use enhanced model for better accuracy
       },
       audio: {
         content: base64Audio
@@ -781,13 +802,13 @@ export class SpeechToTextService {
       }
 
       const data = await response.json();
-      
+
       if (onProgress) onProgress(80);
 
       // Process results
       if (data.results && Array.isArray(data.results)) {
         let audioTimeMs = 0;
-        
+
         data.results.forEach((result: any) => {
           if (result.alternatives && result.alternatives.length > 0) {
             const alternative = result.alternatives[0];
@@ -841,17 +862,17 @@ export class SpeechToTextService {
     return new Promise((resolve, reject) => {
       const audio = new Audio();
       audio.preload = 'metadata';
-      
+
       audio.onloadedmetadata = () => {
         URL.revokeObjectURL(audio.src);
         resolve(audio.duration);
       };
-      
+
       audio.onerror = () => {
         URL.revokeObjectURL(audio.src);
         reject(new Error('Failed to load audio metadata'));
       };
-      
+
       audio.src = URL.createObjectURL(audioBlob);
     });
   }
@@ -868,50 +889,49 @@ export class SpeechToTextService {
   ): Promise<void> {
     const CHUNK_DURATION = 55; // 55 seconds per chunk (safe margin)
     const numChunks = Math.ceil(totalDuration / CHUNK_DURATION);
-    
+
     console.log(`📦 Splitting into ${numChunks} chunks (${CHUNK_DURATION}s each)`);
-    
+
     try {
       // Load audio into AudioContext
       const arrayBuffer = await audioBlob.arrayBuffer();
       const audioContext = new AudioContext();
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-      
+
       const sampleRate = audioBuffer.sampleRate;
       const channelData = audioBuffer.getChannelData(0); // Get first channel
-      
+
       // Process each chunk
       for (let i = 0; i < numChunks; i++) {
         const startTime = i * CHUNK_DURATION;
         const endTime = Math.min((i + 1) * CHUNK_DURATION, totalDuration);
-        
+
         console.log(`🔄 Processing chunk ${i + 1}/${numChunks}: ${startTime.toFixed(1)}s - ${endTime.toFixed(1)}s`);
-        
+
         // Calculate progress
         const baseProgress = 10 + (i / numChunks) * 80;
         if (onProgress) onProgress(Math.round(baseProgress));
-        
+
         // Extract chunk samples
         const startSample = Math.floor(startTime * sampleRate);
         const endSample = Math.floor(endTime * sampleRate);
         const chunkSamples = channelData.slice(startSample, endSample);
-        
+
         // Create new AudioBuffer for this chunk
         const chunkBuffer = audioContext.createBuffer(1, chunkSamples.length, sampleRate);
         chunkBuffer.copyToChannel(chunkSamples, 0);
-        
+
         // Convert to WAV blob
         const chunkBlob = await this.audioBufferToWavBlob(chunkBuffer);
-        
+
         // Transcribe this chunk
         await this.transcribeSingleChunk(chunkBlob, i, startTime, onTranscription);
       }
-      
+
       if (onProgress) onProgress(100);
       if (onComplete) onComplete();
-      
+
       console.log(`✅ All ${numChunks} chunks transcribed successfully`);
-      
     } catch (error) {
       console.error('Error transcribing long audio:', error);
       throw error;
@@ -1027,10 +1047,10 @@ export class SpeechToTextService {
     const bitDepth = 16;
 
     const channelData = audioBuffer.getChannelData(0);
-    
+
     // Resample to 16kHz
     const resampledData = this.resampleAudio(channelData, audioBuffer.sampleRate, sampleRate);
-    
+
     // Convert to 16-bit PCM
     const pcmData = new Int16Array(resampledData.length);
     for (let i = 0; i < resampledData.length; i++) {
