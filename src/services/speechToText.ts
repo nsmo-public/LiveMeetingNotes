@@ -208,6 +208,7 @@ export class SpeechToTextService {
           console.log('Không phát hiện thấy giọng nói. Vui lòng kiểm tra micrô hoặc thử lại.');
         } else if (event.error === 'network') {
           console.error('Network error occurred.');
+          alert('Network error occurred.');
           if (this.hasGoogleCloudAPI()) {
             console.log('Falling back to Google Cloud API...');
             this.startGoogleCloudTranscription(stream);
@@ -216,7 +217,7 @@ export class SpeechToTextService {
           }
         } else if (event.error === 'not-allowed') {
           console.error('Microphone access denied. Prompting user to allow access.');
-          console.log('Vui lòng cấp quyền truy cập micrô trong cài đặt trình duyệt.');
+          alert('Vui lòng cấp quyền truy cập micrô trong cài đặt trình duyệt.');
         } else {
           console.error('Unhandled speech recognition error:', event.error);
         }
@@ -229,6 +230,7 @@ export class SpeechToTextService {
             this.recognition.start();
           } catch (e) {
             console.error('Failed to restart recognition:', e);
+            alert('Lỗi nhận diện giọng nói. Vui lòng thử lại.');
           }
         }
       };
