@@ -363,7 +363,7 @@ export const HelpButton: React.FC = () => {
       </Button>
 
       <Modal
-        title="📚 Hướng dẫn sử dụng LiveMeetingNotes"
+        title="📚 Ứng dụng LiveMeetingNotes"
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
