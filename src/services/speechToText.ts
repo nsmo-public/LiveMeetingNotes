@@ -206,14 +206,6 @@ export class SpeechToTextService {
         if (event.error === 'no-speech') {
           console.warn('No speech detected. Prompting user to check microphone.');
           console.log('Không phát hiện thấy giọng nói. Vui lòng kiểm tra micrô hoặc thử lại.');
-
-          // Không chuyển sang Google Cloud API nếu không có API Key
-          if (this.hasGoogleCloudAPI()) {
-            console.log('Falling back to Google Cloud API...');
-            this.startGoogleCloudTranscription(stream);
-          } else {
-            console.warn('Google Cloud API Key is not configured. Cannot fall back.');
-          }
         } else if (event.error === 'network') {
           console.error('Network error occurred.');
           if (this.hasGoogleCloudAPI()) {
@@ -347,6 +339,7 @@ export class SpeechToTextService {
     if (!this.config) return;
 
     try {
+      if (this.hasGoogleCloudAPI()) return;
       // Skip if audio is too small (< 0.5 seconds worth)
       if (audioBlob.size < 1000) {
         console.warn('⚠️ Audio chunk too small, skipping:', audioBlob.size, 'bytes');
