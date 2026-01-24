@@ -24,6 +24,8 @@ export class WordExporter {
     // Text is already clean (no timestamps embedded)
     const paragraphs = this.parseTextToParagraphs(notesText);
     
+    console.log('transcriptions in createWordBlob:', transcriptions);
+
     // Add transcription section if available
     const transcriptionParagraphs = transcriptions && transcriptions.length > 0
       ? this.createTranscriptionParagraphs(transcriptions)
@@ -126,6 +128,7 @@ export class WordExporter {
     fileName: string,
     transcriptions?: TranscriptionResult[]
   ): Promise<void> {
+    console.log('transcriptions:', transcriptions);
     const fileNameWithTimestamp = addTimestampPrefix(fileName);
     const blob = await this.createWordBlob(meetingInfo, notesText, transcriptions);
     saveAs(blob, fileNameWithTimestamp);
@@ -188,21 +191,19 @@ export class WordExporter {
     );
     
     // Add transcription items
-    transcriptions.forEach((item, index) => {
-      // Format audio time if available
-      let timeStr = '';
-      if (item.audioTimeMs !== undefined) {
-        const totalSeconds = Math.floor(item.audioTimeMs / 1000);
-        const hours = Math.floor(totalSeconds / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
-        
-        if (hours > 0) {
-          timeStr = `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        } else {
-          timeStr = `${minutes}:${String(seconds).padStart(2, '0')}`;
-        }
-      }
+  transcriptions.forEach((item, index) => {
+    // Format startTime if available
+    let timeStr = '';
+    if (item.startTime) {
+      const date = new Date(item.startTime);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      timeStr = `${year}-${day}-${month} ${hours}:${minutes}:${seconds}`;
+    }
       
       // Create paragraph with speaker and timestamp
       const prefix = `[${index + 1}] ${item.speaker}${timeStr ? ` (${timeStr})` : ''}: `;
