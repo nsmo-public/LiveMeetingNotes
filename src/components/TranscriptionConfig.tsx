@@ -34,7 +34,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
           apiEndpoint: 'https://speech.googleapis.com/v1/speech:recognize',
           languageCode: 'vi-VN',
           enableSpeakerDiarization: false,
-          enableAutomaticPunctuation: false
+          enableAutomaticPunctuation: true
         });
       }
     }
@@ -59,11 +59,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
         setIsSaving(false);
         return;
       }
-      if (config.enableAutomaticPunctuation && !config.apiKey) {
-        message.error('⚠️ Tự động thêm dấu câu yêu cầu Google Cloud API Key');
-        setIsSaving(false);
-        return;
-      }
+
 
       // Save to localStorage
       SpeechToTextService.saveConfig(config);
