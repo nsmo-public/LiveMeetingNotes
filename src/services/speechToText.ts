@@ -170,7 +170,7 @@ export class SpeechToTextService {
               text: transcript.trim(),
               startTime: now.toISOString(),
               endTime: now.toISOString(),
-              //audioTimeMs: this.segmentStartTimeMs, // Fixed at segment start
+              audioTimeMs: this.segmentStartTimeMs, // Fixed at segment start
               confidence: confidence,
               speaker: 'Person1', // Default speaker
               isFinal: true
@@ -208,7 +208,7 @@ export class SpeechToTextService {
           console.log('Không phát hiện thấy giọng nói. Vui lòng kiểm tra micrô hoặc thử lại.');
         } else if (event.error === 'network') {
           console.error('Network error occurred.');
-          alert('Network error occurred.');
+          //alert('Network error occurred.');
           if (this.hasGoogleCloudAPI()) {
             console.log('Falling back to Google Cloud API...');
             this.startGoogleCloudTranscription(stream);
