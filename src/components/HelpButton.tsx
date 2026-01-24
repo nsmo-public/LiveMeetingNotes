@@ -279,38 +279,26 @@ export const HelpButton: React.FC = () => {
             <List.Item>✅ Remote teams - Chia sẻ notes + audio cho nhóm làm việc</List.Item>
             <List.Item>✅ Giáo dục/E-learning - Ghi âm và ghi chép bài học</List.Item>
           </List>
-
-          <Divider />
-
-          <Paragraph>
-            <Text strong>Tài liệu chi tiết:</Text>
-            <br />
-            <a href="https://github.com/nsmo-public/LiveMeetingNotes" target="_blank" rel="noopener noreferrer">
-              📚 GitHub Repository
-            </a>
-            {' | '}
-            <a href="https://github.com/nsmo-public/LiveMeetingNotes/blob/main/PRIVACY.md" target="_blank" rel="noopener noreferrer">
-              🔒 Privacy Policy
-            </a>
-          </Paragraph>
         </div>
       ),
     },
     {
       key: '6',
-      label: '👤 Tác giả',
+      label: '🙋 Tác giả 🙋',
       children: (
         <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '8px' }}>
           <Paragraph>
             Xin chào! Mình là <Text strong>NguyenDacHung</Text>, tác giả của ứng dụng này.<br />
             <br />
             <Text>
-              <strong>LiveMeetingNotes</strong> được phát triển với mong muốn chia sẻ miễn phí một ứng dụng hữu ích giúp mọi người ghi chép, lưu trữ và quản lý nội dung cuộc họp một cách chuyên nghiệp, bảo mật và tiện lợi nhất.<br />
+              <strong>LiveMeetingNotes</strong> được phát triển nhằm mục đích cung cấp miễn phí một công cụ hỗ trợ ghi chép, lưu trữ và quản lý nội dung cuộc họp một cách chuyên nghiệp, bảo mật và tiện lợi.<br />
               <br />
-              Ứng dụng này được cung cấp <Text strong>hoàn toàn miễn phí, không vì mục đích thương mại</Text>. Nếu bạn cảm thấy ứng dụng mang lại giá trị và muốn động viên tác giả trong quá trình duy trì, phát triển, rất hoan nghênh việc kết nối, giao lưu hoặc mời mình cốc coffee nhé <span role="img" aria-label="coffee">🧋</span> <span role="img" aria-label="donate">💸</span> ^.^!
+              Ứng dụng này được cung cấp <Text strong>HOÀN TOÀN MIỄN PHÍ, không vì mục đích thương mại</Text>. Trong trường hợp Anh/Chị nhận thấy LiveMeetingNotes hữu ích và mong muốn hỗ trợ tác giả một cách tự nguyện (đóng góp tùy tâm) để góp phần duy trì và phát triển sản phẩm, mọi sự đồng hành của Anh/Chị đều được tác giả trân trọng ghi nhận ^.^! 💸👇<br />
+              <br />XIN LƯU Ý: Việc đóng góp hoàn toàn mang tính chất tự nguyện, không bắt buộc và không ảnh hưởng đến bất kỳ tính năng nào của ứng dụng. Tác giả không yêu cầu hay thu bất kỳ khoản phí sử dụng nào dưới mọi hình thức. Mọi hành vi thu phí bắt buộc hoặc mạo danh LiveMeetingNotes đều không xuất phát từ tác giả. Đề nghị người dùng cẩn trọng để tránh các trường hợp lừa đảo không đáng có.<br />
+              <br />
+              Mọi thắc mắc hoặc cần hỗ trợ, Anh/Chị vui lòng liên hệ qua các kênh sau:
             </Text>
           </Paragraph>
-          <Divider />
           <List
             size="small"
             header={<Text strong>Thông tin liên hệ</Text>}
@@ -331,12 +319,12 @@ export const HelpButton: React.FC = () => {
                 <Text strong>📬Email:</Text> <a href="mailto:dachungbk@gmail.com">dachungbk@gmail.com</a>
               </>,
               <>
-                <Text strong>🏦Ngân hàng:</Text> BIDV - Nguyen Dac Hung<br />
+                <Text strong>🧋💸🎁:</Text> BIDV - Nguyen Dac Hung<br />
                 <Text strong>Số tài khoản:</Text> <Text copyable>2610308803</Text>
               </>,
               <>
                 <Text type="secondary" italic>
-                  Xin cảm ơn mọi sự ủng hộ! Chúc bạn sử dụng hiệu quả và lan tỏa giá trị tích cực đến cộng đồng. <span style={{color: 'red'}}>❤️</span>
+                  Xin cảm ơn mọi sự ủng hộ! Chúc Anh/Chị sử dụng hiệu quả và lan tỏa giá trị tích cực đến cộng đồng ❤️
                 </Text>
               </>
             ]}
