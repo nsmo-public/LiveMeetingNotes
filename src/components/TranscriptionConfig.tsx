@@ -34,7 +34,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
           apiEndpoint: 'https://speech.googleapis.com/v1/speech:recognize',
           languageCode: 'vi-VN',
           enableSpeakerDiarization: false,
-          enableAutomaticPunctuation: true
+          enableAutomaticPunctuation: false
         });
       }
     }
@@ -56,6 +56,11 @@ export const TranscriptionConfig: React.FC<Props> = ({
       // Validate: Speaker diarization requires API Key
       if (config.enableSpeakerDiarization && !config.apiKey) {
         message.error('⚠️ Nhận diện người nói yêu cầu Google Cloud API Key');
+        setIsSaving(false);
+        return;
+      }
+      if (config.enableAutomaticPunctuation && !config.apiKey) {
+        message.error('⚠️ Tự động thêm dấu câu yêu cầu Google Cloud API Key');
         setIsSaving(false);
         return;
       }
@@ -215,7 +220,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
         <Form.Item
           label="Tự động thêm dấu câu"
           name="enableAutomaticPunctuation"
-          valuePropName="checked"
+          valuePropName="unchecked"
           extra="Tự động thêm dấu chấm, phấy, hỏi,... vào văn bản"
         >
           <Switch />
