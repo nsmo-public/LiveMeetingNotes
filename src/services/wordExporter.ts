@@ -202,7 +202,7 @@ export class WordExporter {
       const hours = String(date.getHours()).padStart(2, '0');
       const minutes = String(date.getMinutes()).padStart(2, '0');
       const seconds = String(date.getSeconds()).padStart(2, '0');
-      timeStr = `${year}-${day}-${month} ${hours}:${minutes}:${seconds}`;
+      timeStr = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
       
       // Create paragraph with speaker and timestamp

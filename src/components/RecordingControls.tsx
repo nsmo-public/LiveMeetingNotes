@@ -694,7 +694,8 @@ export const RecordingControls: React.FC<Props> = ({
           }
 
           // Export Word document
-          const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes);
+          const finalTranscriptions = transcriptions?.filter(t => t.isFinal) || []; // Lọc các kết quả isFinal
+          const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes, finalTranscriptions);
           await fileManager.saveWordFile(wordBlob, `${newProjectName}.docx`, undefined, true);
           // console.log('✓ Saved Word document');
           
