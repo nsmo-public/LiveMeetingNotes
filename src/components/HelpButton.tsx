@@ -158,39 +158,39 @@ export const HelpButton: React.FC = () => {
             <Divider style={{ margin: '12px 0' }} />
 
             <div>
-              <Title level={4}>Scenario 3: Load project cũ để chỉnh sửa</Title>
+              <Title level={4}>Scenario 3: Tải dự án đã lưu để chỉnh sửa</Title>
               <List>
-                <List.Item>1. Click <Tag color="purple">Load Project</Tag> → chọn folder project cũ</List.Item>
-                <List.Item>2. Dữ liệu tự động load lên form</List.Item>
-                <List.Item>3. Chỉnh sửa notes/meeting info</List.Item>
-                <List.Item>4. Click <Tag color="green">Save Changes</Tag> → tạo version mới</List.Item>
+                <List.Item>1. Click <Tag color="purple">Tải dự án đã lưu</Tag> → chọn Thư mục lưu dự án cũ</List.Item>
+                <List.Item>2. Dữ liệu tự động load lên giao diện</List.Item>
+                <List.Item>3. Chỉnh sửa ghi chú/thông tin cuộc họp</List.Item>
+                <List.Item>4. Click <Tag color="green">Lưu thay đổi</Tag> → tạo version mới</List.Item>
               </List>
             </div>
 
     <Title level={4}>-------------------------------------------------------</Title>
             <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '8px' }}>
-          <Title level={4}>Keyboard Shortcuts</Title>
+          <Title level={4}>Phím tắt</Title>
           <List>
             <List.Item>
-              <Tag color="blue">Enter</Tag> - Insert timestamp (khi đang recording)
+              <Tag color="blue">Enter</Tag> - Chèn nhãn thời gian (khi đang ghi âm)
             </List.Item>
             <List.Item>
-              <Tag>Space</Tag> - Play/Pause audio (khi focus player)
+              <Tag>Space</Tag> - Phát/Tạm dừng audio (khi focus player)
             </List.Item>
           </List>
 
           <Divider />
 
-          <Title level={4}>Mouse Actions</Title>
+          <Title level={4}>Thao tác chuột trên waveform</Title>
           <List>
             <List.Item>
-              <strong>Double-click timestamp</strong> → Seek audio to that position
+              <strong>Click đúp chuột vào nhãn thời gian</strong> → Tua đến vị trí tương ứng
             </List.Item>
             <List.Item>
-              <strong>Double-click waveform</strong> → Seek to clicked position
+              <strong>Click đúp chuột vào waveform</strong> → Tua đến vị trí tương ứng
             </List.Item>
             <List.Item>
-              <strong>Right-click waveform</strong> → Insert timestamp at current position
+              <strong>Click phải chuột vào waveform</strong> → Chèn dòng mới (Ghi chép thủ công) kèm nhãn thời gian tại vị trí của thanh ghi âm (màu đỏ)
             </List.Item>
           </List>
         </div>
