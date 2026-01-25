@@ -215,25 +215,25 @@ export const HelpButton: React.FC = () => {
             </thead>
             <tbody>
               <tr style={{ borderBottom: '1px solid #434343' }}>
-                <td style={{ padding: '8px' }}>Audio Recording</td>
+                <td style={{ padding: '8px' }}>Ghi âm cuộc họp</td>
                 <td style={{ padding: '8px', textAlign: 'center' }}>✅</td>
                 <td style={{ padding: '8px', textAlign: 'center' }}>✅ (14.1+)</td>
                 <td style={{ padding: '8px', textAlign: 'center' }}>✅</td>
               </tr>
               <tr style={{ borderBottom: '1px solid #434343' }}>
-                <td style={{ padding: '8px' }}>File System Access</td>
-                <td style={{ padding: '8px', textAlign: 'center' }}>✅ Direct save</td>
-                <td style={{ padding: '8px', textAlign: 'center' }}>⚠️ Download</td>
-                <td style={{ padding: '8px', textAlign: 'center' }}>⚠️ Download</td>
+                <td style={{ padding: '8px' }}>Truy cập Hệ thống Thư mục</td>
+                <td style={{ padding: '8px', textAlign: 'center' }}>✅ Lưu trực tiếp</td>
+                <td style={{ padding: '8px', textAlign: 'center' }}>⚠️ Tải xuống</td>
+                <td style={{ padding: '8px', textAlign: 'center' }}>⚠️ Tải xuống</td>
               </tr>
               <tr style={{ borderBottom: '1px solid #434343' }}>
-                <td style={{ padding: '8px' }}>PWA Install</td>
+                <td style={{ padding: '8px' }}>Cài đặt PWA</td>
                 <td style={{ padding: '8px', textAlign: 'center' }}>✅</td>
                 <td style={{ padding: '8px', textAlign: 'center' }}>✅</td>
                 <td style={{ padding: '8px', textAlign: 'center' }}>✅</td>
               </tr>
               <tr style={{ borderBottom: '1px solid #434343' }}>
-                <td style={{ padding: '8px' }}>Offline Mode</td>
+                <td style={{ padding: '8px' }}>Chế độ Offline</td>
                 <td style={{ padding: '8px', textAlign: 'center' }}>✅</td>
                 <td style={{ padding: '8px', textAlign: 'center' }}>✅</td>
                 <td style={{ padding: '8px', textAlign: 'center' }}>✅</td>
