@@ -139,6 +139,8 @@ export const HelpButton: React.FC = () => {
                 <List.Item>6. Click <Tag>Dừng</Tag> → files tự động lưu vào folder đã chọn</List.Item>
                 <List.Item>7. Phát lại audio, double-click timestamp để tua đến vị trí tương ứng</List.Item>
               </List>
+              <List.Item>8. <strong>(TÙY CHỌN)</strong> Dùng chức năng Translate của trình duyệt Web để chuyển đổi tự động kết quả sang ngôn ngữ khác: 🎧 Nghe người nói bằng ngôn ngữ A →
+📝 Nhận nội dung chuyển giọng nói → văn bản → 🌍 Dịch tức thời sang ngôn ngữ B</List.Item>
             </div>
 
             <Divider style={{ margin: '12px 0' }} />
