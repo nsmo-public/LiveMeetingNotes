@@ -1042,7 +1042,7 @@ export const RecordingControls: React.FC<Props> = ({
                 onClick={handleStartRecording}
                 size="large"
               >
-                Record
+                Ghi âm
               </Button>
               
               {/* Show Continue Recording button if there are segments */}
@@ -1054,7 +1054,7 @@ export const RecordingControls: React.FC<Props> = ({
                   size="large"
                   style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
                 >
-                  Continue Recording
+                  Tiếp tục ghi âm
                 </Button>
               )}
             </>
@@ -1065,7 +1065,7 @@ export const RecordingControls: React.FC<Props> = ({
               onClick={handleStopRecording}
               size="large"
             >
-              Stop
+              Dừng
             </Button>
           )}
 
@@ -1077,7 +1077,7 @@ export const RecordingControls: React.FC<Props> = ({
               onClick={handleSaveNotes}
               size="large"
             >
-              Save Notes
+              Lưu ghi chú
             </Button>
           )}
 
@@ -1090,7 +1090,7 @@ export const RecordingControls: React.FC<Props> = ({
               size="large"
               style={{ backgroundColor: '#52c41a', color: 'white', borderColor: '#52c41a' }}
             >
-              Save Changes
+              Lưu thay đổi
             </Button>
           )}
 
@@ -1146,13 +1146,13 @@ export const RecordingControls: React.FC<Props> = ({
 
       {folderPath && (
         <div className="folder-info">
-          📁 Current Folder: <strong>{folderPath}</strong>
+          📁 Thư mục hiện tại: <strong>{folderPath}</strong>
         </div>
       )}
 
       {!FileManagerService.isSupported() && (
         <div className="browser-warning">
-          ⚠️ Your browser doesn't support direct folder access. Files will be downloaded.
+          ⚠️ Trình duyệt của bạn không hỗ trợ truy cập thư mục trực tiếp. Các file sẽ được tải về.
         </div>
       )}
     </div>

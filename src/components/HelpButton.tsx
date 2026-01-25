@@ -16,13 +16,13 @@ export const HelpButton: React.FC = () => {
         <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '8px' }}>
           <Title level={3}>📝 LiveMeetingNote</Title>
           <Paragraph>
-            Ứng dụng web <strong>Progressive Web App (PWA)</strong> chuyên nghiệp giúp ghi chép cuộc họp với các khả năng:
+            Ứng dụng web, giúp ghi chép cuộc họp với các khả năng:
           </Paragraph>
           <List
             dataSource={[
-              '🎙️ Ghi âm và đánh dấu thời gian tự động',
-              '�️ Chuyển đổi giọng nói sang văn bản (Speech-to-Text)',
-              '�📴 Làm việc hoàn toàn offline',
+              '🎙️ Ghi âm và đánh dấu thời gian tự động khi nhập Ghi chú',
+              '�️ Chuyển đổi giọng nói sang văn bản (Speech-to-Text) - Cần kết nối internet',
+              '�📴 Có khả năng làm việc offline',
               '💾 Lưu trữ file trực tiếp vào máy tính',
               '🌐 Tương thích đa nền tảng (Chrome, Edge, Firefox, Safari)',
               '🔒 100% bảo mật - Không upload dữ liệu lên server',
@@ -66,13 +66,13 @@ export const HelpButton: React.FC = () => {
             <div>
               <Title level={4}>🗣️ Chuyển đổi giọng nói sang văn bản</Title>
               <List size="small">
-                <List.Item>• <strong>Yêu cầu:</strong> Kết nối Internet và Google Cloud API Key</List.Item>
-                <List.Item>• Click <Tag color="orange" icon={<span>⚙️</span>}>Transcription Config</Tag> → nhập API Key</List.Item>
-                <List.Item>• Bật <Tag color="cyan">Auto-transcribe</Tag> → tự động chuyển đổi khi ghi âm</List.Item>
+                <List.Item>• <strong>Yêu cầu:</strong> Kết nối Internet</List.Item>
+                <List.Item>• Click <Tag color="orange" icon={<span>⚙️</span>}>Cấu hình Speech-to-Text</Tag> → nhập API Key (nếu có), chọn ngôn ngữ ...</List.Item>
+                <List.Item>• Dùng chức năng Translate của trình duyệt Web để chuyển đổi tự động kết quả sang ngôn ngữ khác (nếu cần)</List.Item>
+                <List.Item>• Bật <Tag color="cyan">Tự động chuyển giọng nói thành văn bản</Tag> → tự động chuyển đổi khi ghi âm</List.Item>
                 <List.Item>• Kết quả hiển thị real-time với độ tin cậy (confidence)</List.Item>
                 <List.Item>• Click vào kết quả → seek audio đến vị trí tương ứng</List.Item>
-                <List.Item>• <strong>Sửa & chèn:</strong> Nhấn nút Edit → chỉnh sửa văn bản → Insert vào Notes Editor</List.Item>
-                <List.Item>• Hỗ trợ speaker diarization (nhận diện người nói)</List.Item>
+                <List.Item>• Hỗ trợ speaker diarization (nhận diện người nói - yêu cầu phải có API Key)</List.Item>
               </List>
             </div>
 
@@ -131,14 +131,13 @@ export const HelpButton: React.FC = () => {
             <div>
               <Title level={4}>Scenario 1: Ghi âm cuộc họp mới</Title>
               <List>
-                <List.Item>1. Click <Tag color="blue">Select Folder</Tag> → chọn thư mục lưu file (Chrome/Edge)</List.Item>
-                <List.Item>2. Điền thông tin cuộc họp (Title, Date, Time, Location, Host, Attendees)</List.Item>
-                <List.Item>3. <strong>(Optional)</strong> Cấu hình Speech-to-Text: Click <Tag color="orange">⚙️ Transcription Config</Tag> → nhập API Key</List.Item>
-                <List.Item>4. Click <Tag color="red">Record</Tag> → bắt đầu ghi âm</List.Item>
-                <List.Item>5. Gõ notes, nhấn <Tag>ENTER</Tag> để chèn dòng mới kèm nhãn thời gian</List.Item>
-                <List.Item>6. <strong>(Optional)</strong> Kết quả Speech-to-Text xuất hiện tự động → click Edit → Insert vào Notes</List.Item>
-                <List.Item>7. Click <Tag>Stop</Tag> → files tự động lưu vào folder đã chọn</List.Item>
-                <List.Item>8. Playback audio, double-click timestamp để seek</List.Item>
+                <List.Item>1. Click <Tag color="blue">Chọn thư mục</Tag> → chọn thư mục lưu file (Chrome/Edge)</List.Item>
+                <List.Item>2. Điền thông tin cuộc họp (Tên cuộc họp, Ngày, Giờ, Địa điểm, Chủ trì, Thành viên tham dự)</List.Item>
+                <List.Item>3. <strong>(TÙY CHỌN)</strong> Cấu hình Speech-to-Text: Click <Tag color="orange">⚙️ Cấu hình Speech-to-Text</Tag> → nhập API Key</List.Item>
+                <List.Item>4. Click <Tag color="red">Ghi âm</Tag> → bắt đầu ghi âm</List.Item>
+                <List.Item>5. Gõ notes, nhấn <Tag>ENTER</Tag> để chèn dòng mới chèn dòng mới → khi gõ văn bản sẽ tự động chèn nhãn thời gian</List.Item>
+                <List.Item>6. Click <Tag>Dừng</Tag> → files tự động lưu vào folder đã chọn</List.Item>
+                <List.Item>7. Phát lại audio, double-click timestamp để tua đến vị trí tương ứng</List.Item>
               </List>
             </div>
 
@@ -147,10 +146,10 @@ export const HelpButton: React.FC = () => {
             <div>
               <Title level={4}>Scenario 2: Chỉ ghi chép không ghi âm</Title>
               <List>
-                <List.Item>1. Click <Tag color="blue">Select Folder</Tag> (optional)</List.Item>
+                <List.Item>1. Click <Tag color="blue">Chọn thư mục</Tag> (tùy chọn)</List.Item>
                 <List.Item>2. Điền thông tin cuộc họp</List.Item>
-                <List.Item>3. Gõ notes (không nhấn Record)</List.Item>
-                <List.Item>4. Click <Tag color="green">Save Notes</Tag> → lưu JSON + DOCX</List.Item>
+                <List.Item>3. Gõ notes (không nhấn Ghi âm)</List.Item>
+                <List.Item>4. Click <Tag color="green">Lưu ghi chú</Tag> → lưu JSON + DOCX</List.Item>
               </List>
             </div>
 
@@ -264,9 +263,6 @@ export const HelpButton: React.FC = () => {
             <List.Item>
               <Tag color="green">✅</Tag> <strong>No analytics</strong> - Không tracking hành vi
             </List.Item>
-            <List.Item>
-              <Tag color="green">✅</Tag> <strong>Open source</strong> - Code công khai, kiểm tra được
-            </List.Item>
           </List>
 
           <Divider />
@@ -293,7 +289,7 @@ export const HelpButton: React.FC = () => {
             <Text>
               <strong>LiveMeetingNotes</strong> được phát triển nhằm mục đích cung cấp miễn phí một công cụ hỗ trợ ghi chép, lưu trữ và quản lý nội dung cuộc họp một cách chuyên nghiệp, bảo mật và tiện lợi.<br />
               <br />
-              Ứng dụng này được cung cấp <Text strong>HOÀN TOÀN MIỄN PHÍ, không vì mục đích thương mại</Text>. Trong trường hợp Anh/Chị thấy LiveMeetingNotes hữu ích và mong muốn hỗ trợ tác giả một chút kinh phí (<Text strong></Text>tinh thần tự nguyện<Text strong></Text>) để góp phần duy trì và phát triển sản phẩm, Anh/Chị có thể liên hệ qua Thông tin bên dưới. Mọi sự đồng hành của Anh/Chị đều được tác giả trân trọng ghi nhận ^.^! 💸👇<br />
+              Ứng dụng này được cung cấp <Text strong>HOÀN TOÀN MIỄN PHÍ, không vì mục đích thương mại</Text>. Trong trường hợp Anh/Chị thấy LiveMeetingNotes hữu ích và mong muốn hỗ trợ tác giả một chút kinh phí (<Text strong></Text>tinh thần tự nguyện<Text strong></Text>) để góp phần duy trì và phát triển sản phẩm, Anh/Chị có thể liên hệ qua Thông tin bên dưới 💸👇 ^.^!. Mọi sự đồng hành của Anh/Chị đều được tác giả trân trọng ghi nhận và xem đây là động lực để phát triển các công cụ mới trong tương lai! <br />
               <br />XIN LƯU Ý: Việc đóng góp hoàn toàn mang tính chất tự nguyện, không bắt buộc và không ảnh hưởng đến bất kỳ tính năng nào của ứng dụng. Tác giả không yêu cầu hay thu bất kỳ khoản phí sử dụng nào dưới mọi hình thức. Mọi hành vi thu phí bắt buộc hoặc mạo danh LiveMeetingNotes đều không xuất phát từ tác giả. Đề nghị người dùng cẩn trọng để tránh các trường hợp lừa đảo không đáng có.<br />
               <br />
               Mọi thắc mắc hoặc cần hỗ trợ, Anh/Chị vui lòng liên hệ qua các kênh sau:

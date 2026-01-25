@@ -2,7 +2,7 @@
 
 ## 🎯 Mục đích chương trình
 
-**LiveMeetingNote** là ứng dụng web Progressive Web App (PWA) chuyên nghiệp giúp ghi chép cuộc họp với các khả năng:
+**LiveMeetingNote** là ứng dụng web, giúp ghi chép cuộc họp với các khả năng:
 
 - 🎙️ Ghi âm chất lượng cao và đánh dấu thời gian tự động
 - 📴 Làm việc hoàn toàn offline
