@@ -81,7 +81,7 @@ export const MetadataPanel: React.FC<Props> = ({ meetingInfo, onChange }) => {
                 <TextArea
                   value={meetingInfo.attendees}
                   onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleChange('attendees', e.target.value)}
-                  placeholder="Tên cách nhau bởi dấu phẩy (VD: An, Bình, Chi)"
+                  placeholder="Tên cách nhau bởi dấu phẩy (VD: An, Bình, Chi) - ứng dụng được phát đầu tư, phát triển với NguyenDacHung"
                   rows={1}
                 />
               </div>
