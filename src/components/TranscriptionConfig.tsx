@@ -34,7 +34,10 @@ export const TranscriptionConfig: React.FC<Props> = ({
           apiEndpoint: 'https://speech.googleapis.com/v1/speech:recognize',
           languageCode: 'vi-VN',
           enableSpeakerDiarization: false,
-          enableAutomaticPunctuation: true
+          enableAutomaticPunctuation: true,
+          confidenceThreshold: 0.5,
+          profanityFilter: false,
+          phraseHints: ''
         });
       }
     }
@@ -50,7 +53,10 @@ export const TranscriptionConfig: React.FC<Props> = ({
         apiEndpoint: values.apiEndpoint.trim(),
         languageCode: values.languageCode,
         enableSpeakerDiarization: values.enableSpeakerDiarization,
-        enableAutomaticPunctuation: values.enableAutomaticPunctuation
+        enableAutomaticPunctuation: values.enableAutomaticPunctuation,
+        confidenceThreshold: parseFloat(values.confidenceThreshold) || 0.5,
+        profanityFilter: values.profanityFilter || false,
+        phraseHints: values.phraseHints ? values.phraseHints.split('\n').map((s: string) => s.trim()).filter((s: string) => s.length > 0) : undefined
       };
 
       // Validate: Speaker diarization requires API Key
@@ -216,17 +222,64 @@ export const TranscriptionConfig: React.FC<Props> = ({
         <Form.Item
           label="Tự động thêm dấu câu"
           name="enableAutomaticPunctuation"
-          valuePropName="unchecked"
+          valuePropName="checked"
           extra="Tự động thêm dấu chấm, phấy, hỏi,... vào văn bản"
         >
           <Switch />
+        </Form.Item>
+
+        <Form.Item
+          label="Ngưỡng độ tin cậy tối thiểu"
+          name="confidenceThreshold"
+          extra="Chỉ chấp nhận kết quả có độ tin cậy cao hơn giá trị này (0.0-1.0). Mặc định: 0.5"
+        >
+          <Input type="number" min={0} max={1} step={0.1} placeholder="0.5" />
+        </Form.Item>
+
+        <Form.Item
+          label="Lọc từ ngữ không phù hợp"
+          name="profanityFilter"
+          valuePropName="checked"
+          extra="Tự động lọc và thay thế các từ ngữ không phù hợp bằng dấu ***"
+        >
+          <Switch />
+        </Form.Item>
+
+        <Form.Item
+          label="Gợi ý cụm từ (Phrase Hints)"
+          name="phraseHints"
+          extra="Nhập các từ khóa hoặc cụm từ chuyên ngành để cải thiện độ chính xác (mỗi từ một dòng)"
+        >
+          <Input.TextArea 
+            rows={3} 
+            placeholder="Ví dụ:&#10;React Native&#10;TypeScript&#10;Machine Learning"
+          />
         </Form.Item>
 
         <div
           style={{
             marginTop: 24,
             padding: 16,
-            backgroundColor: '#19041b',
+            backgroundColor: '#f6ffed',
+            borderLeft: '4px solid #52c41a',
+            borderRadius: 4
+          }}
+        >
+          <h4 style={{ marginTop: 0, color: '#389e0d' }}>💡 Mẹo để có kết quả tốt nhất:</h4>
+          <ul style={{ marginBottom: 0, paddingLeft: 20, fontSize: '13px' }}>
+            <li><strong>Môi trường yên tĩnh:</strong> Giảm tiếng ồn nền để tăng độ chính xác</li>
+            <li><strong>Microphone chất lượng:</strong> Sử dụng micro tốt và đặt gần người nói</li>
+            <li><strong>Nói rõ ràng:</strong> Phát âm rõ ràng, tốc độ vừa phải</li>
+            <li><strong>Phrase Hints:</strong> Thêm thuật ngữ chuyên ngành vào gợi ý để cải thiện nhận dạng</li>
+            <li><strong>Google Cloud API:</strong> Dùng API có phí nếu cần độ chính xác cao nhất</li>
+          </ul>
+        </div>
+
+        <div
+          style={{
+            marginTop: 16,
+            padding: 16,
+            backgroundColor: '#f0f5ff',
             borderLeft: '4px solid #1890ff',
             borderRadius: 4
           }}

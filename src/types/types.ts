@@ -60,6 +60,9 @@ export interface SpeechToTextConfig {
   languageCode: string;
   enableSpeakerDiarization: boolean;
   enableAutomaticPunctuation: boolean;
+  confidenceThreshold?: number; // Minimum confidence to accept results (0.0-1.0)
+  phraseHints?: string[]; // Custom phrases to boost recognition
+  profanityFilter?: boolean; // Filter profanity
 }
 
 export interface TranscriptionResult {

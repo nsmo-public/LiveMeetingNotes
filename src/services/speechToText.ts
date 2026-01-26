@@ -115,7 +115,7 @@ export class SpeechToTextService {
       this.recognition.continuous = true;
       this.recognition.interimResults = true;
       this.recognition.lang = this.config?.languageCode || 'vi-VN';
-      this.recognition.maxAlternatives = 1;
+      this.recognition.maxAlternatives = 3; // Get multiple alternatives for better accuracy
 
       // Reset tracking variables
       this.lastInterimText = '';
@@ -205,24 +205,23 @@ export class SpeechToTextService {
         console.error('Speech recognition error:', event.error);
 
         if (event.error === 'no-speech') {
-          console.warn('No speech detected. Prompting user to check microphone.');
-          console.log('Không phát hiện thấy giọng nói. Vui lòng kiểm tra micrô hoặc thử lại.');
+          console.warn('⚠️ Không phát hiện giọng nói. Vui lòng nói rõ và gần micrô hơn.');
+          // Don't show error to user for no-speech, just log it
         } else if (event.error === 'network') {
-          message.error('Lỗi kết nối mạng xảy ra. Chuyển sang sử dụng Google Cloud API...');
-          //alert('Network error occurred.');
+          message.warning('Lỗi kết nối mạng. Đang thử chuyển sang Google Cloud API...');
           if (this.hasGoogleCloudAPI()) {
-            console.log('Falling back to Google Cloud API...');
-            message.error('Falling back to Google Cloud API...');
-            this.startGoogleCloudTranscription(stream);
+            this.stopTranscription();
+            setTimeout(() => this.startGoogleCloudTranscription(stream), 500);
           } else {
-            console.warn('Google Cloud API Key is not configured. Cannot fall back.');
-            message.error('Google Cloud API Key is not configured. Cannot fall back.');
+            message.error('Không thể kết nối và chưa cấu hình Google Cloud API.');
           }
         } else if (event.error === 'not-allowed') {
-          console.error('Microphone access denied. Prompting user to allow access.');
-          alert('Vui lòng cấp quyền truy cập micrô trong cài đặt trình duyệt.');
+          message.error('❌ Vui lòng cấp quyền truy cập micrô trong cài đặt trình duyệt.');
+        } else if (event.error === 'audio-capture') {
+          message.error('❌ Không thể ghi âm. Vui lòng kiểm tra micrô.');
         } else {
           console.error('Unhandled speech recognition error:', event.error);
+          message.error(`Lỗi nhận diện: ${event.error}`);
         }
       };
 
@@ -328,7 +327,7 @@ export class SpeechToTextService {
         console.error('MediaRecorder error:', event);
       };
 
-      this.mediaRecorder.start(10000); // Request data every 10 seconds
+      this.mediaRecorder.start(30000); // Request data every 30 seconds for better efficiency
     } catch (error) {
       console.error('Failed to start Google Cloud transcription:', error);
       throw error;
@@ -342,7 +341,7 @@ export class SpeechToTextService {
     if (!this.config) return;
 
     try {
-      if (this.hasGoogleCloudAPI()) return;
+      if (!this.hasGoogleCloudAPI()) return;
       // Skip if audio is too small (< 0.5 seconds worth)
       if (audioBlob.size < 1000) {
         console.warn('⚠️ Audio chunk too small, skipping:', audioBlob.size, 'bytes');
@@ -362,8 +361,17 @@ export class SpeechToTextService {
           sampleRateHertz: 48000,
           languageCode: this.config.languageCode,
           enableAutomaticPunctuation: this.config.enableAutomaticPunctuation,
-          model: 'default',
-          useEnhanced: true // Use enhanced model for better accuracy
+          model: this.config.languageCode.startsWith('vi') ? 'default' : 'latest_long', // Use best model
+          useEnhanced: true, // Use enhanced model for better accuracy
+          audioChannelCount: 1,
+          enableWordTimeOffsets: true, // Get word-level timestamps
+          enableWordConfidence: true, // Get confidence per word
+          maxAlternatives: 2, // Get top 2 alternatives for better accuracy
+          profanityFilter: this.config.profanityFilter || false,
+          speechContexts: this.config.phraseHints && this.config.phraseHints.length > 0 ? [{
+            phrases: this.config.phraseHints,
+            boost: 10 // Boost recognition of these phrases
+          }] : undefined
         },
         audio: {
           content: base64Audio.split(',')[1] // Remove data:audio/webm;base64, prefix
@@ -408,7 +416,10 @@ export class SpeechToTextService {
       if (data.results && data.results.length > 0) {
         data.results.forEach((result: any) => {
           if (result.alternatives && result.alternatives.length > 0) {
-            const alternative = result.alternatives[0];
+            // Select best alternative with highest confidence
+            const alternative = result.alternatives.reduce((best: any, current: any) => 
+              (current.confidence || 0) > (best.confidence || 0) ? current : best
+            , result.alternatives[0]);
 
             // Extract speaker information if available
             let speaker: string | undefined;
@@ -429,15 +440,29 @@ export class SpeechToTextService {
               }
             }
 
+            // Skip low confidence results using configured threshold
+            const confidence = alternative.confidence || 0;
+            const confidenceThreshold = this.config.confidenceThreshold || 0.5;
+            if (confidence < confidenceThreshold) {
+              console.warn(`⚠️ Low confidence result skipped (${confidence.toFixed(2)} < ${confidenceThreshold}):`, alternative.transcript);
+              return;
+            }
+
+            // Calculate more accurate audio time using word timestamps if available
+            let audioTimeMs = Math.max(0, Date.now() - this.transcriptionStartTime - 2500);
+            if (alternative.words && alternative.words.length > 0 && alternative.words[0].startTime) {
+              const seconds = parseFloat(alternative.words[0].startTime.replace('s', ''));
+              audioTimeMs = Math.floor(seconds * 1000);
+            }
+
             const transcriptionResult: TranscriptionResult = {
               id: `gcloud-${++this.transcriptionIdCounter}`,
-              text: alternative.transcript,
+              text: alternative.transcript.trim(),
               startTime: new Date().toISOString(),
               endTime: new Date().toISOString(),
-              // Estimate audio time by subtracting processing delay (~2-3 seconds)
-              audioTimeMs: Math.max(0, Date.now() - this.transcriptionStartTime - 2500),
-              confidence: alternative.confidence || 0,
-              speaker: speaker || 'Person1', // Default to Person1 if no speaker identified
+              audioTimeMs: audioTimeMs,
+              confidence: confidence,
+              speaker: speaker || 'Person1',
               isFinal: true
             };
 
@@ -635,24 +660,6 @@ export class SpeechToTextService {
     recognition.lang = this.config?.languageCode || 'vi-VN';
     recognition.maxAlternatives = 1;
 
-    // Xử lý sự kiện lỗi từ Web Speech API
-    recognition.onerror = (event: any) => {
-      if (event.error === 'no-speech') {
-        console.warn('Speech recognition error: No speech detected.');
-        // Hiển thị thông báo cho người dùng
-        console.log('Không phát hiện thấy giọng nói. Vui lòng kiểm tra micrô hoặc thử lại.');
-        // Tùy chọn: Dừng nhận diện hoặc tự động thử lại
-        recognition.stop();
-        setTimeout(() => recognition.start(), 2000); // Thử lại sau 2 giây
-      } else if (event.error === 'not-allowed') {
-        console.error('Speech recognition error: Microphone access denied.');
-        console.log('Vui lòng cấp quyền truy cập micrô trong cài đặt trình duyệt.');
-      } else {
-        console.error('Speech recognition error:', event.error);
-        console.log('Đã xảy ra lỗi: ' + event.error);
-      }
-    };
-
     let lastResultTime = 0;
 
     recognition.onresult = (event: any) => {
@@ -689,7 +696,11 @@ export class SpeechToTextService {
     };
 
     recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
+      console.error('Speech recognition error during file transcription:', event.error);
+      if (event.error === 'no-speech') {
+        console.warn('⚠️ No speech detected in this segment, continuing...');
+        // Don't restart for file transcription, just continue
+      }
     };
 
     recognition.onend = () => {
@@ -960,7 +971,12 @@ export class SpeechToTextService {
         languageCode: languageCode,
         enableAutomaticPunctuation: true,
         model: 'default',
-        useEnhanced: true
+        useEnhanced: true,
+        profanityFilter: this.config?.profanityFilter || false,
+        speechContexts: this.config?.phraseHints && this.config.phraseHints.length > 0 ? [{
+          phrases: this.config.phraseHints,
+          boost: 10
+        }] : undefined
       },
       audio: {
         content: base64Audio
