@@ -1,3 +1,4 @@
+import { message } from 'antd';
 import type { SpeechToTextConfig, TranscriptionResult } from '../types/types';
 
 export class SpeechToTextService {
@@ -207,13 +208,15 @@ export class SpeechToTextService {
           console.warn('No speech detected. Prompting user to check microphone.');
           console.log('Không phát hiện thấy giọng nói. Vui lòng kiểm tra micrô hoặc thử lại.');
         } else if (event.error === 'network') {
-          console.error('Network error occurred.');
+          message.error('Lỗi kết nối mạng xảy ra. Chuyển sang sử dụng Google Cloud API...');
           //alert('Network error occurred.');
           if (this.hasGoogleCloudAPI()) {
             console.log('Falling back to Google Cloud API...');
+            message.error('Falling back to Google Cloud API...');
             this.startGoogleCloudTranscription(stream);
           } else {
             console.warn('Google Cloud API Key is not configured. Cannot fall back.');
+            message.error('Google Cloud API Key is not configured. Cannot fall back.');
           }
         } else if (event.error === 'not-allowed') {
           console.error('Microphone access denied. Prompting user to allow access.');
@@ -224,21 +227,19 @@ export class SpeechToTextService {
       };
 
       this.recognition.onend = () => {
-        console.log('Speech recognition ended.');
-        if (this.isTranscribing) {
           try {
             this.recognition.start();
           } catch (e) {
             console.error('Failed to restart recognition:', e);
-            alert('Lỗi nhận diện giọng nói. Vui lòng thử lại.');
+            message.error('Lỗi nhận diện giọng nói. Đang thử lại...');
           }
-        }
       };
 
       this.recognition.start();
       return true;
     } catch (error) {
       console.error('Failed to initialize Web Speech API:', error);
+      alert('Trình duyệt của bạn không hỗ trợ Web Speech API.');
       return false;
     }
   }
@@ -252,7 +253,7 @@ export class SpeechToTextService {
     const trimmedText = transcript.trim();
 
     // Force segment if text is too long (>150 characters)
-    if (trimmedText.length > 150) {
+    if (trimmedText.length > 50) {
       // console.log('🔸 Force segment: Text too long (' + trimmedText.length + ' chars)');
       return true;
     }
@@ -276,16 +277,16 @@ export class SpeechToTextService {
     const now = Date.now();
     const timeSinceLastUpdate = now - this.lastUpdateTime;
 
-    // If we have interim text and haven't received update for 2 seconds, finalize it
-    if (this.lastInterimText && timeSinceLastUpdate > 2000) {
-      // console.log('🔸 Force segment: Silence timeout (2s)');
+    // Nếu chúng ta có văn bản tạm thời và chưa nhận được cập nhật trong 0.5 giây, hãy hoàn tất nó
+    if (this.lastInterimText && timeSinceLastUpdate > 500) {
+      // console.log('🔸 Force segment: Silence timeout (0.5s)');
       
       const transcriptionResult: TranscriptionResult = {
         id: `transcription-${++this.transcriptionIdCounter}`,
         text: this.lastInterimText.trim(),
         startTime: new Date().toISOString(),
         endTime: new Date().toISOString(),
-        audioTimeMs: this.segmentStartTimeMs, // Fixed at segment start
+        audioTimeMs: this.segmentStartTimeMs, // cố định thời gian tại đoạn bắt đầu
         confidence: 0.8, // Moderate confidence for timeout-forced segments
         speaker: 'Person1', // Default speaker
         isFinal: true
