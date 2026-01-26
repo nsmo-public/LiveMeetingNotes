@@ -253,7 +253,7 @@ export class SpeechToTextService {
     const trimmedText = transcript.trim();
 
     // Force segment if text is too long (>150 characters)
-    if (trimmedText.length > 50) {
+    if (trimmedText.length > 100) {
       // console.log('🔸 Force segment: Text too long (' + trimmedText.length + ' chars)');
       return true;
     }
@@ -277,9 +277,9 @@ export class SpeechToTextService {
     const now = Date.now();
     const timeSinceLastUpdate = now - this.lastUpdateTime;
 
-    // Nếu chúng ta có văn bản tạm thời và chưa nhận được cập nhật trong 0.5 giây, hãy hoàn tất nó
-    if (this.lastInterimText && timeSinceLastUpdate > 500) {
-      // console.log('🔸 Force segment: Silence timeout (0.5s)');
+    // Nếu chúng ta có văn bản tạm thời và chưa nhận được cập nhật trong 1 giây, hãy hoàn tất nó
+    if (this.lastInterimText && timeSinceLastUpdate > 1000) {
+      // console.log('🔸 Force segment: Silence timeout (1s)');
       
       const transcriptionResult: TranscriptionResult = {
         id: `transcription-${++this.transcriptionIdCounter}`,
