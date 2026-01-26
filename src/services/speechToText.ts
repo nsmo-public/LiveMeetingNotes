@@ -13,6 +13,8 @@ export class SpeechToTextService {
   private segmentCheckInterval: NodeJS.Timeout | null = null;
   private transcriptionStartTime: number = 0; // Track when transcription started
   private segmentStartTimeMs: number = 0; // Track when current segment started (for fixed audioTimeMs)
+  private interimDebounceTimer: NodeJS.Timeout | null = null; // Debounce timer for interim results
+  private lastInterimUpdateTime: number = 0; // Track last interim update for throttling
 
   /**
    * Initialize the service with configuration
@@ -72,24 +74,18 @@ export class SpeechToTextService {
     this.isTranscribing = true;
     this.transcriptionStartTime = Date.now(); // Record start time
 
-    // Check if speaker diarization is enabled
-    // Web Speech API does NOT support speaker diarization
-    // Must use Google Cloud API for this feature
-    if (this.config?.enableSpeakerDiarization) {
-      // console.log('🎯 Speaker diarization enabled - Using Google Cloud Speech-to-Text API');
-      this.startGoogleCloudTranscription(stream);
-      return;
-    }
-
-    // Try using Web Speech API first (free, browser-based)
+    // ⚡ For live transcription during recording: ALWAYS use Web Speech API (free, low latency)
+    // Google Cloud API is only used for file transcription (better accuracy, speaker diarization)
+    
+    // Try using Web Speech API first (free, browser-based, optimized for live)
     if (this.tryWebSpeechAPI(stream, onTranscription)) {
-      // console.log('✅ Using Web Speech API for transcription (FREE)');
+      console.log('✅ Using Web Speech API for live transcription (FREE, Low Latency)');
       return;
     }
 
-    // Fallback to Google Cloud Speech-to-Text API (if API Key available)
+    // Fallback to Google Cloud Speech-to-Text API only if Web API not available
     if (this.hasGoogleCloudAPI()) {
-      // console.log('🌐 Using Google Cloud Speech-to-Text API');
+      console.warn('⚠️ Web Speech API not available, falling back to Google Cloud API');
       this.startGoogleCloudTranscription(stream);
     } else {
       throw new Error('Web Speech API not available and no Google Cloud API Key configured.');
@@ -115,17 +111,19 @@ export class SpeechToTextService {
       this.recognition.continuous = true;
       this.recognition.interimResults = true;
       this.recognition.lang = this.config?.languageCode || 'vi-VN';
-      this.recognition.maxAlternatives = 1;
+      this.recognition.maxAlternatives = this.config?.maxAlternatives || 1;
 
       // Reset tracking variables
       this.lastInterimText = '';
       this.lastUpdateTime = Date.now();
+      this.lastInterimUpdateTime = 0;
       this.segmentStartTimeMs = 0;
 
       // Start interval to check for segment completion
+      const segmentTimeout = this.config?.segmentTimeout || 1000; // Default 1s (improved from 500ms)
       this.segmentCheckInterval = setInterval(() => {
         this.checkSegmentCompletion(onTranscription);
-      }, 500);
+      }, segmentTimeout);
 
       this.recognition.onresult = (event: any) => {
         for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -182,20 +180,31 @@ export class SpeechToTextService {
             this.segmentStartTimeMs = 0; // Reset for next segment
           } else {
             // Interim result - only send if text changed significantly
-            if (transcript !== this.lastInterimText) {
-              const transcriptionResult: TranscriptionResult = {
-                id: `transcription-${this.transcriptionIdCounter + 1}`, // Use next ID but don't increment
-                text: transcript,
-                startTime: now.toISOString(),
-                endTime: now.toISOString(),
-                audioTimeMs: this.segmentStartTimeMs, // Use segment start time
-                confidence: confidence,
-                speaker: 'Person1', // Default speaker
-                isFinal: false
-              };
+            // Apply throttling: only update if 200ms passed since last interim update
+            const timeSinceLastInterim = Date.now() - this.lastInterimUpdateTime;
+            if (transcript !== this.lastInterimText && timeSinceLastInterim >= 200) {
+              // Clear previous debounce timer
+              if (this.interimDebounceTimer) {
+                clearTimeout(this.interimDebounceTimer);
+              }
 
-              onTranscription(transcriptionResult);
-              this.lastInterimText = transcript;
+              // Debounce: wait 100ms before sending (avoid rapid updates)
+              this.interimDebounceTimer = setTimeout(() => {
+                const transcriptionResult: TranscriptionResult = {
+                  id: `transcription-${this.transcriptionIdCounter + 1}`, // Use next ID but don't increment
+                  text: transcript,
+                  startTime: now.toISOString(),
+                  endTime: now.toISOString(),
+                  audioTimeMs: this.segmentStartTimeMs, // Use segment start time
+                  confidence: confidence,
+                  speaker: 'Person1', // Default speaker
+                  isFinal: false
+                };
+
+                onTranscription(transcriptionResult);
+                this.lastInterimText = transcript;
+                this.lastInterimUpdateTime = Date.now();
+              }, 100);
             }
           }
         }
@@ -227,12 +236,18 @@ export class SpeechToTextService {
       };
 
       this.recognition.onend = () => {
+        // Only restart if still transcribing and recognition object exists
+        if (this.isTranscribing && this.recognition) {
           try {
             this.recognition.start();
           } catch (e) {
             console.error('Failed to restart recognition:', e);
-            message.error('Lỗi nhận diện giọng nói. Đang thử lại...');
+            // Don't show error message if we're intentionally stopping
+            if (this.isTranscribing) {
+              console.warn('⚠️ Unable to restart speech recognition');
+            }
           }
+        }
       };
 
       this.recognition.start();
@@ -251,9 +266,10 @@ export class SpeechToTextService {
     if (isFinal) return false; // Already final, no need to force
 
     const trimmedText = transcript.trim();
+    const maxLength = this.config?.segmentMaxLength || 150; // Configurable, default 150
 
-    // Force segment if text is too long (>150 characters)
-    if (trimmedText.length > 50) {
+    // Force segment if text is too long
+    if (trimmedText.length > maxLength) {
       // console.log('🔸 Force segment: Text too long (' + trimmedText.length + ' chars)');
       return true;
     }
@@ -276,9 +292,10 @@ export class SpeechToTextService {
 
     const now = Date.now();
     const timeSinceLastUpdate = now - this.lastUpdateTime;
+    const segmentTimeout = this.config?.segmentTimeout || 1000; // Configurable, default 1s
 
-    // Nếu chúng ta có văn bản tạm thời và chưa nhận được cập nhật trong 0.5 giây, hãy hoàn tất nó
-    if (this.lastInterimText && timeSinceLastUpdate > 500) {
+    // Nếu chúng ta có văn bản tạm thời và chưa nhận được cập nhật trong timeout, hãy hoàn tất nó
+    if (this.lastInterimText && timeSinceLastUpdate > segmentTimeout) {
       // console.log('🔸 Force segment: Silence timeout (0.5s)');
       
       const transcriptionResult: TranscriptionResult = {
@@ -328,7 +345,7 @@ export class SpeechToTextService {
         console.error('MediaRecorder error:', event);
       };
 
-      this.mediaRecorder.start(10000); // Request data every 10 seconds
+      this.mediaRecorder.start(7000); // Request data every 7 seconds (optimized from 10s)
     } catch (error) {
       console.error('Failed to start Google Cloud transcription:', error);
       throw error;
@@ -342,7 +359,12 @@ export class SpeechToTextService {
     if (!this.config) return;
 
     try {
-      if (this.hasGoogleCloudAPI()) return;
+      // Check if API is configured
+      if (!this.hasGoogleCloudAPI()) {
+        console.warn('⚠️ Google Cloud API Key not configured, skipping API call');
+        return;
+      }
+      
       // Skip if audio is too small (< 0.5 seconds worth)
       if (audioBlob.size < 1000) {
         console.warn('⚠️ Audio chunk too small, skipping:', audioBlob.size, 'bytes');
@@ -374,31 +396,48 @@ export class SpeechToTextService {
       if (this.config.enableSpeakerDiarization) {
         requestBody.config.diarizationConfig = {
           enableSpeakerDiarization: true,
-          minSpeakerCount: 2,
-          maxSpeakerCount: 6
+          minSpeakerCount: this.config.minSpeakerCount || 2,
+          maxSpeakerCount: this.config.maxSpeakerCount || 6
         };
       }
 
-      // Send request
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
+      // Send request with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Google Cloud API error:', errorData);
-        console.error('Error message:', errorData.error?.message);
-        console.error('Request details:', {
-          audioSize: audioBlob.size,
-          encoding: requestBody.config.encoding,
-          sampleRate: requestBody.config.sampleRateHertz,
-          languageCode: requestBody.config.languageCode,
-          diarizationEnabled: this.config.enableSpeakerDiarization
+      let response;
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
         });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Google Cloud API error:', errorData);
+          console.error('Error message:', errorData.error?.message);
+          console.error('Request details:', {
+            audioSize: audioBlob.size,
+            encoding: requestBody.config.encoding,
+            sampleRate: requestBody.config.sampleRateHertz,
+            languageCode: requestBody.config.languageCode,
+            diarizationEnabled: this.config.enableSpeakerDiarization
+          });
+          return;
+        }
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          console.error('⏱️ Google Cloud API request timeout (30s)');
+          message.error('Yêu cầu API hết thời gian chờ. Vui lòng thử lại.');
+        } else {
+          throw fetchError;
+        }
         return;
       }
 
@@ -510,9 +549,21 @@ export class SpeechToTextService {
       this.segmentCheckInterval = null;
     }
 
+    // Clear debounce timer
+    if (this.interimDebounceTimer) {
+      clearTimeout(this.interimDebounceTimer);
+      this.interimDebounceTimer = null;
+    }
+
     // Stop Web Speech API
     if (this.recognition) {
       try {
+        // Remove event listeners to prevent memory leaks
+        this.recognition.onresult = null;
+        this.recognition.onerror = null;
+        this.recognition.onend = null;
+        
+        // Stop the recognition
         this.recognition.stop();
       } catch (e) {
         console.error('Error stopping recognition:', e);
@@ -523,6 +574,7 @@ export class SpeechToTextService {
     // Reset tracking variables
     this.lastInterimText = '';
     this.lastUpdateTime = 0;
+    this.lastInterimUpdateTime = 0;
 
     // Stop MediaRecorder
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
@@ -699,17 +751,26 @@ export class SpeechToTextService {
     // Start recognition and play audio
     recognition.start();
     audio.volume = 0.01; // Play almost silently
-    await audio.play();
+    
+    try {
+      await audio.play();
 
-    // Wait for audio to finish
-    await new Promise<void>((resolve) => {
-      audio.addEventListener('ended', () => {
-        recognition.stop();
-        audioContext.close();
-        URL.revokeObjectURL(audioUrl);
-        resolve();
-      }, { once: true });
-    });
+      // Wait for audio to finish
+      await new Promise<void>((resolve) => {
+        audio.addEventListener('ended', () => {
+          recognition.stop();
+          audioContext.close();
+          URL.revokeObjectURL(audioUrl);
+          resolve();
+        }, { once: true });
+      });
+    } catch (error) {
+      // Cleanup on error
+      recognition.stop();
+      audioContext.close();
+      URL.revokeObjectURL(audioUrl);
+      throw error;
+    }
 
     if (onProgress) onProgress(100);
     if (onComplete) onComplete();
@@ -771,8 +832,8 @@ export class SpeechToTextService {
     if (enableSpeakerDiarization) {
       requestBody.config.diarizationConfig = {
         enableSpeakerDiarization: true,
-        minSpeakerCount: 2,
-        maxSpeakerCount: 6
+        minSpeakerCount: this.config?.minSpeakerCount || 2,
+        maxSpeakerCount: this.config?.maxSpeakerCount || 6
       };
     }
 
@@ -970,8 +1031,8 @@ export class SpeechToTextService {
     if (enableSpeakerDiarization) {
       requestBody.config.diarizationConfig = {
         enableSpeakerDiarization: true,
-        minSpeakerCount: 2,
-        maxSpeakerCount: 6
+        minSpeakerCount: this.config?.minSpeakerCount || 2,
+        maxSpeakerCount: this.config?.maxSpeakerCount || 6
       };
     }
 

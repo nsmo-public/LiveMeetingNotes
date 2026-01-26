@@ -397,9 +397,9 @@ export const App: React.FC = () => {
             return prev; // Giữ nguyên
           }
           
-          // Case 3: Kiểm tra độ tương đồng cao (>90% giống nhau)
+          // Case 3: Kiểm tra độ tương đồng cao (>80% giống nhau)
           const similarity = calculateSimilarity(newText, lastText);
-          if (similarity > 0.9) {
+          if (similarity > 0.8) {
             // console.log('⏭️ Skipping similar result (similarity: ' + (similarity * 100).toFixed(0) + '%)');
             return prev;
           }

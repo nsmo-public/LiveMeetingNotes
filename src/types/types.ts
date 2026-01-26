@@ -60,6 +60,11 @@ export interface SpeechToTextConfig {
   languageCode: string;
   enableSpeakerDiarization: boolean;
   enableAutomaticPunctuation: boolean;
+  maxAlternatives?: number; // Number of alternative transcriptions (1-5)
+  minSpeakerCount?: number; // Minimum speakers for diarization (2-6)
+  maxSpeakerCount?: number; // Maximum speakers for diarization (2-6)
+  segmentTimeout?: number; // Timeout for segment completion in ms (500-2000)
+  segmentMaxLength?: number; // Max characters before forcing segment (100-300)
 }
 
 export interface TranscriptionResult {

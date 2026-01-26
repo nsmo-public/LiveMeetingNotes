@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Select, Switch, Button, Space, App } from 'antd';
+import { Modal, Form, Input, Select, Switch, Button, Space, App, Collapse } from 'antd';
 import { SettingOutlined, SaveOutlined, DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import type { SpeechToTextConfig } from '../types/types';
 import { SpeechToTextService } from '../services/speechToText';
@@ -25,18 +25,24 @@ export const TranscriptionConfig: React.FC<Props> = ({
   useEffect(() => {
     if (visible) {
       const savedConfig = currentConfig || SpeechToTextService.loadConfig();
-      if (savedConfig) {
-        form.setFieldsValue(savedConfig);
-      } else {
-        // Set default values
-        form.setFieldsValue({
-          apiKey: '',
-          apiEndpoint: 'https://speech.googleapis.com/v1/speech:recognize',
-          languageCode: 'vi-VN',
-          enableSpeakerDiarization: false,
-          enableAutomaticPunctuation: true
-        });
-      }
+      
+      // Default values (recommended settings)
+      const defaultValues = {
+        apiKey: '',
+        apiEndpoint: 'https://speech.googleapis.com/v1/speech:recognize',
+        languageCode: 'vi-VN',
+        enableSpeakerDiarization: false,
+        enableAutomaticPunctuation: true,
+        maxAlternatives: 1,
+        minSpeakerCount: 2,
+        maxSpeakerCount: 6,
+        segmentTimeout: 1000,
+        segmentMaxLength: 150
+      };
+      
+      // Merge saved config with defaults (ensures new fields have default values)
+      const mergedConfig = savedConfig ? { ...defaultValues, ...savedConfig } : defaultValues;
+      form.setFieldsValue(mergedConfig);
     }
   }, [visible, currentConfig, form]);
 
@@ -50,7 +56,12 @@ export const TranscriptionConfig: React.FC<Props> = ({
         apiEndpoint: values.apiEndpoint.trim(),
         languageCode: values.languageCode,
         enableSpeakerDiarization: values.enableSpeakerDiarization,
-        enableAutomaticPunctuation: values.enableAutomaticPunctuation
+        enableAutomaticPunctuation: values.enableAutomaticPunctuation,
+        maxAlternatives: values.maxAlternatives || 1,
+        minSpeakerCount: values.minSpeakerCount || 2,
+        maxSpeakerCount: values.maxSpeakerCount || 6,
+        segmentTimeout: values.segmentTimeout || 1000,
+        segmentMaxLength: values.segmentMaxLength || 150
       };
 
       // Validate: Speaker diarization requires API Key
@@ -205,7 +216,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
             <div>
               <div style={{ marginTop: 4 }}>Tự động phân biệt và gán nhãn cho từng người nói trong cuộc họp</div>
               <div style={{ marginTop: 4, color: '#ff9800', fontSize: '12px' }}>
-                ⚠️ Chức năng này chỉ khả dụng với Google Cloud API (có phí). Sẽ không sử dụng Web Speech API miễn phí.
+                ⚠️ Chức năng này chỉ khả dụng với Google Cloud API (có phí) khi chuyển đổi file ghi âm.
               </div>
             </div>
           }
@@ -214,13 +225,112 @@ export const TranscriptionConfig: React.FC<Props> = ({
         </Form.Item>
 
         <Form.Item
+          noStyle
+          shouldUpdate={(prevValues, currentValues) => 
+            prevValues.enableSpeakerDiarization !== currentValues.enableSpeakerDiarization
+          }
+        >
+          {({ getFieldValue }) => 
+            getFieldValue('enableSpeakerDiarization') ? (
+              <>
+                <Form.Item
+                  label="Số người nói tối thiểu"
+                  name="minSpeakerCount"
+                  initialValue={2}
+                  extra="Số lượng người nói dự kiến tối thiểu (2-6)"
+                >
+                  <Select placeholder="Chọn số người tối thiểu">
+                    <Select.Option value={2}>2 người (khuyến nghị)</Select.Option>
+                    <Select.Option value={3}>3 người</Select.Option>
+                    <Select.Option value={4}>4 người</Select.Option>
+                    <Select.Option value={5}>5 người</Select.Option>
+                    <Select.Option value={6}>6 người</Select.Option>
+                  </Select>
+                </Form.Item>
+
+                <Form.Item
+                  label="Số người nói tối đa"
+                  name="maxSpeakerCount"
+                  initialValue={6}
+                  extra="Số lượng người nói dự kiến tối đa (2-6)"
+                >
+                  <Select placeholder="Chọn số người tối đa">
+                    <Select.Option value={2}>2 người</Select.Option>
+                    <Select.Option value={3}>3 người</Select.Option>
+                    <Select.Option value={4}>4 người</Select.Option>
+                    <Select.Option value={5}>5 người</Select.Option>
+                    <Select.Option value={6}>6 người (khuyến nghị)</Select.Option>
+                  </Select>
+                </Form.Item>
+              </>
+            ) : null
+          }
+        </Form.Item>
+
+        <Form.Item
           label="Tự động thêm dấu câu"
           name="enableAutomaticPunctuation"
-          valuePropName="unchecked"
+          valuePropName="checked"
           extra="Tự động thêm dấu chấm, phấy, hỏi,... vào văn bản"
         >
           <Switch />
         </Form.Item>
+
+        <Collapse 
+          ghost
+          items={[{
+            key: 'advanced',
+            label: '⚙️ Cài đặt nâng cao',
+            children: (
+              <>
+                <Form.Item
+                  label="Số phiên bản nhận diện"
+                  name="maxAlternatives"
+                  initialValue={1}
+                  extra="Số lượng kết quả thay thế API trả về (1-5). Giá trị cao hơn tốn băng thông hơn."
+                >
+                  <Select placeholder="Chọn số phiên bản">
+                    <Select.Option value={1}>1 (khuyến nghị)</Select.Option>
+                    <Select.Option value={2}>2</Select.Option>
+                    <Select.Option value={3}>3</Select.Option>
+                    <Select.Option value={4}>4</Select.Option>
+                    <Select.Option value={5}>5</Select.Option>
+                  </Select>
+                </Form.Item>
+
+                <Form.Item
+                  label="Thời gian chờ kết thúc đoạn (ms)"
+                  name="segmentTimeout"
+                  initialValue={1000}
+                  extra="Thời gian tạm dừng trước khi tự động kết thúc đoạn văn bản (500-2000ms)"
+                >
+                  <Select placeholder="Chọn thời gian chờ">
+                    <Select.Option value={500}>500ms (nhanh)</Select.Option>
+                    <Select.Option value={750}>750ms</Select.Option>
+                    <Select.Option value={1000}>1000ms (khuyến nghị)</Select.Option>
+                    <Select.Option value={1500}>1500ms</Select.Option>
+                    <Select.Option value={2000}>2000ms (chậm)</Select.Option>
+                  </Select>
+                </Form.Item>
+
+                <Form.Item
+                  label="Độ dài tối đa mỗi đoạn"
+                  name="segmentMaxLength"
+                  initialValue={150}
+                  extra="Số ký tự tối đa trước khi tự động chia đoạn (100-300)"
+                >
+                  <Select placeholder="Chọn độ dài tối đa">
+                    <Select.Option value={100}>100 ký tự (ngắn)</Select.Option>
+                    <Select.Option value={150}>150 ký tự (khuyến nghị)</Select.Option>
+                    <Select.Option value={200}>200 ký tự</Select.Option>
+                    <Select.Option value={250}>250 ký tự</Select.Option>
+                    <Select.Option value={300}>300 ký tự (dài)</Select.Option>
+                  </Select>
+                </Form.Item>
+              </>
+            )
+          }]}
+        />
 
         <div
           style={{
@@ -238,6 +348,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
               <li>Không cần API Key</li>
               <li>Chạy trên trình duyệt Chrome/Edge</li>
               <li>Miễn phí 100%</li>
+              <li><strong>Luôn được dùng</strong> cho ghi âm trực tiếp (live transcription)</li>
               <li><strong style={{ color: '#ff4d4f' }}>Không</strong> hỗ trợ nhận diện người nói</li>
             </ul>
           </div>
@@ -246,6 +357,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
             <ul style={{ marginBottom: 0, paddingLeft: 20, fontSize: '13px' }}>
               <li>Cần API Key từ <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer">Google Cloud Console</a></li>
               <li>Độ chính xác cao hơn</li>
+              <li><strong>Chỉ được dùng</strong> khi chuyển đổi file ghi âm đã lưu</li>
               <li>Hỗ trợ nhận diện người nói (speaker diarization)</li>
               <li>Chi phí: ~$0.006/15 giây audio (theo biểu giá của Google Cloud)</li>
             </ul>
