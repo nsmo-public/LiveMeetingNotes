@@ -30,8 +30,9 @@ export class AIRefinementService {
     TPD: 250000        // Tokens per day (250K) - Main limit users hit
   };
 
-  // Estimate tokens per segment (rough estimation)
-  private static readonly BATCH_SIZE = 50; // Process 50 segments at a time (~7500 tokens)
+  // Batch processing configuration
+  private static readonly BATCH_SIZE = 30; // Reduced from 50 to 30 segments per batch (~5000 tokens)
+  private static readonly BATCH_DELAY_MS = 6000; // Increased from 5000 to 6000ms (6 seconds) between batches to avoid rate limit
 
   /**
    * Estimate token count for transcripts
@@ -336,8 +337,8 @@ export class AIRefinementService {
 
         // Add delay between batches to avoid rate limiting (except for last batch)
         if (i < batches.length - 1) {
-          console.log('⏳ Waiting 5 seconds before next batch...');
-          await new Promise(resolve => setTimeout(resolve, 5000));
+          console.log(`⏳ Waiting ${this.BATCH_DELAY_MS / 1000} seconds before next batch to avoid rate limit...`);
+          await new Promise(resolve => setTimeout(resolve, this.BATCH_DELAY_MS));
         }
       } catch (error: any) {
         // If quota exceeded, throw error with helpful message
@@ -563,15 +564,18 @@ Nhiệm vụ: Tôi sẽ cung cấp cho bạn văn bản đã chuyển từ giọ
 4. Giữ nguyên nội dung: Tuyệt đối không được thêm bớt ý kiến hoặc thay đổi sắc thái của người nói.
 5. Gộp các đoạn liên quan: Các đoạn text liền nhau nếu cùng nội dung thì gộp lại thành một đoạn hoàn chỉnh.
 
-Định dạng trả về: 
-Trả về dưới dạng JSON array với format sau (chỉ JSON, không có markdown code block):
+QUAN TRỌNG - Định dạng trả về: 
+- Chỉ trả về JSON array thuần túy, không có markdown code block, không có giải thích
+- Nếu text có xuống dòng, dấu ngoặc kép, hoặc ký tự đặc biệt, phải escape đúng chuẩn JSON
+- Format: [{"timestamp":"...","audioTimeMs":123,"text":"..."},...]
+
+Ví dụ output hợp lệ:
 [
   {
     "timestamp": "2026-01-27T10:30:45.123Z",
     "audioTimeMs": 12345,
     "text": "Nội dung đã được làm sạch và chuẩn hóa."
-  },
-  ...
+  }
 ]
 
 === DỮ LIỆU CHÍNH (Độ tin cậy tuyệt đối - Có thể đã được người dùng chỉnh sửa) ===
@@ -582,7 +586,7 @@ Lưu ý:
 - Sử dụng văn bản từ "Dữ liệu chính" làm nguồn chính
 - Giữ nguyên timestamp và audioTimeMs từ dữ liệu gốc
 - Gộp các segment có nội dung liên tiếp thành câu hoàn chỉnh
-- Chỉ trả về JSON array, không thêm giải thích`;
+- CHỈ TRẢ VỀ JSON ARRAY, KHÔNG THÊM BẤT KỲ TEXT NÀO KHÁC`;
   }
 
   /**
@@ -606,8 +610,44 @@ Lưu ý:
       // Remove markdown code blocks if present
       responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
-      // Parse JSON
-      const refinedData = JSON.parse(responseText);
+      // Log raw response for debugging
+      console.log('🔍 Raw AI response (first 500 chars):', responseText.substring(0, 500));
+
+      // Try to extract JSON if there's additional text
+      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        responseText = jsonMatch[0];
+        console.log('✂️ Extracted JSON array from response');
+      }
+
+      // Parse JSON with better error handling
+      let refinedData;
+      try {
+        refinedData = JSON.parse(responseText);
+      } catch (parseError: any) {
+        console.error('❌ JSON Parse Error:', parseError.message);
+        console.log('📄 Full response text:', responseText);
+        
+        // Try to fix common JSON issues
+        let fixedText = responseText
+          // Fix unescaped newlines in strings
+          .replace(/"text"\s*:\s*"([^"]*?)"/g, (_match: string, text: string) => {
+            const escaped = text
+              .replace(/\n/g, '\\n')
+              .replace(/\r/g, '\\r')
+              .replace(/\t/g, '\\t');
+            return `"text": "${escaped}"`;
+          });
+
+        console.log('🔧 Attempting to fix JSON...');
+        try {
+          refinedData = JSON.parse(fixedText);
+          console.log('✅ JSON fixed and parsed successfully');
+        } catch (secondError) {
+          console.error('❌ Still cannot parse after fixes');
+          throw parseError; // Throw original error
+        }
+      }
 
       if (!Array.isArray(refinedData)) {
         throw new Error('AI response is not an array');

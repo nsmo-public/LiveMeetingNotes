@@ -1345,6 +1345,38 @@ export const App: React.FC = () => {
           </div>
 
           <div style={{ 
+            background: '#f0f5ff',
+            border: '1px solid #adc6ff',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '16px'
+          }}>
+            <label style={{ 
+              display: 'flex', 
+              alignItems: 'flex-start', 
+              cursor: 'pointer',
+              gap: '8px'
+            }}>
+              <input 
+                type="checkbox" 
+                id="useRawTranscripts"
+                style={{ marginTop: '4px' }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '4px', color: '#1890ff' }}>
+                  📦 Sử dụng dữ liệu bổ trợ (rawTranscripts.json)
+                </div>
+                <div style={{ fontSize: '13px', color: '#666' }}>
+                  Nếu tick, AI sẽ tham khảo thêm dữ liệu gốc từ Web Speech API. 
+                  <strong> Khuyến nghị: Bỏ tick để tiết kiệm token và xử lý nhanh hơn.</strong>
+                  <br />
+                  <span style={{ color: '#fa8c16' }}>⚠️ Nếu tick sẽ tốn nhiều token hơn (~x2) và có thể vượt quota.</span>
+                </div>
+              </div>
+            </label>
+          </div>
+
+          <div style={{ 
             background: '#fff7e6', 
             border: '2px solid #ffa940',
             borderRadius: '8px',
@@ -1416,13 +1448,16 @@ export const App: React.FC = () => {
         type: 'primary'
       },
       onOk: async () => {
-        await performAIRefinement();
+        // Get checkbox state before modal closes
+        const checkboxElement = document.getElementById('useRawTranscripts') as HTMLInputElement;
+        const shouldUseRawData = checkboxElement ? checkboxElement.checked : false;
+        await performAIRefinement(shouldUseRawData);
       }
     });
   };
 
   // Separate function to perform AI refinement
-  const performAIRefinement = async () => {
+  const performAIRefinement = async (useRawData: boolean = false) => {
     const apiKeyToUse = transcriptionConfig!.geminiApiKey || transcriptionConfig!.apiKey;
     const selectedModel = transcriptionConfig!.geminiModel;
 
@@ -1597,13 +1632,13 @@ export const App: React.FC = () => {
 
       // Prepare raw data for supplementary reference
       let rawData: RawTranscriptData[] = [];
-      if (rawTranscripts && rawTranscripts.length > 0) {
+      if (useRawData && rawTranscripts && rawTranscripts.length > 0) {
         // Use saved raw data (preserves original Web Speech API output)
         rawData = rawTranscripts;
         console.log('📦 Using saved raw transcripts as supplementary data:', rawData.length, 'items');
       } else {
-        // No raw data available - AI will only use transcriptions
-        console.log('ℹ️ No raw data available - using transcriptions only');
+        // No raw data available or user chose not to use it
+        console.log('ℹ️ Not using raw data - processing transcriptions only (faster, uses less tokens)');
       }
 
       // Call AI refinement service with model selection
