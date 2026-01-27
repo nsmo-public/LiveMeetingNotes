@@ -81,7 +81,7 @@ export const App: React.FC = () => {
     };
   }, []);
   
-  // Function to show segment selection modal when file is too large
+  // Function to show options modal when file is too large
   const showSegmentSelectionModal = (fileSizeMB: number, maxSizeMB: number) => {
     if (!audioBlob) return;
 
@@ -91,16 +91,14 @@ export const App: React.FC = () => {
     const durationMinutes = Math.floor(audioDurationSec / 60);
     const durationSeconds = audioDurationSec % 60;
 
-    let startTimeInput: HTMLInputElement | null = null;
-    let endTimeInput: HTMLInputElement | null = null;
-
+    // Show options modal: Auto-split vs Manual selection
     Modal.confirm({
       title: (
         <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#fa8c16' }}>
           ⚠️ File audio quá lớn
         </span>
       ),
-      width: 600,
+      width: 700,
       icon: <ExclamationCircleOutlined style={{ color: '#fa8c16' }} />,
       content: (
         <div style={{ marginTop: 16 }}>
@@ -122,6 +120,100 @@ export const App: React.FC = () => {
             </div>
           </div>
 
+          <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '16px', color: '#1890ff' }}>
+            🎯 Chọn phương án xử lý:
+          </div>
+
+          {/* Option 1: Auto-split entire file */}
+          <div style={{ 
+            padding: '16px', 
+            background: 'linear-gradient(135deg, #667eea22 0%, #764ba222 100%)',
+            border: '2px solid #667eea',
+            borderRadius: '8px',
+            marginBottom: '16px',
+            cursor: 'pointer'
+          }}
+          onClick={() => {
+            Modal.destroyAll();
+            handleAutoSplitTranscription();
+          }}
+          >
+            <div style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '8px', color: '#667eea' }}>
+              <span style={{ fontSize: '20px' }}>🤖</span> Phương án 1: Chuyển đổi toàn bộ file (Tự động)
+            </div>
+            <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
+              • Hệ thống tự động chia file thành các phần nhỏ (≤ {maxSizeMB}MB)<br />
+              • Gửi lần lượt đến Gemini AI (tuân thủ 15 req/min, 1500 req/day)<br />
+              • Tự động gộp và sắp xếp kết quả theo timeline<br />
+              • <strong style={{ color: '#52c41a' }}>✅ Khuyên dùng:</strong> Tiết kiệm thời gian, xử lý toàn bộ nội dung
+            </div>
+          </div>
+
+          {/* Option 2: Manual segment selection */}
+          <div style={{ 
+            padding: '16px', 
+            background: '#f0f5ff',
+            border: '2px solid #91d5ff',
+            borderRadius: '8px',
+            cursor: 'pointer'
+          }}
+          onClick={() => {
+            Modal.destroyAll();
+            showManualSegmentSelectionModal(fileSizeMB, maxSizeMB);
+          }}
+          >
+            <div style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '8px', color: '#1890ff' }}>
+              <span style={{ fontSize: '20px' }}>✂️</span> Phương án 2: Chọn đoạn thủ công
+            </div>
+            <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
+              • Bạn tự chọn khoảng thời gian cụ thể cần chuyển đổi<br />
+              • Phù hợp khi chỉ cần transcribe một phần quan trọng<br />
+              • Tiết kiệm quota API nếu chỉ cần xử lý đoạn ngắn<br />
+              • Có thể chọn nhiều đoạn khác nhau trong cùng file
+            </div>
+          </div>
+
+          <div style={{ 
+            padding: '12px', 
+            background: '#fffbe6',
+            border: '1px solid #ffe58f',
+            borderRadius: '6px',
+            fontSize: '13px',
+            color: '#666',
+            marginTop: '16px'
+          }}>
+            <strong>💡 Gợi ý:</strong> Nếu cần toàn bộ nội dung cuộc họp, chọn Phương án 1. Nếu chỉ cần một phần, chọn Phương án 2.
+          </div>
+        </div>
+      ),
+      okText: 'Đóng',
+      cancelButtonProps: { style: { display: 'none' } },
+      okButtonProps: { size: 'large', style: { height: '40px' } }
+    });
+  };
+
+  // Function to show manual segment selection modal
+  const showManualSegmentSelectionModal = (fileSizeMB: number, maxSizeMB: number) => {
+    if (!audioBlob) return;
+
+    const audioDurationMs = audioPlayerRef.current?.getDuration() || 0;
+    const audioDurationSec = Math.floor(audioDurationMs / 1000);
+    const durationMinutes = Math.floor(audioDurationSec / 60);
+    const durationSeconds = audioDurationSec % 60;
+
+    let startTimeInput: HTMLInputElement | null = null;
+    let endTimeInput: HTMLInputElement | null = null;
+
+    Modal.confirm({
+      title: (
+        <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#1890ff' }}>
+          ✂️ Chọn đoạn cần chuyển đổi
+        </span>
+      ),
+      width: 600,
+      icon: null,
+      content: (
+        <div style={{ marginTop: 16 }}>
           <div style={{ 
             padding: '16px', 
             background: '#e6f7ff',
@@ -129,61 +221,67 @@ export const App: React.FC = () => {
             borderRadius: '8px',
             marginBottom: '16px'
           }}>
-            <div style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '12px', color: '#1890ff' }}>
-              ✂️ Giải pháp: Chọn đoạn cần chuyển đổi
+            <div style={{ fontSize: '15px', marginBottom: '12px' }}>
+              <strong>📊 Thông tin file:</strong><br />
+              • Kích thước: <span style={{ fontWeight: 'bold' }}>{fileSizeMB.toFixed(2)} MB</span> / {maxSizeMB} MB<br />
+              • Thời lượng: <span style={{ fontWeight: 'bold' }}>{durationMinutes}:{String(durationSeconds).padStart(2, '0')}</span>
             </div>
-            <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px', lineHeight: '1.6' }}>
-              Bạn có thể chọn một khoảng thời gian cụ thể để chuyển đổi.<br />
-              Hệ thống sẽ tự động gắn đúng timestamp vào dự án.
-            </div>
+          </div>
 
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 'bold' }}>
-                ⏱️ Thời gian bắt đầu (phút:giây)
-              </label>
-              <input
-                ref={(el) => (startTimeInput = el)}
-                type="text"
-                placeholder="VD: 5:30 hoặc 0:00"
-                defaultValue="0:00"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  fontSize: '14px',
-                  border: '1px solid #d9d9d9',
-                  borderRadius: '4px',
-                  outline: 'none'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#1890ff'}
-                onBlur={(e) => e.target.style.borderColor = '#d9d9d9'}
-              />
-            </div>
+          <div style={{
+            padding: '12px',
+            background: '#f0f5ff',
+            border: '1px dashed #adc6ff',
+            borderRadius: '6px',
+            marginBottom: '16px',
+            fontSize: '13px',
+            color: '#1890ff'
+          }}>
+            🎵 <strong>Mẹo:</strong> Phát audio và pause ở vị trí muốn chọn, rồi xem thời gian trên audio player để nhập chính xác!
+          </div>
 
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 'bold' }}>
-                ⏱️ Thời gian kết thúc (phút:giây)
-              </label>
-              <input
-                ref={(el) => (endTimeInput = el)}
-                type="text"
-                placeholder={`VD: ${durationMinutes}:${String(durationSeconds).padStart(2, '0')}`}
-                defaultValue={`${durationMinutes}:${String(durationSeconds).padStart(2, '0')}`}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  fontSize: '14px',
-                  border: '1px solid #d9d9d9',
-                  borderRadius: '4px',
-                  outline: 'none'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#1890ff'}
-                onBlur={(e) => e.target.style.borderColor = '#d9d9d9'}
-              />
-            </div>
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 'bold' }}>
+              ⏱️ Thời gian bắt đầu (phút:giây)
+            </label>
+            <input
+              ref={(el) => (startTimeInput = el)}
+              type="text"
+              placeholder="VD: 5:30 hoặc 0:00"
+              defaultValue="0:00"
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                fontSize: '14px',
+                border: '1px solid #d9d9d9',
+                borderRadius: '4px',
+                outline: 'none'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#1890ff'}
+              onBlur={(e) => e.target.style.borderColor = '#d9d9d9'}
+            />
+          </div>
 
-            <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
-              💡 Mẹo: Nghe audio trước để xác định khoảng thời gian cần chuyển đổi
-            </div>
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 'bold' }}>
+              ⏱️ Thời gian kết thúc (phút:giây)
+            </label>
+            <input
+              ref={(el) => (endTimeInput = el)}
+              type="text"
+              placeholder={`VD: ${durationMinutes}:${String(durationSeconds).padStart(2, '0')}`}
+              defaultValue={`${durationMinutes}:${String(durationSeconds).padStart(2, '0')}`}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                fontSize: '14px',
+                border: '1px solid #d9d9d9',
+                borderRadius: '4px',
+                outline: 'none'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#1890ff'}
+              onBlur={(e) => e.target.style.borderColor = '#d9d9d9'}
+            />
           </div>
 
           <div style={{ 
@@ -199,139 +297,554 @@ export const App: React.FC = () => {
         </div>
       ),
       okText: '✂️ Chuyển đổi đoạn đã chọn',
-      cancelText: 'Hủy',
+      cancelText: 'Quay lại',
       okButtonProps: { size: 'large', style: { height: '40px' } },
       cancelButtonProps: { size: 'large', style: { height: '40px' } },
       onOk: async () => {
-        if (!startTimeInput || !endTimeInput) {
-          message.error('Không thể lấy giá trị thời gian');
-          return;
-        }
-
-        // Parse time input (format: "mm:ss" or "m:ss")
-        const parseTime = (timeStr: string): number => {
-          const parts = timeStr.trim().split(':');
-          if (parts.length !== 2) {
-            throw new Error('Định dạng thời gian không hợp lệ');
-          }
-          const minutes = parseInt(parts[0]);
-          const seconds = parseInt(parts[1]);
-          if (isNaN(minutes) || isNaN(seconds)) {
-            throw new Error('Thời gian phải là số');
-          }
-          return (minutes * 60 + seconds) * 1000; // Convert to milliseconds
-        };
-
-        try {
-          const startMs = parseTime(startTimeInput.value);
-          const endMs = parseTime(endTimeInput.value);
-
-          if (startMs >= endMs) {
-            message.error('Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc');
-            return;
-          }
-
-          if (endMs > audioDurationMs) {
-            message.error(`Thời gian kết thúc không được vượt quá ${durationMinutes}:${String(durationSeconds).padStart(2, '0')}`);
-            return;
-          }
-
-          // Show processing modal
-          const hideLoading = message.loading('✂️ Đang cắt đoạn audio...', 0);
-
-          try {
-            // Extract audio segment
-            const segmentBlob = await AIRefinementService.extractAudioSegment(
-              audioBlob,
-              startMs,
-              endMs
-            );
-
-            hideLoading();
-
-            const segmentSizeMB = segmentBlob.size / (1024 * 1024);
-            console.log(`✂️ Segment extracted: ${segmentSizeMB.toFixed(2)} MB`);
-
-            if (segmentBlob.size > maxSizeMB * 1024 * 1024) {
-              message.error(
-                `Đoạn đã chọn vẫn quá lớn (${segmentSizeMB.toFixed(2)} MB). ` +
-                `Vui lòng chọn khoảng thời gian ngắn hơn.`
-              );
-              return;
-            }
-
-            // Transcribe the segment
-            const config = speechToTextService.getConfig();
-            if (!config) return;
-
-            const hideProcessing = message.loading('🤖 Đang chuyển đổi đoạn audio...', 0);
-
-            try {
-              const segmentResults = await AIRefinementService.transcribeAudioWithGemini(
-                config.geminiApiKey!,
-                segmentBlob,
-                config.geminiModel!
-              );
-
-              // Adjust timestamps to match original audio
-              const adjustedResults = AIRefinementService.adjustTimestamps(
-                segmentResults,
-                startMs
-              );
-
-              hideProcessing();
-
-              // Add to existing transcriptions or replace
-              setTranscriptions(prev => [...prev, ...adjustedResults]);
-              setHasUnsavedChanges(true);
-
-              // Show success
-              Modal.success({
-                title: '✅ Chuyển đổi đoạn thành công!',
-                width: 480,
-                content: (
-                  <div style={{ marginTop: 16 }}>
-                    <div style={{ 
-                      padding: '16px', 
-                      background: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
-                      borderRadius: '8px',
-                      color: 'white'
-                    }}>
-                      <div style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '12px' }}>
-                        📊 Kết quả:
-                      </div>
-                      <ul style={{ margin: 0, paddingLeft: '20px', lineHeight: '1.8' }}>
-                        <li>✂️ Đoạn: {Math.floor(startMs/60000)}:{String(Math.floor((startMs%60000)/1000)).padStart(2, '0')} → {Math.floor(endMs/60000)}:{String(Math.floor((endMs%60000)/1000)).padStart(2, '0')}</li>
-                        <li>📝 {adjustedResults.length} đoạn văn bản</li>
-                        <li>⏱️ Đã gắn timestamp chính xác</li>
-                        <li>✨ Đã merge vào dự án</li>
-                      </ul>
-                    </div>
-                    <div style={{ marginTop: '12px', fontSize: '13px', color: '#666' }}>
-                      💡 Bạn có thể tiếp tục chọn đoạn khác để chuyển đổi
-                    </div>
-                  </div>
-                )
-              });
-
-            } catch (error: any) {
-              hideProcessing();
-              message.error(`Lỗi chuyển đổi: ${error.message}`);
-              console.error('Transcription error:', error);
-            }
-
-          } catch (error: any) {
-            hideLoading();
-            message.error(`Lỗi cắt audio: ${error.message}`);
-            console.error('Audio extraction error:', error);
-          }
-
-        } catch (error: any) {
-          message.error(error.message);
-        }
+        await handleManualSegmentTranscription(startTimeInput, endTimeInput, maxSizeMB);
+      },
+      onCancel: () => {
+        // Go back to options modal
+        showSegmentSelectionModal(fileSizeMB, maxSizeMB);
       }
     });
   };
+
+  // Handler for auto-split transcription
+  const handleAutoSplitTranscription = async () => {
+    if (!audioBlob) return;
+
+    const config = speechToTextService.getConfig();
+    if (!config || !config.geminiApiKey || !config.geminiModel) {
+      message.error('Vui lòng cấu hình Gemini API Key và Model trong Settings');
+      return;
+    }
+
+    let progressModal: any = null;
+    let currentProgress = 0;
+    let currentMessage = '';
+
+    try {
+      // Show progress modal
+      progressModal = Modal.info({
+        title: '🤖 Đang xử lý toàn bộ file...',
+        width: 600,
+        closable: false,
+        maskClosable: false,
+        okButtonProps: { style: { display: 'none' } },
+        content: (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ 
+              padding: '16px', 
+              background: 'linear-gradient(135deg, #667eea22 0%, #764ba222 100%)',
+              borderRadius: '8px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ marginBottom: '12px', fontSize: '14px', fontWeight: 'bold' }}>
+                <span id="progress-message">{currentMessage}</span>
+              </div>
+              <div style={{ 
+                width: '100%', 
+                height: '24px', 
+                background: '#f0f0f0', 
+                borderRadius: '12px',
+                overflow: 'hidden'
+              }}>
+                <div 
+                  id="progress-bar"
+                  style={{ 
+                    width: `${currentProgress}%`, 
+                    height: '100%', 
+                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+                    transition: 'width 0.3s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {currentProgress > 5 ? `${currentProgress.toFixed(0)}%` : ''}
+                </div>
+              </div>
+            </div>
+            <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
+              💡 <strong>Lưu ý:</strong><br />
+              • Hệ thống đang tự động chia file và xử lý từng phần<br />
+              • Có delay 5s giữa các phần để tuân thủ rate limit<br />
+              • Vui lòng không đóng trình duyệt
+            </div>
+          </div>
+        )
+      });
+
+      // Start transcription with progress callback
+      const results = await AIRefinementService.transcribeEntireAudioWithGemini(
+        config.geminiApiKey,
+        audioBlob,
+        config.geminiModel,
+        (progress, msg) => {
+          currentProgress = progress;
+          currentMessage = msg;
+          
+          // Update UI
+          const progressBar = document.getElementById('progress-bar');
+          const progressMessage = document.getElementById('progress-message');
+          if (progressBar) {
+            progressBar.style.width = `${progress}%`;
+            progressBar.textContent = progress > 5 ? `${progress.toFixed(0)}%` : '';
+          }
+          if (progressMessage) {
+            progressMessage.textContent = msg;
+          }
+        }
+      );
+
+      progressModal.destroy();
+
+      // Show merge/replace options modal
+      showMergeOrReplaceModal(results);
+
+    } catch (error: any) {
+      if (progressModal) progressModal.destroy();
+      Modal.error({
+        title: '❌ Lỗi chuyển đổi',
+        width: 480,
+        content: (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ 
+              padding: '12px 16px',
+              background: '#fff2f0',
+              border: '1px solid #ffccc7',
+              borderRadius: '6px',
+              marginBottom: '12px'
+            }}>
+              <div style={{ color: '#cf1322', fontSize: '14px', wordBreak: 'break-word' }}>
+                {error.message}
+              </div>
+            </div>
+          </div>
+        ),
+        okText: 'Đóng'
+      });
+      console.error('Auto-split transcription error:', error);
+    }
+  };
+
+  // Handler for manual segment transcription  
+  const handleManualSegmentTranscription = async (
+    startTimeInput: HTMLInputElement | null,
+    endTimeInput: HTMLInputElement | null,
+    maxSizeMB: number
+  ) => {
+    if (!audioBlob || !startTimeInput || !endTimeInput) {
+      message.error('Thiếu thông tin cần thiết');
+      return;
+    }
+
+    const audioDurationMs = audioPlayerRef.current?.getDuration() || 0;
+    const audioDurationSec = Math.floor(audioDurationMs / 1000);
+    const durationMinutes = Math.floor(audioDurationSec / 60);
+    const durationSeconds = audioDurationSec % 60;
+
+    // Parse time input (format: "mm:ss" or "m:ss")
+    const parseTime = (timeStr: string): number => {
+      const parts = timeStr.trim().split(':');
+      if (parts.length !== 2) {
+        throw new Error('Định dạng thời gian không hợp lệ');
+      }
+      const minutes = parseInt(parts[0]);
+      const seconds = parseInt(parts[1]);
+      if (isNaN(minutes) || isNaN(seconds)) {
+        throw new Error('Thời gian phải là số');
+      }
+      return (minutes * 60 + seconds) * 1000; // Convert to milliseconds
+    };
+
+    try {
+      const startMs = parseTime(startTimeInput.value);
+      const endMs = parseTime(endTimeInput.value);
+
+      if (startMs >= endMs) {
+        message.error('Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc');
+        return;
+      }
+
+      if (endMs > audioDurationMs) {
+        message.error(`Thời gian kết thúc không được vượt quá ${durationMinutes}:${String(durationSeconds).padStart(2, '0')}`);
+        return;
+      }
+
+      // Show processing modal
+      const hideLoading = message.loading('✂️ Đang cắt đoạn audio...', 0);
+
+      try {
+        // Extract audio segment
+        const segmentBlob = await AIRefinementService.extractAudioSegment(
+          audioBlob,
+          startMs,
+          endMs
+        );
+
+        hideLoading();
+
+        const segmentSizeMB = segmentBlob.size / (1024 * 1024);
+        console.log(`✂️ Segment extracted: ${segmentSizeMB.toFixed(2)} MB`);
+
+        if (segmentBlob.size > maxSizeMB * 1024 * 1024) {
+          message.error(
+            `Đoạn đã chọn vẫn quá lớn (${segmentSizeMB.toFixed(2)} MB). ` +
+            `Vui lòng chọn khoảng thời gian ngắn hơn.`
+          );
+          return;
+        }
+
+        // Transcribe the segment
+        const config = speechToTextService.getConfig();
+        if (!config) return;
+
+        const hideProcessing = message.loading('🤖 Đang chuyển đổi đoạn audio...', 0);
+
+        try {
+          const segmentResults = await AIRefinementService.transcribeAudioWithGemini(
+            config.geminiApiKey!,
+            segmentBlob,
+            config.geminiModel!
+          );
+
+          // Adjust timestamps to match original audio
+          const adjustedResults = AIRefinementService.adjustTimestamps(
+            segmentResults,
+            startMs
+          );
+
+          hideProcessing();
+
+          // Show merge/replace options modal
+          showMergeOrReplaceModal(adjustedResults);
+
+        } catch (error: any) {
+          hideProcessing();
+          message.error(`Lỗi chuyển đổi: ${error.message}`);
+          console.error('Transcription error:', error);
+        }
+
+      } catch (error: any) {
+        hideLoading();
+        message.error(`Lỗi cắt audio: ${error.message}`);
+        console.error('Audio extraction error:', error);
+      }
+
+    } catch (error: any) {
+      message.error(error.message);
+    }
+  };
+
+  // Show modal to ask user: merge or replace?
+  const showMergeOrReplaceModal = (newResults: TranscriptionResult[]) => {
+    Modal.confirm({
+      title: (
+        <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#52c41a' }}>
+          ✅ Chuyển đổi thành công!
+        </span>
+      ),
+      width: 600,
+      icon: null,
+      content: (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ 
+            padding: '16px', 
+            background: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
+            borderRadius: '8px',
+            color: 'white',
+            marginBottom: '16px'
+          }}>
+            <div style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '8px' }}>
+              📊 Kết quả chuyển đổi:
+            </div>
+            <div style={{ fontSize: '14px' }}>
+              🤖 {newResults.length} đoạn văn bản từ Gemini AI
+            </div>
+          </div>
+
+          <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '16px', color: '#1890ff' }}>
+            💾 Chọn cách xử lý dữ liệu:
+          </div>
+
+          {/* Option 1: Merge */}
+          <div style={{ 
+            padding: '16px', 
+            background: '#f0f5ff',
+            border: '2px solid #1890ff',
+            borderRadius: '8px',
+            marginBottom: '16px'
+          }}>
+            <div style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '8px', color: '#1890ff' }}>
+              <span style={{ fontSize: '20px' }}>🔄</span> Gộp vào dữ liệu hiện tại
+            </div>
+            <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
+              • Giữ nguyên {transcriptions.length} đoạn cũ<br />
+              • Thêm {newResults.length} đoạn mới từ AI<br />
+              • Tự động sắp xếp theo thời gian (timeline)<br />
+              • <strong style={{ color: '#52c41a' }}>✅ Khuyên dùng:</strong> Khi bạn đã có transcription và muốn bổ sung
+            </div>
+          </div>
+
+          {/* Option 2: Replace */}
+          <div style={{ 
+            padding: '16px', 
+            background: '#fff7e6',
+            border: '2px solid #fa8c16',
+            borderRadius: '8px'
+          }}>
+            <div style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '8px', color: '#fa8c16' }}>
+              <span style={{ fontSize: '20px' }}>🔁</span> Thay thế toàn bộ dữ liệu cũ
+            </div>
+            <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
+              • <strong style={{ color: '#fa8c16' }}>⚠️ Xóa {transcriptions.length} đoạn cũ</strong><br />
+              • Chỉ giữ lại {newResults.length} đoạn mới từ AI<br />
+              • Dùng khi transcription cũ kém chất lượng<br />
+              • <strong style={{ color: '#ff4d4f' }}>Cảnh báo:</strong> Không thể hoàn tác!
+            </div>
+          </div>
+
+          <div style={{ 
+            padding: '12px', 
+            background: '#fffbe6',
+            border: '1px solid #ffe58f',
+            borderRadius: '6px',
+            fontSize: '13px',
+            color: '#666',
+            marginTop: '16px'
+          }}>
+            💡 <strong>Gợi ý:</strong> Nếu bạn chưa chắc, hãy chọn "Gộp" để không mất dữ liệu cũ.
+          </div>
+        </div>
+      ),
+      okText: '🔄 Gộp vào dữ liệu cũ',
+      cancelText: '🔁 Thay thế toàn bộ',
+      okButtonProps: { size: 'large', style: { height: '40px' } },
+      cancelButtonProps: { size: 'large', style: { height: '40px', background: '#fa8c16', borderColor: '#fa8c16', color: 'white' } },
+      onOk: () => {
+        // Merge: Sort and add to existing
+        setTranscriptions(prev => {
+          const merged = [...prev, ...newResults];
+          return merged.sort((a, b) => (a.audioTimeMs || 0) - (b.audioTimeMs || 0));
+        });
+        setHasUnsavedChanges(true);
+        
+        message.success(`✅ Đã gộp ${newResults.length} đoạn mới vào dữ liệu (tổng: ${transcriptions.length + newResults.length})`);
+        console.log(`✅ Merged ${newResults.length} segments, total: ${transcriptions.length + newResults.length}`);
+      },
+      onCancel: () => {
+        // Replace: Clear old and use only new
+        setTranscriptions(newResults);
+        setHasUnsavedChanges(true);
+        
+        message.success(`✅ Đã thay thế toàn bộ dữ liệu cũ bằng ${newResults.length} đoạn mới từ AI`);
+        console.log(`✅ Replaced all transcriptions with ${newResults.length} new segments`);
+      }
+    });
+  };
+
+  // Listen for 'transcribe-audio' event from TranscriptionConfig
+  useEffect(() => {
+    const handleTranscribeAudio = async (event: Event) => {
+      const customEvent = event as CustomEvent<{ 
+        apiKey: string; 
+        modelName: string;
+      }>;
+
+      const { apiKey, modelName } = customEvent.detail;
+
+      if (!audioBlob) {
+        message.error('Chưa có audio để chuyển đổi');
+        return;
+      }
+
+      // Check if API key is provided
+      if (!apiKey || apiKey.trim().length === 0) {
+        Modal.error({
+          title: '⚠️ Thiếu Gemini API Key',
+          content: (
+            <div style={{ marginTop: 16 }}>
+              <p>Vui lòng thêm <strong>Gemini API Key</strong> trong Settings trước khi sử dụng tính năng này.</p>
+              <div style={{ marginTop: '12px', padding: '12px', background: '#f0f5ff', borderRadius: '6px' }}>
+                <strong>Hướng dẫn lấy API Key:</strong><br />
+                1️⃣ Truy cập: <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">https://aistudio.google.com/app/apikey</a><br />
+                2️⃣ Đăng nhập với Google Account<br />
+                3️⃣ Click "Create API Key"<br />
+                4️⃣ Copy và paste vào Settings
+              </div>
+            </div>
+          ),
+          okText: 'Đã hiểu'
+        });
+        return;
+      }
+
+      // Validate model is selected
+      if (!modelName || !modelName.startsWith('models/')) {
+        Modal.error({
+          title: '⚠️ Chưa chọn Gemini Model',
+          content: (
+            <div style={{ marginTop: 16 }}>
+              <p>Vui lòng chọn <strong>Gemini Model</strong> trong Settings.</p>
+              <div style={{ marginTop: '12px', padding: '12px', background: '#f0f5ff', borderRadius: '6px' }}>
+                <strong>Các bước:</strong><br />
+                1️⃣ Mở Settings → Nhập API Key<br />
+                2️⃣ Chờ hệ thống tải danh sách models<br />
+                3️⃣ Chọn model từ dropdown (khuyên dùng: Gemini 2.5 Flash)<br />
+                4️⃣ Lưu và thử lại
+              </div>
+            </div>
+          ),
+          okText: 'Đã hiểu'
+        });
+        return;
+      }
+
+      // Check audio duration (if available)
+      const audioDurationMs = audioPlayerRef.current?.getDuration() || 0;
+      if (audioDurationMs === 0) {
+        message.warning('Không thể xác định thời lượng audio. Đang thử chuyển đổi...');
+      }
+
+      // Show confirmation modal with enhanced UI
+      Modal.confirm({
+        title: (
+          <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#667eea' }}>
+            <span style={{ fontSize: '24px' }}>🤖</span> Chuyển đổi giọng nói với Gemini AI
+          </span>
+        ),
+        width: 600,
+        icon: null,
+        content: (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ 
+              padding: '16px', 
+              background: 'linear-gradient(135deg, #667eea22 0%, #764ba222 100%)',
+              borderRadius: '8px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ fontSize: '15px', marginBottom: '12px' }}>
+                <strong>🎯 Thông tin chuyển đổi:</strong><br />
+                • Model: <span style={{ fontWeight: 'bold', color: '#667eea' }}>{modelName.replace('models/', '')}</span><br />
+                • Kích thước file: <span style={{ fontWeight: 'bold' }}>{(audioBlob.size / (1024 * 1024)).toFixed(2)} MB</span><br />
+                {audioDurationMs > 0 && (
+                  <>• Thời lượng: <span style={{ fontWeight: 'bold' }}>{Math.floor(audioDurationMs / 60000)}:{String(Math.floor((audioDurationMs % 60000) / 1000)).padStart(2, '0')}</span></>
+                )}
+              </div>
+            </div>
+
+            <div style={{ 
+              padding: '16px', 
+              background: '#f0f5ff',
+              border: '1px solid #adc6ff',
+              borderRadius: '8px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ fontSize: '14px', color: '#666', lineHeight: '1.8' }}>
+                <strong style={{ color: '#1890ff' }}>✨ Lợi ích của Gemini AI:</strong><br />
+                • Độ chính xác cao hơn Web Speech API<br />
+                • Tự động phân biệt người nói<br />
+                • Làm sạch văn bản (loại bỏ từ đệm, sửa lỗi)<br />
+                • Hỗ trợ tiếng Việt tốt hơn
+              </div>
+            </div>
+
+            <div style={{ 
+              padding: '12px', 
+              background: '#fffbe6',
+              border: '1px solid #ffe58f',
+              borderRadius: '6px',
+              fontSize: '13px',
+              color: '#666'
+            }}>
+              <strong>⏳ Thời gian xử lý:</strong> Tùy thuộc vào độ dài audio (khoảng 1-3 phút cho file 10-20 phút)<br />
+              <strong>💰 Chi phí:</strong> Gemini API miễn phí cho mục đích cá nhân (250K tokens/ngày)
+            </div>
+          </div>
+        ),
+        okText: '🚀 Bắt đầu chuyển đổi',
+        cancelText: 'Hủy',
+        okButtonProps: { 
+          size: 'large',
+          style: { 
+            height: '40px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            border: 'none'
+          }
+        },
+        cancelButtonProps: { size: 'large', style: { height: '40px' } },
+        onOk: async () => {
+          try {
+            const results = await AIRefinementService.transcribeAudioWithGemini(
+              apiKey,
+              audioBlob,
+              modelName,
+              (progress) => {
+                // Update progress (could enhance with progress modal later)
+                console.log(`Transcription progress: ${progress.toFixed(0)}%`);
+              }
+            );
+
+            // Show merge/replace options modal
+            showMergeOrReplaceModal(results);
+
+          } catch (error: any) {
+            // Check if error is FILE_TOO_LARGE
+            if (error.message === 'FILE_TOO_LARGE') {
+              // Show segment selection modal
+              showSegmentSelectionModal(error.fileSizeMB, error.maxSizeMB);
+              return;
+            }
+            
+            // Show error modal
+            Modal.error({
+              title: '❌ Lỗi chuyển đổi',
+              width: 480,
+              content: (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ 
+                    padding: '12px 16px',
+                    background: '#fff2f0',
+                    border: '1px solid #ffccc7',
+                    borderRadius: '6px',
+                    marginBottom: '12px'
+                  }}>
+                    <div style={{ color: '#cf1322', fontSize: '14px', wordBreak: 'break-word' }}>
+                      <strong>Chi tiết lỗi:</strong><br />
+                      {error.message}
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
+                    <strong>💡 Gợi ý khắc phục:</strong>
+                    <ul style={{ marginTop: '8px', paddingLeft: '20px' }}>
+                      <li>Kiểm tra kết nối internet</li>
+                      <li>Xác nhận Gemini API Key còn hợp lệ</li>
+                      <li>Thử lại với file audio nhỏ hơn</li>
+                      <li>Kiểm tra Console để xem chi tiết lỗi</li>
+                    </ul>
+                  </div>
+                </div>
+              ),
+              okText: 'Đã hiểu',
+              okButtonProps: { size: 'large' }
+            });
+            console.error('Gemini transcription error:', error);
+          }
+        }
+      });
+    };
+
+    window.addEventListener('transcribe-audio', handleTranscribeAudio);
+    return () => {
+      window.removeEventListener('transcribe-audio', handleTranscribeAudio);
+    };
+  }, [audioBlob, transcriptionConfig]);
   
   // Handle transcribe-audio event from AudioPlayer
   useEffect(() => {
@@ -422,8 +935,7 @@ export const App: React.FC = () => {
           // Clear existing transcriptions
           setTranscriptions([]);
 
-          try {
-            // Show modern progress modal
+          // Show modern progress modal
             const progressDiv = document.createElement('div');
             progressDiv.id = 'transcribe-progress';
             progressDiv.style.cssText = `

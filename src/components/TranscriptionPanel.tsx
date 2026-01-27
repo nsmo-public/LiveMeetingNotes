@@ -355,6 +355,23 @@ export const TranscriptionPanel: React.FC<Props> = ({
                                 </Tooltip>
                               )}
 
+                              {/* AI Refined Label */}
+                              {item.isAIRefined && (
+                                <Tooltip title="Đoạn văn bản được xử lý bởi Gemini AI">
+                                  <Tag 
+                                    icon={<RobotOutlined />} 
+                                    style={{ 
+                                      fontSize: '11px',
+                                      background: 'linear-gradient(135deg, #667eea22 0%, #764ba222 100%)',
+                                      borderColor: '#667eea',
+                                      color: '#667eea'
+                                    }}
+                                  >
+                                    AI
+                                  </Tag>
+                                </Tooltip>
+                              )}
+
                               {/* Confidence */}
                               {item.confidence > 0 && (
                                 <Tooltip title={`Độ tin cậy: ${(item.confidence * 100).toFixed(0)}%`}>

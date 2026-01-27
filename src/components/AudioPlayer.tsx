@@ -18,6 +18,7 @@ interface Props {
 
 export interface AudioPlayerRef {
   seekTo: (timeMs: number) => void;
+  getDuration: () => number;
 }
 
 export const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ audioBlob, transcriptionConfig}, ref) => {
@@ -40,7 +41,8 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ audioBlob, trans
         wavesurferRef.current.seekTo(timeSeconds / duration);
         // console.log(`🎵 Seeked to ${timeSeconds.toFixed(2)}s`);
       }
-    }
+    },
+    getDuration: () => duration * 1000
   }));
 
   // Update audio source when blob changes

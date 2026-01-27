@@ -663,6 +663,17 @@ Lưu ý:
   }
 
   /**
+   * Get file size limit based on API tier
+   * Free tier: 20MB, Paid tier: Could be higher (check with Gemini docs)
+   * TODO: Add ability to configure this in Settings for paid users
+   */
+  private static getFileSizeLimit(): { maxSizeMB: number; tier: string } {
+    // For now, use conservative 20MB limit (Gemini free tier)
+    // Future: Detect paid tier or allow user to configure in Settings
+    return { maxSizeMB: 20, tier: 'free' };
+  }
+
+  /**
    * Transcribe audio file using Gemini Multimodal API
    * Gemini 1.5+ models can directly process audio files (mp3, wav, aac, webm, etc.)
    */
@@ -680,17 +691,19 @@ Lưu ý:
       throw new Error('Please select a Gemini model in Settings');
     }
 
-    // Validate file size (Gemini limit: 20MB for free tier)
-    const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+    // Validate file size (limit depends on API tier)
+    const { maxSizeMB, tier } = this.getFileSizeLimit();
+    const MAX_FILE_SIZE = maxSizeMB * 1024 * 1024;
     const fileSizeMB = audioBlob.size / (1024 * 1024);
     
-    console.log(`📊 File size: ${fileSizeMB.toFixed(2)} MB (Limit: 20 MB)`);
+    console.log(`📊 File size: ${fileSizeMB.toFixed(2)} MB (Limit: ${maxSizeMB} MB, Tier: ${tier})`);
     
     if (audioBlob.size > MAX_FILE_SIZE) {
       // Return special error object with file size info
       const error: any = new Error('FILE_TOO_LARGE');
       error.fileSizeMB = fileSizeMB;
-      error.maxSizeMB = 20;
+      error.maxSizeMB = maxSizeMB;
+      error.tier = tier;
       throw error;
     }
 
@@ -928,6 +941,63 @@ Lưu ý:
     return result;
   }
   /**
+   * Split audio blob into chunks for batch processing
+   * Automatically calculates chunk duration to keep each chunk under size limit
+   * @param audioBlob - Original audio blob
+   * @param maxChunkSizeMB - Maximum chunk size in MB (default: 20MB for free tier)
+   * @returns Promise<Array> - Array of { blob, startTimeMs, endTimeMs }
+   */
+  public static async splitAudioIntoChunks(
+    audioBlob: Blob,
+    maxChunkSizeMB: number = 20
+  ): Promise<{ blob: Blob; startTimeMs: number; endTimeMs: number }[]> {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const reader = new FileReader();
+
+    return new Promise((resolve, reject) => {
+      reader.onload = async (e) => {
+        try {
+          const arrayBuffer = e.target?.result as ArrayBuffer;
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+          const totalDurationMs = audioBuffer.duration * 1000;
+          const totalSizeMB = audioBlob.size / (1024 * 1024);
+
+          // Calculate number of chunks needed
+          const numberOfChunks = Math.ceil(totalSizeMB / maxChunkSizeMB);
+          const chunkDurationMs = totalDurationMs / numberOfChunks;
+
+          console.log(`📦 Splitting audio: ${totalSizeMB.toFixed(2)}MB into ${numberOfChunks} chunks`);
+
+          const chunks: { blob: Blob; startTimeMs: number; endTimeMs: number }[] = [];
+
+          for (let i = 0; i < numberOfChunks; i++) {
+            const startTimeMs = i * chunkDurationMs;
+            const endTimeMs = Math.min((i + 1) * chunkDurationMs, totalDurationMs);
+
+            console.log(`⏱️ Extracting chunk ${i + 1}/${numberOfChunks}: ${startTimeMs.toFixed(0)}ms - ${endTimeMs.toFixed(0)}ms`);
+
+            const chunkBlob = await this.extractAudioSegment(audioBlob, startTimeMs, endTimeMs);
+
+            chunks.push({
+              blob: chunkBlob,
+              startTimeMs,
+              endTimeMs
+            });
+          }
+
+          resolve(chunks);
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(audioBlob);
+    });
+  }
+
+  /**
    * Extract a segment from audio blob based on time range
    * @param audioBlob - Original audio blob
    * @param startTimeMs - Start time in milliseconds
@@ -980,6 +1050,94 @@ Lưu ý:
       reader.onerror = reject;
       reader.readAsArrayBuffer(audioBlob);
     });
+  }
+
+  /**
+   * Process entire audio file by automatically splitting into chunks
+   * Respects Gemini API limits: 15 req/min, 1500 req/day, 20MB per file
+   * @param apiKey - Gemini API key
+   * @param audioBlob - Original audio blob (can be > 20MB)
+   * @param modelName - Gemini model name
+   * @param onProgress - Progress callback (progress: number, message: string)
+   * @returns Promise<TranscriptionResult[]> - All transcription results, sorted by timestamp
+   */
+  public static async transcribeEntireAudioWithGemini(
+    apiKey: string,
+    audioBlob: Blob,
+    modelName: string,
+    onProgress?: (progress: number, message: string) => void
+  ): Promise<TranscriptionResult[]> {
+    const { maxSizeMB } = this.getFileSizeLimit();
+
+    // Split audio into chunks
+    if (onProgress) onProgress(5, 'Đang phân tích và chia file âm thanh...');
+    const chunks = await this.splitAudioIntoChunks(audioBlob, maxSizeMB);
+
+    if (onProgress) onProgress(10, `Đã chia thành ${chunks.length} phần. Bắt đầu chuyển đổi...`);
+
+    const allResults: TranscriptionResult[] = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const chunkProgress = 10 + ((i / chunks.length) * 80);
+
+      if (onProgress) {
+        onProgress(
+          chunkProgress,
+          `Đang xử lý phần ${i + 1}/${chunks.length}...`
+        );
+      }
+
+      try {
+        // Transcribe this chunk
+        const results = await this.transcribeAudioWithGemini(
+          apiKey,
+          chunk.blob,
+          modelName,
+          (subProgress) => {
+            if (onProgress) {
+              const totalProgress = chunkProgress + (subProgress / chunks.length) * 0.8;
+              onProgress(totalProgress, `Phần ${i + 1}/${chunks.length}: ${subProgress.toFixed(0)}%`);
+            }
+          }
+        );
+
+        // Adjust timestamps for this chunk
+        const adjustedResults = this.adjustTimestamps(results, chunk.startTimeMs);
+        allResults.push(...adjustedResults);
+
+        // Add delay between chunks to respect rate limits (15 req/min)
+        if (i < chunks.length - 1) {
+          const delaySeconds = 5; // 5 seconds = max 12 req/min (safe)
+          if (onProgress) {
+            onProgress(
+              chunkProgress + 5,
+              `Đợi ${delaySeconds}s trước khi xử lý phần tiếp theo...`
+            );
+          }
+          await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+        }
+      } catch (error: any) {
+        // Handle quota errors
+        if (error.message.includes('429') || error.message.includes('quota')) {
+          throw new Error(
+            `Vượt hạn mức API tại phần ${i + 1}/${chunks.length}.\n\n` +
+            `✅ Đã xử lý: ${i}/${chunks.length} phần\n` +
+            `❌ Lỗi: ${error.message}\n\n` +
+            `💡 Đợi 24 giờ hoặc nâng cấp Paid tier.`
+          );
+        }
+        throw error;
+      }
+    }
+
+    // Sort by timestamp
+    allResults.sort((a, b) => (a.audioTimeMs || 0) - (b.audioTimeMs || 0));
+
+    if (onProgress) onProgress(100, `Hoàn thành! ${allResults.length} segments`);
+
+    console.log(`✅ Transcribed entire audio: ${allResults.length} segments from ${chunks.length} chunks`);
+    return allResults;
   }
 
   /**
