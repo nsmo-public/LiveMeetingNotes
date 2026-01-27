@@ -34,7 +34,6 @@ export const TranscriptionConfig: React.FC<Props> = ({
         apiKey: '',
         geminiApiKey: '',
         geminiModel: 'models/gemini-2.5-flash', // Default model
-        apiEndpoint: 'https://speech.googleapis.com/v1/speech:recognize',
         languageCode: 'vi-VN',
         enableSpeakerDiarization: false,
         enableAutomaticPunctuation: true,
@@ -127,7 +126,6 @@ export const TranscriptionConfig: React.FC<Props> = ({
         apiKey: values.apiKey?.trim() || '',
         geminiApiKey: values.geminiApiKey?.trim() || '',
         geminiModel: values.geminiModel || 'models/gemini-2.5-flash',
-        apiEndpoint: values.apiEndpoint.trim(),
         languageCode: values.languageCode,
         enableSpeakerDiarization: values.enableSpeakerDiarization,
         enableAutomaticPunctuation: values.enableAutomaticPunctuation,
@@ -217,7 +215,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
       >
         {/* Gemini API Key */}
         <Form.Item
-          label="Gemini API Key (cho AI Refinement)"
+          label="Gemini API Key"
           name="geminiApiKey"
           rules={[
             { min: 20, message: 'API Key phải có ít nhất 20 ký tự' }
@@ -225,7 +223,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
           extra={
             <Space direction="vertical" size="small" style={{ marginTop: 8 }}>
               <div style={{ fontSize: '12px', color: '#667eea' }}>
-                🤖 <strong>Cho tính năng **Chuẩn hóa bằng AI** và **Chuyển đổi giọng nói bằng Gemini AI**:</strong>
+                🤖 <strong>Cho tính năng *Chuẩn hóa bằng AI* và *Chuyển đổi giọng nói bằng Gemini AI*:</strong>
               </div>
               <div style={{ fontSize: '12px', color: '#52c41a', fontWeight: 'bold' }}>
                 ✨ MIỄN PHÍ: Lấy tại{' '}
@@ -327,18 +325,6 @@ export const TranscriptionConfig: React.FC<Props> = ({
             </Select>
           </Form.Item>
         )}
-
-        <Form.Item
-          label="API Endpoint"
-          name="apiEndpoint"
-          rules={[
-            { required: true, message: 'Vui lòng nhập API Endpoint' },
-            { type: 'url', message: 'Vui lòng nhập URL hợp lệ' }
-          ]}
-          extra="URL của Google Cloud Speech-to-Text API"
-        >
-          <Input placeholder="https://speech.googleapis.com/v1/speech:recognize" />
-        </Form.Item>
 
         <Form.Item
           label="Ngôn ngữ"

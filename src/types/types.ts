@@ -68,7 +68,6 @@ export interface SpeechToTextConfig {
   apiKey: string;
   geminiApiKey?: string; // Optional: API key for Gemini AI (for AI refinement feature)
   geminiModel?: string; // Selected Gemini model (e.g., "models/gemini-2.5-flash")
-  apiEndpoint?: string;
   languageCode: string;
   enableSpeakerDiarization: boolean;
   enableAutomaticPunctuation: boolean;

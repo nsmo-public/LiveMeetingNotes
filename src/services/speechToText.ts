@@ -373,8 +373,8 @@ export class SpeechToTextService {
       // Convert to base64
       const base64Audio = await this.blobToBase64(audioBlob);
 
-      // Prepare request
-      const endpoint = this.config.apiEndpoint || 'https://speech.googleapis.com/v1/speech:recognize';
+      // Prepare request - Using hardcoded endpoint since we no longer use apiEndpoint config
+      const endpoint = 'https://speech.googleapis.com/v1/speech:recognize';
       const url = `${endpoint}?key=${this.config.apiKey}`;
 
       const requestBody: any = {

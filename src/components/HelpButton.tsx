@@ -21,14 +21,15 @@ export const HelpButton: React.FC = () => {
           <List
             dataSource={[
               '🎙️ Ghi âm và đánh dấu thời gian tự động khi nhập Ghi chú',
-              '🗣️ Chuyển đổi giọng nói sang văn bản (Speech-to-Text) miễn phí với Google Web Speech API',
-              '🤖 Chuẩn hóa văn bản bằng AI với Google Gemini (tùy chọn)',
+              '🗣️ Chuyển đổi giọng nói sang văn bản: Web Speech API (live, miễn phí) + Gemini AI (file, chất lượng cao)',
+              '🤖 Chuẩn hóa văn bản bằng AI với Google Gemini (sửa lỗi, loại từ đệm, thêm dấu câu)',
               '✏️ Chỉnh sửa/Xóa từng đoạn transcription với double-click',
               '⏯️ Seek audio từ timestamp trong transcription',
-              '�📴 Có khả năng làm việc offline',
+              '🎬 Chuyển đổi audio sang text bằng Gemini AI (chuột phải vào waveform)',
+              '📴 Có khả năng làm việc offline (ghi âm, notes)',
               '💾 Lưu trữ file trực tiếp vào máy tính',
               '🌐 Tương thích đa nền tảng (Chrome, Edge, Firefox, Safari)',
-              '🔒 100% bảo mật - Không upload dữ liệu lên server',
+              '🔒 100% bảo mật - Không upload dữ liệu lên server (trừ khi dùng Gemini API)',
               '🔄 Auto-backup & Recovery - Khôi phục khi crash',
               '📂 Load Project - Mở lại project cũ để chỉnh sửa',
               '📄 Export Word - Xuất file .docx để chia sẻ'
@@ -68,16 +69,33 @@ export const HelpButton: React.FC = () => {
 
             <div>
               <Title level={4}>🗣️ Chuyển đổi giọng nói sang văn bản</Title>
+              <Paragraph><strong>Có 2 phương thức:</strong></Paragraph>
+              
+              <Text strong>1. Live transcription (khi đang ghi âm):</Text>
               <List size="small">
-                <List.Item>• <strong>Yêu cầu:</strong> Kết nối Internet</List.Item>
-                <List.Item>• Sử dụng Google Web Speech API (miễn phí, không cần API key)</List.Item>
+                <List.Item>• Sử dụng Web Speech API (miễn phí, không cần API key, độ trễ thấp)</List.Item>
                 <List.Item>• Click <Tag color="orange" icon={<span>⚙️</span>}>Cấu hình Speech-to-Text</Tag> → chọn ngôn ngữ</List.Item>
-                <List.Item>• Bật <Tag color="cyan">Tự động chuyển giọng nói thành văn bản</Tag> → tự động chuyển đổi khi ghi âm</List.Item>
-                <List.Item>• Kết quả hiển thị real-time với độ tin cậy (confidence) và timestamp chính xác</List.Item>
-                <List.Item>• <strong>Double-click</strong> vào timestamp → seek audio đến vị trí tương ứng</List.Item>
-                <List.Item>• <strong>Double-click</strong> vào nội dung → chỉnh sửa hoặc xóa đoạn transcription</List.Item>
+                <List.Item>• Bật <Tag color="cyan">Tự động chuyển giọng nói thành văn bản</Tag> → tự động khi ghi âm</List.Item>
+                <List.Item>• Kết quả hiển thị real-time với confidence và timestamp</List.Item>
+                <List.Item>• Lưu tự động cả kết quả chính thức và raw data</List.Item>
+              </List>
+              
+              <Text strong style={{ marginTop: '12px', display: 'block' }}>2. File transcription (file audio đã có):</Text>
+              <List size="small">
+                <List.Item>• Sử dụng Gemini AI (chất lượng cao, tự động phân người nói, thêm dấu câu)</List.Item>
+                <List.Item>• Chuột phải vào waveform → "Chuyển đổi giọng nói bằng Gemini AI"</List.Item>
+                <List.Item>• Yêu cầu Gemini API Key (miễn phí 250K tokens/ngày)</List.Item>
+                <List.Item>• Tự động chia file lớn thành chunks nếu vượt giới hạn (20MB hoặc 60 phút)</List.Item>
+                <List.Item>• Kết quả chất lượng cao hơn Web Speech API</List.Item>
+              </List>
+              
+              <Divider style={{ margin: '8px 0' }} />
+              
+              <Text strong>Thao tác chung:</Text>
+              <List size="small">
+                <List.Item>• <strong>Double-click timestamp</strong> → seek audio đến vị trí</List.Item>
+                <List.Item>• <strong>Double-click nội dung</strong> → chỉnh sửa hoặc xóa đoạn</List.Item>
                 <List.Item>• Panel tự động mở rộng khi có kết quả mới</List.Item>
-                <List.Item>• Lưu tự động cả kết quả chính thức và raw data để phục vụ AI refinement</List.Item>
               </List>
             </div>
 
@@ -86,14 +104,16 @@ export const HelpButton: React.FC = () => {
             <div>
               <Title level={4}>🤖 Chuẩn hóa văn bản bằng AI</Title>
               <List size="small">
-                <List.Item>• <strong>Tùy chọn:</strong> Yêu cầu Google Gemini API Key (miễn phí)</List.Item>
+                <List.Item>• <strong>Mục đích:</strong> Sửa lỗi nhận diện, loại từ đệm (à, ừm...), thêm dấu câu, gộp câu</List.Item>
+                <List.Item>• <strong>Yêu cầu:</strong> Gemini API Key (miễn phí 250K tokens/ngày)</List.Item>
                 <List.Item>• Click <Tag color="orange" icon={<span>⚙️</span>}>Cấu hình Speech-to-Text</Tag> → nhập Gemini API Key</List.Item>
-                <List.Item>• Hệ thống tự động phát hiện các model có sẵn (gemini-2.5-flash, gemini-2.5-pro, gemini-2.0-flash...)</List.Item>
-                <List.Item>• Chọn model phù hợp với nhu cầu (flash = nhanh, pro = chất lượng cao)</List.Item>
+                <List.Item>• Hệ thống tự động tải danh sách models (gemini-2.5-flash, pro, gemini-2.0-flash...)</List.Item>
+                <List.Item>• Chọn model: flash = nhanh + rẻ, pro = chất lượng cao</List.Item>
                 <List.Item>• Click <Tag color="purple" icon={<span>✨</span>}>Chuẩn hóa bằng AI</Tag> trong panel Transcription</List.Item>
-                <List.Item>• AI sử dụng transcription chính thức (ưu tiên) + raw data (bổ trợ) để cải thiện văn bản</List.Item>
-                <List.Item>• ⚠️ <Text type="danger"><strong>Cảnh báo bảo mật:</strong></Text> Dữ liệu sẽ được gửi đến Google Gemini API</List.Item>
-                <List.Item>• Kết quả được lưu vào transcription.json để export Word</List.Item>
+                <List.Item>• <strong>Checkbox "Sử dụng dữ liệu bổ trợ":</strong> Tick để gửi thêm raw data (tốn x2 tokens)</List.Item>
+                <List.Item>• Hệ thống tự động chia batch nhỏ (30 segments) + delay 6s để tránh vượt quota</List.Item>
+                <List.Item>• ⚠️ <Text type="danger"><strong>Cảnh báo bảo mật:</strong></Text> Dữ liệu gửi đến Google Gemini API</List.Item>
+                <List.Item>• Kết quả lưu vào transcription.json để export Word</List.Item>
               </List>
             </div>
 
@@ -103,9 +123,11 @@ export const HelpButton: React.FC = () => {
               <Title level={4}>🎵 Audio Playback</Title>
               <List size="small">
                 <List.Item>• Hiển thị waveform đồ họa (WaveSurfer.js)</List.Item>
-                <List.Item>• Controls: Play/Pause, Skip ±10s, Volume, Zoom In/ Zoom Out</List.Item>
-                <List.Item>• <strong>Double-click</strong> vào waveform → seek đến vị trí</List.Item>
-                <List.Item>• <strong>Chuột phải</strong> → chèn timestamp tại vị trí đang nghe</List.Item>
+                <List.Item>• Controls: Play/Pause, Skip ±10s, Volume, Zoom In/Zoom Out</List.Item>
+                <List.Item>• <strong>Double-click waveform</strong> → seek đến vị trí</List.Item>
+                <List.Item>• <strong>Chuột phải → 2 options:</strong></List.Item>
+                <List.Item style={{ paddingLeft: '32px' }}>  - "Chèn timestamp" → thêm dấu thời gian vào Notes</List.Item>
+                <List.Item style={{ paddingLeft: '32px' }}>  - "Chuyển đổi giọng nói bằng Gemini AI" → transcribe toàn bộ audio</List.Item>
               </List>
             </div>
 
@@ -154,27 +176,26 @@ export const HelpButton: React.FC = () => {
               <Title level={4}>Scenario 1: Ghi âm cuộc họp mới với Speech-to-Text</Title>
               <List>
                 <List.Item>1. Click <Tag color="blue">Chọn thư mục</Tag> → chọn thư mục lưu file (Chrome/Edge)</List.Item>
-                <List.Item>2. Điền thông tin cuộc họp (Tên cuộc họp, Ngày, Giờ, Địa điểm, Chủ trì, Thành viên tham dự)</List.Item>
-                <List.Item>3. <strong>(TÙY CHỌN)</strong> Cấu hình Speech-to-Text: 
+                <List.Item>2. Điền thông tin cuộc họp</List.Item>
+                <List.Item>3. <strong>(TÙY CHỌN)</strong> Cấu hình: 
                   <List size="small" style={{marginTop: 8}}>
                     <List.Item>• Click <Tag color="orange">⚙️ Cấu hình Speech-to-Text</Tag></List.Item>
-                    <List.Item>• Chọn ngôn ngữ phù hợp</List.Item>
-                    <List.Item>• Nhập Gemini API Key (nếu muốn dùng AI refinement)</List.Item>
-                    <List.Item>• Chọn Gemini Model (gemini-2.5-flash được khuyên dùng)</List.Item>
-                    <List.Item>• Bật <Tag color="cyan">Tự động chuyển giọng nói thành văn bản</Tag></List.Item>
+                    <List.Item>• Chọn ngôn ngữ cho Web Speech API</List.Item>
+                    <List.Item>• Nhập Gemini API Key (nếu dùng Gemini transcription hoặc AI refinement)</List.Item>
+                    <List.Item>• Chọn Gemini Model (khuyên dùng: gemini-2.5-flash)</List.Item>
+                    <List.Item>• Cấu hình giới hạn: thời lượng (60 phút), file size (20 MB), delay (5 giây)</List.Item>
+                    <List.Item>• Bật <Tag color="cyan">Tự động chuyển giọng nói thành văn bản</Tag> cho live transcription</List.Item>
                   </List>
                 </List.Item>
                 <List.Item>4. Click <Tag color="red">Ghi âm</Tag> → bắt đầu ghi âm</List.Item>
-                <List.Item>5. Gõ notes thủ công hoặc để Speech-to-Text tự động ghi nhận, nhấn <Tag>ENTER</Tag> để chèn dòng mới</List.Item>
-                <List.Item>6. <strong>(TÙY CHỌN)</strong> Xem kết quả Speech-to-Text trong panel "Kết quả chuyển đổi giọng nói sang văn bản":
+                <List.Item>5. Gõ notes hoặc để Web Speech API tự động ghi nhận</List.Item>
+                <List.Item>6. <strong>(TÙY CHỌN)</strong> Xử lý transcription:
                   <List size="small" style={{marginTop: 8}}>
-                    <List.Item>• <strong>Double-click timestamp</strong> → seek audio</List.Item>
-                    <List.Item>• <strong>Double-click nội dung</strong> → chỉnh sửa hoặc xóa</List.Item>
-                    <List.Item>• Click <Tag color="purple">✨ Chuẩn hóa bằng AI</Tag> để cải thiện văn bản (nếu đã cấu hình)</List.Item>
+                    <List.Item>• <strong>Double-click</strong> để chỉnh sửa/xóa đoạn</List.Item>
+                    <List.Item>• Click <Tag color="purple">✨ Chuẩn hóa bằng AI</Tag> → chọn có dùng raw data hay không</List.Item>
                   </List>
                 </List.Item>
-                <List.Item>7. Click <Tag>Dừng</Tag> → files tự động lưu (bao gồm transcription.json và rawTranscripts.json)</List.Item>
-                <List.Item>8. <strong>(TÙY CHỌN)</strong> Dùng chức năng Translate của trình duyệt để chuyển đổi kết quả sang ngôn ngữ khác</List.Item>
+                <List.Item>7. Click <Tag>Dừng</Tag> → files tự động lưu</List.Item>
               </List>
             </div>
 
@@ -195,10 +216,26 @@ export const HelpButton: React.FC = () => {
             <div>
               <Title level={4}>Scenario 3: Tải dự án đã lưu để chỉnh sửa</Title>
               <List>
-                <List.Item>1. Click <Tag color="purple">Tải dự án đã lưu</Tag> → chọn Thư mục lưu dự án cũ</List.Item>
+                <List.Item>1. Click <Tag color="purple">Tải dự án đã lưu</Tag> → chọn thư mục dự án cũ</List.Item>
                 <List.Item>2. Dữ liệu tự động load lên giao diện</List.Item>
                 <List.Item>3. Chỉnh sửa ghi chú/thông tin cuộc họp</List.Item>
                 <List.Item>4. Click <Tag color="green">Lưu thay đổi</Tag> → tạo version mới</List.Item>
+              </List>
+            </div>
+
+            <Divider style={{ margin: '12px 0' }} />
+
+            <div>
+              <Title level={4}>Scenario 4: Chuyển đổi file audio sang text với Gemini AI</Title>
+              <List>
+                <List.Item>1. Tải project hoặc ghi âm mới</List.Item>
+                <List.Item>2. Đảm bảo đã cấu hình Gemini API Key</List.Item>
+                <List.Item>3. Chuột phải vào waveform → "Chuyển đổi giọng nói bằng Gemini AI"</List.Item>
+                <List.Item>4. Xác nhận thông tin (model, file size, duration)</List.Item>
+                <List.Item>5. Nếu file quá lớn → chọn:</List.Item>
+                <List.Item style={{ paddingLeft: '32px' }}>  • "Chuyển đổi toàn bộ file (Tự động)" → hệ thống auto-split</List.Item>
+                <List.Item style={{ paddingLeft: '32px' }}>  • "Chọn đoạn thủ công" → transcribe một phần</List.Item>
+                <List.Item>6. Đợi xử lý → kết quả hiển thị trong panel Transcription</List.Item>
               </List>
             </div>
 
@@ -225,7 +262,13 @@ export const HelpButton: React.FC = () => {
               <strong>Click đúp chuột vào waveform</strong> → Tua đến vị trí tương ứng
             </List.Item>
             <List.Item>
-              <strong>Click phải chuột vào waveform</strong> → Chèn dòng mới (Ghi chép thủ công) kèm nhãn thời gian tại vị trí của thanh ghi âm (màu đỏ)
+              <strong>Click phải chuột vào waveform</strong> → Menu với 2 options:
+            </List.Item>
+            <List.Item style={{ paddingLeft: '32px' }}>
+              • <strong>"Chèn timestamp"</strong> → Thêm dấu thời gian vào Notes tại vị trí playback
+            </List.Item>
+            <List.Item style={{ paddingLeft: '32px' }}>
+              • <strong>"Chuyển đổi giọng nói bằng Gemini AI"</strong> → Transcribe toàn bộ audio file
             </List.Item>
           </List>
         </div>
