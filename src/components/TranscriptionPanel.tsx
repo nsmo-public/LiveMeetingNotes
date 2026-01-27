@@ -38,6 +38,21 @@ export const TranscriptionPanel: React.FC<Props> = ({
     }
   }, [transcriptions, editingId]);
 
+  // Auto-clear edit mode if the editing segment is removed
+  useEffect(() => {
+    if (editingId) {
+      const segmentExists = transcriptions.some(t => t.id === editingId);
+      if (!segmentExists) {
+        // Segment was deleted, clear edit state
+        setEditingId(null);
+        setEditText('');
+        setEditSpeaker('');
+        setEditStartTime('');
+        setEditAudioTimeMs(undefined);
+      }
+    }
+  }, [transcriptions, editingId]);
+
   // Auto-expand height based on content: min 100px (1/5 of 500), max 500px
   useEffect(() => {
     const updateHeight = () => {
@@ -133,11 +148,21 @@ export const TranscriptionPanel: React.FC<Props> = ({
   };
 
   const handleSaveEdit = (id: string) => {
-    if (onEditTranscription && editText.trim()) {
+    if (onEditTranscription) {
       // Convert formatted datetime back to ISO before saving
       const isoStartTime = parseDateTimeFromEdit(editStartTime);
-      // Update transcription with edited values
-      onEditTranscription(id, editText.trim(), editSpeaker.trim() || 'Person1', isoStartTime, editAudioTimeMs);
+      
+      // Always call onEditTranscription (even with empty text)
+      // Parent will handle empty text case (ask to delete segment)
+      onEditTranscription(
+        id, 
+        editText.trim(), 
+        editSpeaker.trim() || 'Person1', 
+        isoStartTime, 
+        editAudioTimeMs
+      );
+      
+      // Clear edit state
       setEditingId(null);
       setEditText('');
       setEditSpeaker('');

@@ -362,21 +362,33 @@ export const App: React.FC = () => {
   const handleEditTranscription = (id: string, newText: string, newSpeaker: string, newStartTime?: string, newAudioTimeMs?: number) => {
     // Check if user deleted all text (wants to remove segment)
     if (!newText || newText.trim() === '') {
-      const confirmed = window.confirm(
-        '⚠️ Bạn đã xóa toàn bộ nội dung.\n\n' +
-        'Bạn có muốn xóa segment này không?\n\n' +
-        '• Đồng ý: Xóa segment này khỏi danh sách\n' +
-        '• Hủy: Giữ nguyên segment (không lưu thay đổi)'
-      );
-      
-      if (confirmed) {
-        // Remove the segment
-        setTranscriptions(prev => prev.filter(item => item.id !== id));
-        setHasUnsavedChanges(true);
-        message.success('Đã xóa segment');
-        // console.log('🗑️ Transcription segment deleted:', id);
-      }
-      // If not confirmed, do nothing (keep original segment)
+      Modal.confirm({
+        title: '🗑️ Xóa segment này?',
+        icon: <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />,
+        content: (
+          <div style={{ fontSize: '14px', lineHeight: '1.6' }}>
+            <p>Bạn đã xóa toàn bộ nội dung của segment này.</p>
+            <p style={{ marginBottom: '8px' }}>Bạn muốn:</p>
+            <ul style={{ paddingLeft: '20px', margin: '0' }}>
+              <li><strong>Xóa segment:</strong> Segment này sẽ bị xóa hoàn toàn khỏi danh sách</li>
+              <li><strong>Hủy bỏ:</strong> Giữ nguyên segment gốc (không lưu thay đổi)</li>
+            </ul>
+          </div>
+        ),
+        okText: 'Xóa segment',
+        cancelText: 'Hủy bỏ',
+        okButtonProps: {
+          danger: true
+        },
+        onOk: () => {
+          // Remove the segment
+          setTranscriptions(prev => prev.filter(item => item.id !== id));
+          setHasUnsavedChanges(true);
+          message.success('✅ Đã xóa segment');
+          // console.log('🗑️ Transcription segment deleted:', id);
+        }
+        // onCancel: do nothing (keep original segment)
+      });
       return;
     }
 
@@ -678,6 +690,11 @@ export const App: React.FC = () => {
   const performAIRefinement = async () => {
     const apiKeyToUse = transcriptionConfig!.geminiApiKey || transcriptionConfig!.apiKey;
     const selectedModel = transcriptionConfig!.geminiModel;
+
+    if (!selectedModel) {
+      message.error('Model không được chọn. Vui lòng cấu hình lại.');
+      return;
+    }
 
     try {
       // Show progress dialog
