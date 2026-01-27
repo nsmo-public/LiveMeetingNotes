@@ -1054,13 +1054,36 @@ export const NotesEditor: React.FC<Props> = ({
                   }}
                   value={lineSpeakers.get(index) || ''}
                   onChange={(e) => {
+                    const oldSpeaker = lineSpeakers.get(index) || '';
+                    const newSpeaker = e.target.value;
+                    
                     const newSpeakers = new Map(lineSpeakers);
-                    if (e.target.value) {
-                      newSpeakers.set(index, e.target.value);
+                    if (newSpeaker) {
+                      newSpeakers.set(index, newSpeaker);
                     } else {
                       newSpeakers.delete(index);
                     }
                     setLineSpeakers(newSpeakers);
+                    
+                    // Auto-create timestamp: Only in Live Mode when speaker goes from empty to having content
+                    if (isLiveMode) {
+                      const oldSpeakerEmpty = oldSpeaker.trim().length === 0;
+                      const newSpeakerHasContent = newSpeaker.trim().length > 0;
+                      
+                      if (oldSpeakerEmpty && newSpeakerHasContent && !lineTimestamps.has(index)) {
+                        // Save datetime with delay offset (người gõ note thường chậm hơn người nói)
+                        const currentDatetime = Date.now() - (timestampDelay * 1000);
+                        
+                        const newLineTimestamps = new Map(lineTimestamps);
+                        newLineTimestamps.set(index, currentDatetime);
+                        setLineTimestamps(newLineTimestamps);
+                        
+                        // Sync to parent
+                        const BLOCK_SEPARATOR = '§§§';
+                        const lines = notes.split(BLOCK_SEPARATOR);
+                        syncToParentTimestampMap(lines, newLineTimestamps);
+                      }
+                    }
                   }}
                   onKeyDown={(e) => handleSpeakerKeyDown(index, e)}
                   placeholder="Người nói"
@@ -1110,7 +1133,7 @@ export const NotesEditor: React.FC<Props> = ({
                   fontSize: '14px',
                   lineHeight: '1.6',
                   border: 'none',
-                  backgroundColor: isSelected ? 'rgba(30, 30, 30, 0.9)' : 'transparent',
+                  backgroundColor: isSelected ? 'rgba(0, 0, 0, 0.7)' : '#1e1e1e',
                   resize: 'none',
                   padding: '8px'
                 }}

@@ -19,10 +19,11 @@ export class WordExporter {
   static async createWordBlob(
     meetingInfo: MeetingInfo,
     notesText: string,
-    transcriptions?: TranscriptionResult[]
+    transcriptions?: TranscriptionResult[],
+    speakersMap?: Map<number, string>
   ): Promise<Blob> {
     // Text is already clean (no timestamps embedded)
-    const paragraphs = this.parseTextToParagraphs(notesText);
+    const paragraphs = this.parseTextToParagraphs(notesText, speakersMap);
     
     console.log('transcriptions in createWordBlob:', transcriptions);
 
@@ -126,15 +127,16 @@ export class WordExporter {
     meetingInfo: MeetingInfo,
     notesText: string,
     fileName: string,
-    transcriptions?: TranscriptionResult[]
+    transcriptions?: TranscriptionResult[],
+    speakersMap?: Map<number, string>
   ): Promise<void> {
     console.log('transcriptions:', transcriptions);
     const fileNameWithTimestamp = addTimestampPrefix(fileName);
-    const blob = await this.createWordBlob(meetingInfo, notesText, transcriptions);
+    const blob = await this.createWordBlob(meetingInfo, notesText, transcriptions, speakersMap);
     saveAs(blob, fileNameWithTimestamp);
   }
   
-  private static parseTextToParagraphs(text: string): Paragraph[] {
+  private static parseTextToParagraphs(text: string, speakersMap?: Map<number, string>): Paragraph[] {
     const paragraphs: Paragraph[] = [];
     
     // BLOCK_SEPARATOR is used in NotesEditor to separate lines
@@ -143,34 +145,56 @@ export class WordExporter {
     // First split by BLOCK_SEPARATOR to get individual notes/lines
     let lines = text.split(BLOCK_SEPARATOR);
     
-    // Then split each line by newlines for multi-line content
-    const allLines: string[] = [];
-    lines.forEach((line) => {
-      const subLines = line.split('\n');
-      allLines.push(...subLines);
-    });
-    
-    allLines.forEach((line) => {
+    // Process each line with its speaker (if available)
+    lines.forEach((line, lineIndex) => {
       const trimmed = line.trim();
-      if (trimmed) {
-        paragraphs.push(
-          new Paragraph({
-            children: [
-              new TextRun({ text: trimmed, size: 24 })
-            ],
-            spacing: { after: 100 }
-          })
-        );
+      const speaker = speakersMap?.get(lineIndex);
+      
+      // If speaker exists, prepend it in bold
+      if (speaker && speaker.trim()) {
+        if (trimmed) {
+          paragraphs.push(
+            new Paragraph({
+              children: [
+                new TextRun({ text: `${speaker.trim()}: `, bold: true, size: 24 }),
+                new TextRun({ text: trimmed, size: 24 })
+              ],
+              spacing: { after: 100 }
+            })
+          );
+        } else {
+          // Empty line with just speaker name
+          paragraphs.push(
+            new Paragraph({
+              children: [
+                new TextRun({ text: `${speaker.trim()}: `, bold: true, size: 24 })
+              ],
+              spacing: { after: 100 }
+            })
+          );
+        }
       } else {
-        // Empty line for spacing
-        paragraphs.push(
-          new Paragraph({
-            children: [
-              new TextRun({ text: '', size: 24 })
-            ],
-            spacing: { after: 50 }
-          })
-        );
+        // No speaker, just text
+        if (trimmed) {
+          paragraphs.push(
+            new Paragraph({
+              children: [
+                new TextRun({ text: trimmed, size: 24 })
+              ],
+              spacing: { after: 100 }
+            })
+          );
+        } else {
+          // Empty line for spacing
+          paragraphs.push(
+            new Paragraph({
+              children: [
+                new TextRun({ text: '', size: 24 })
+              ],
+              spacing: { after: 50 }
+            })
+          );
+        }
       }
     });
     

@@ -369,7 +369,7 @@ export const RecordingControls: React.FC<Props> = ({
 
         // Export Word document to same folder
         const finalTranscriptions = transcriptions?.filter(t => t.isFinal) || [];
-        const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes, finalTranscriptions);
+        const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes, finalTranscriptions, speakersMap);
         await fileManager.saveWordFile(wordBlob, `${projectName}.docx`, undefined, true);
         // console.log('✓ Saved Word document');
         
@@ -443,7 +443,8 @@ export const RecordingControls: React.FC<Props> = ({
           meetingInfo,
           notes,
           `${projectName}.docx`,
-          finalTranscriptions
+          finalTranscriptions,
+          speakersMap
         );
 
         message.info('Files downloaded. Please save them to your meeting notes folder.');
@@ -489,7 +490,8 @@ export const RecordingControls: React.FC<Props> = ({
           meetingInfo,
           notes,
           `${projectName}.docx`,
-          finalTranscriptions
+          finalTranscriptions,
+          speakersMap
         );
         
         message.info('Tệp đã được tải xuống. Vui lòng lưu vào thư mục ghi chú cuộc họp của bạn.');
@@ -574,7 +576,7 @@ export const RecordingControls: React.FC<Props> = ({
       
       // Export Word document
       const finalTranscriptions = transcriptions?.filter(t => t.isFinal) || [];
-      const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes, finalTranscriptions);
+      const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes, finalTranscriptions, speakersMap);
       await fileManager.saveWordFile(wordBlob, `${projectName}.docx`, undefined, true);
       // console.log('✓ Saved Word document');
       
@@ -755,7 +757,7 @@ export const RecordingControls: React.FC<Props> = ({
 
           // Export Word document
           const finalTranscriptions = transcriptions?.filter(t => t.isFinal) || []; // Lọc các kết quả isFinal
-          const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes, finalTranscriptions);
+          const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes, finalTranscriptions, speakersMap);
           await fileManager.saveWordFile(wordBlob, `${newProjectName}.docx`, undefined, true);
           // console.log('✓ Saved Word document');
           
@@ -827,7 +829,8 @@ export const RecordingControls: React.FC<Props> = ({
           meetingInfo,
           notes,
           `${newProjectName}.docx`,
-          finalTranscriptions
+          finalTranscriptions,
+          speakersMap
         );
 
         message.info('Updated files downloaded as new version.');
@@ -1192,7 +1195,7 @@ export const RecordingControls: React.FC<Props> = ({
               <Tooltip title={isRecording ? 'Bật/tắt chuyển đổi giọng nói sang văn bản tự động' : 'Chỉ khả dụng khi đang ghi âm'}>
                 <Space>
                   <SoundOutlined style={{ fontSize: '18px', color: autoTranscribe ? '#52c41a' : '#999' }} />
-                  <span style={{ fontSize: '14px' }}>Tự động chuyển giọng nói thành văn bản:</span>
+                  <span style={{ fontSize: '14px' }}>Tự động chuyển 🎤 → 🔠:</span>
                   <Switch
                     checked={autoTranscribe}
                     onChange={(checked) => {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, Select, Button, Space, App, Collapse, Spin } from 'antd';
-import { SettingOutlined, SaveOutlined, DeleteOutlined, InfoCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { SettingOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { SpeechToTextConfig, GeminiModel } from '../types/types';
 import { SpeechToTextService } from '../services/speechToText';
 import { AIRefinementService } from '../services/aiRefinement';
