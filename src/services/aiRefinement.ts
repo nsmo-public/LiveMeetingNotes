@@ -681,7 +681,8 @@ Lưu ý:
     apiKey: string,
     audioBlob: Blob,
     modelName: string, // e.g., "models/gemini-1.5-flash" or "models/gemini-2.0-flash-exp"
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    skipSizeCheck: boolean = false // Skip size check when called from auto-split flow
   ): Promise<TranscriptionResult[]> {
     if (!apiKey || apiKey.trim().length === 0) {
       throw new Error('Gemini API Key is required');
@@ -692,19 +693,22 @@ Lưu ý:
     }
 
     // Validate file size (limit depends on API tier)
-    const { maxSizeMB, tier } = this.getFileSizeLimit();
-    const MAX_FILE_SIZE = maxSizeMB * 1024 * 1024;
-    const fileSizeMB = audioBlob.size / (1024 * 1024);
-    
-    console.log(`📊 File size: ${fileSizeMB.toFixed(2)} MB (Limit: ${maxSizeMB} MB, Tier: ${tier})`);
-    
-    if (audioBlob.size > MAX_FILE_SIZE) {
-      // Return special error object with file size info
-      const error: any = new Error('FILE_TOO_LARGE');
-      error.fileSizeMB = fileSizeMB;
-      error.maxSizeMB = maxSizeMB;
-      error.tier = tier;
-      throw error;
+    // Skip this check when called from transcribeEntireAudioWithGemini (already split into valid chunks)
+    if (!skipSizeCheck) {
+      const { maxSizeMB, tier } = this.getFileSizeLimit();
+      const MAX_FILE_SIZE = maxSizeMB * 1024 * 1024;
+      const fileSizeMB = audioBlob.size / (1024 * 1024);
+      
+      console.log(`📊 File size: ${fileSizeMB.toFixed(2)} MB (Limit: ${maxSizeMB} MB, Tier: ${tier})`);
+      
+      if (audioBlob.size > MAX_FILE_SIZE) {
+        // Return special error object with file size info
+        const error: any = new Error('FILE_TOO_LARGE');
+        error.fileSizeMB = fileSizeMB;
+        error.maxSizeMB = maxSizeMB;
+        error.tier = tier;
+        throw error;
+      }
     }
 
     if (onProgress) onProgress(10);
@@ -718,19 +722,26 @@ Lưu ý:
         console.log('🔄 Converting WebM to WAV...');
         if (onProgress) onProgress(15);
         
+        const originalSizeMB = audioBlob.size / (1024 * 1024);
+        
         // Convert with lower sample rate if file is large
         const targetSampleRate = audioBlob.size > 10 * 1024 * 1024 ? 16000 : 44100;
         processedAudio = await this.convertToWav(audioBlob, targetSampleRate);
         
         const newSizeMB = processedAudio.size / (1024 * 1024);
-        console.log(`✅ Converted: ${fileSizeMB.toFixed(2)}MB → ${newSizeMB.toFixed(2)}MB`);
+        console.log(`✅ Converted: ${originalSizeMB.toFixed(2)}MB → ${newSizeMB.toFixed(2)}MB`);
         
-        // Check again after conversion
-        if (processedAudio.size > MAX_FILE_SIZE) {
-          throw new Error(
-            `❌ Sau chuyển đổi, file vẫn quá lớn: ${newSizeMB.toFixed(2)} MB\n\n` +
-            `Vui lòng giảm thời lượng ghi âm hoặc giảm chất lượng.`
-          );
+        // Check again after conversion (only if not skipping size check)
+        if (!skipSizeCheck) {
+          const { maxSizeMB } = this.getFileSizeLimit();
+          const MAX_FILE_SIZE = maxSizeMB * 1024 * 1024;
+          
+          if (processedAudio.size > MAX_FILE_SIZE) {
+            throw new Error(
+              `❌ Sau chuyển đổi, file vẫn quá lớn: ${newSizeMB.toFixed(2)} MB\n\n` +
+              `Vui lòng giảm thời lượng ghi âm hoặc giảm chất lượng.`
+            );
+          }
         }
         
         if (onProgress) onProgress(25);
@@ -942,8 +953,9 @@ Lưu ý:
   }
   /**
    * Split audio blob into chunks for batch processing
-   * Automatically calculates chunk duration to keep each chunk under size limit
-   * @param audioBlob - Original audio blob
+   * IMPORTANT: Should receive WAV blob (already converted), not original WebM
+   * Calculates chunk duration to keep each chunk under size limit
+   * @param audioBlob - Audio blob (preferably WAV for accurate size calculation)
    * @param maxChunkSizeMB - Maximum chunk size in MB (default: 20MB for free tier)
    * @returns Promise<Array> - Array of { blob, startTimeMs, endTimeMs }
    */
@@ -1069,9 +1081,26 @@ Lưu ý:
   ): Promise<TranscriptionResult[]> {
     const { maxSizeMB } = this.getFileSizeLimit();
 
-    // Split audio into chunks
-    if (onProgress) onProgress(5, 'Đang phân tích và chia file âm thanh...');
-    const chunks = await this.splitAudioIntoChunks(audioBlob, maxSizeMB);
+    // CRITICAL: Convert to WAV first, THEN split based on WAV size
+    // Because Gemini calculates size based on WAV, not original WebM
+    if (onProgress) onProgress(3, 'Đang chuyển đổi sang định dạng WAV...');
+    
+    let wavBlob = audioBlob;
+    const needsConversion = audioBlob.type === 'audio/webm' || audioBlob.type === 'video/webm';
+    
+    if (needsConversion) {
+      // Convert with lower sample rate for smaller file size
+      const targetSampleRate = 16000; // Lower sample rate = smaller file
+      wavBlob = await this.convertToWav(audioBlob, targetSampleRate);
+      
+      const originalSizeMB = audioBlob.size / (1024 * 1024);
+      const wavSizeMB = wavBlob.size / (1024 * 1024);
+      console.log(`🔄 Converted: ${originalSizeMB.toFixed(2)}MB (WebM) → ${wavSizeMB.toFixed(2)}MB (WAV)`);
+    }
+
+    // Now split the WAV file into chunks based on actual WAV size
+    if (onProgress) onProgress(8, 'Đang phân tích và chia file WAV...');
+    const chunks = await this.splitAudioIntoChunks(wavBlob, maxSizeMB);
 
     if (onProgress) onProgress(10, `Đã chia thành ${chunks.length} phần. Bắt đầu chuyển đổi...`);
 
@@ -1089,7 +1118,7 @@ Lưu ý:
       }
 
       try {
-        // Transcribe this chunk
+        // Transcribe this chunk (skip size check - already validated and split)
         const results = await this.transcribeAudioWithGemini(
           apiKey,
           chunk.blob,
@@ -1099,7 +1128,8 @@ Lưu ý:
               const totalProgress = chunkProgress + (subProgress / chunks.length) * 0.8;
               onProgress(totalProgress, `Phần ${i + 1}/${chunks.length}: ${subProgress.toFixed(0)}%`);
             }
-          }
+          },
+          true // skipSizeCheck = true (chunks already validated)
         );
 
         // Adjust timestamps for this chunk

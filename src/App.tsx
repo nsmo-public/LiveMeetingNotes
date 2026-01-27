@@ -63,9 +63,18 @@ export const App: React.FC = () => {
     if (savedConfig) {
       setTranscriptionConfig(savedConfig);
       speechToTextService.initialize(savedConfig);
+      // Expose config to window for AudioPlayer access
+      (window as any).speechToTextConfig = savedConfig;
       // console.log('🎤 Speech-to-Text config loaded');
     }
   }, []);
+  
+  // Update window.speechToTextConfig when transcriptionConfig changes
+  useEffect(() => {
+    if (transcriptionConfig) {
+      (window as any).speechToTextConfig = transcriptionConfig;
+    }
+  }, [transcriptionConfig]);
   
   // Monitor online/offline status
   useEffect(() => {
@@ -656,11 +665,23 @@ export const App: React.FC = () => {
         modelName: string;
       }>;
 
-      const { apiKey, modelName } = customEvent.detail;
-
       if (!audioBlob) {
         message.error('Chưa có audio để chuyển đổi');
         return;
+      }
+
+      // Get config from event detail or settings
+      let apiKey: string | undefined;
+      let modelName: string | undefined;
+      
+      if (customEvent.detail) {
+        apiKey = customEvent.detail.apiKey;
+        modelName = customEvent.detail.modelName;
+      } else {
+        // Fallback to getting from settings
+        const config = speechToTextService.getConfig();
+        apiKey = config?.geminiApiKey;
+        modelName = config?.geminiModel;
       }
 
       // Check if API key is provided

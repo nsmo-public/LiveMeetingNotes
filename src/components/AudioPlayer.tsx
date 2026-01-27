@@ -214,7 +214,19 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ audioBlob, trans
         {
           label: '🤖 Chuyển đổi giọng nói sang văn bản bằng Gemini AI',
           action: () => {
-            window.dispatchEvent(new CustomEvent('transcribe-audio'));
+            // Get current config from settings
+            const config = (window as any).speechToTextConfig;
+            if (config && config.geminiApiKey && config.geminiModel) {
+              window.dispatchEvent(new CustomEvent('transcribe-audio', {
+                detail: {
+                  apiKey: config.geminiApiKey,
+                  modelName: config.geminiModel
+                }
+              }));
+            } else {
+              // If no config, dispatch without detail to show settings modal
+              window.dispatchEvent(new CustomEvent('transcribe-audio'));
+            }
           }
         }
       ];
