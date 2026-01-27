@@ -329,6 +329,11 @@ export const App: React.FC = () => {
       return;
     }
 
+    // Get config values with defaults
+    const maxFileSizeMB = config.maxFileSizeMB || 20;
+    const requestDelaySeconds = config.requestDelaySeconds || 5;
+    const maxDurationMinutes = config.maxAudioDurationMinutes || 60;
+
     let progressModal: any = null;
     let currentProgress = 0;
     let currentMessage = '';
@@ -381,14 +386,14 @@ export const App: React.FC = () => {
             <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
               💡 <strong>Lưu ý:</strong><br />
               • Hệ thống đang tự động chia file và xử lý từng phần<br />
-              • Có delay 5s giữa các phần để tuân thủ rate limit<br />
+              • Có delay {requestDelaySeconds}s giữa các phần để tuân thủ rate limit<br />
               • Vui lòng không đóng trình duyệt
             </div>
           </div>
         )
       });
 
-      // Start transcription with progress callback
+      // Start transcription with progress callback and config values
       const results = await AIRefinementService.transcribeEntireAudioWithGemini(
         config.geminiApiKey,
         audioBlob,
@@ -407,7 +412,10 @@ export const App: React.FC = () => {
           if (progressMessage) {
             progressMessage.textContent = msg;
           }
-        }
+        },
+        maxFileSizeMB,
+        requestDelaySeconds,
+        maxDurationMinutes
       );
 
       progressModal.destroy();
@@ -516,10 +524,14 @@ export const App: React.FC = () => {
         const hideProcessing = message.loading('🤖 Đang chuyển đổi đoạn audio...', 0);
 
         try {
+          const maxFileSizeMB = config.maxFileSizeMB || 20;
           const segmentResults = await AIRefinementService.transcribeAudioWithGemini(
             config.geminiApiKey!,
             segmentBlob,
-            config.geminiModel!
+            config.geminiModel!,
+            undefined,
+            false,
+            maxFileSizeMB
           );
 
           // Adjust timestamps to match original audio
@@ -801,6 +813,8 @@ export const App: React.FC = () => {
         cancelButtonProps: { size: 'large', style: { height: '40px' } },
         onOk: async () => {
           try {
+            const config = speechToTextService.getConfig();
+            const maxFileSizeMB = config?.maxFileSizeMB || 20;
             const results = await AIRefinementService.transcribeAudioWithGemini(
               apiKey,
               audioBlob,
@@ -808,7 +822,9 @@ export const App: React.FC = () => {
               (progress) => {
                 // Update progress (could enhance with progress modal later)
                 console.log(`Transcription progress: ${progress.toFixed(0)}%`);
-              }
+              },
+              false,
+              maxFileSizeMB
             );
 
             // Show merge/replace options modal
@@ -1003,11 +1019,14 @@ export const App: React.FC = () => {
 
             // Use Gemini API to transcribe audio
             try {
+              const maxFileSizeMB = config.maxFileSizeMB || 20;
               const results = await AIRefinementService.transcribeAudioWithGemini(
                 config.geminiApiKey!,
                 audioBlob,
                 config.geminiModel!,
-                updateProgress
+                updateProgress,
+                false,
+                maxFileSizeMB
               );
 
               // Add results to transcriptions

@@ -663,17 +663,6 @@ Lưu ý:
   }
 
   /**
-   * Get file size limit based on API tier
-   * Free tier: 20MB, Paid tier: Could be higher (check with Gemini docs)
-   * TODO: Add ability to configure this in Settings for paid users
-   */
-  private static getFileSizeLimit(): { maxSizeMB: number; tier: string } {
-    // For now, use conservative 20MB limit (Gemini free tier)
-    // Future: Detect paid tier or allow user to configure in Settings
-    return { maxSizeMB: 20, tier: 'free' };
-  }
-
-  /**
    * Transcribe audio file using Gemini Multimodal API
    * Gemini 1.5+ models can directly process audio files (mp3, wav, aac, webm, etc.)
    */
@@ -682,7 +671,8 @@ Lưu ý:
     audioBlob: Blob,
     modelName: string, // e.g., "models/gemini-1.5-flash" or "models/gemini-2.0-flash-exp"
     onProgress?: (progress: number) => void,
-    skipSizeCheck: boolean = false // Skip size check when called from auto-split flow
+    skipSizeCheck: boolean = false, // Skip size check when called from auto-split flow
+    maxFileSizeMB: number = 20 // Maximum file size in MB (from config)
   ): Promise<TranscriptionResult[]> {
     if (!apiKey || apiKey.trim().length === 0) {
       throw new Error('Gemini API Key is required');
@@ -692,21 +682,19 @@ Lưu ý:
       throw new Error('Please select a Gemini model in Settings');
     }
 
-    // Validate file size (limit depends on API tier)
+    // Validate file size (limit from config)
     // Skip this check when called from transcribeEntireAudioWithGemini (already split into valid chunks)
     if (!skipSizeCheck) {
-      const { maxSizeMB, tier } = this.getFileSizeLimit();
-      const MAX_FILE_SIZE = maxSizeMB * 1024 * 1024;
+      const MAX_FILE_SIZE = maxFileSizeMB * 1024 * 1024;
       const fileSizeMB = audioBlob.size / (1024 * 1024);
       
-      console.log(`📊 File size: ${fileSizeMB.toFixed(2)} MB (Limit: ${maxSizeMB} MB, Tier: ${tier})`);
+      console.log(`📊 File size: ${fileSizeMB.toFixed(2)} MB (Limit: ${maxFileSizeMB} MB)`);
       
       if (audioBlob.size > MAX_FILE_SIZE) {
         // Return special error object with file size info
         const error: any = new Error('FILE_TOO_LARGE');
         error.fileSizeMB = fileSizeMB;
-        error.maxSizeMB = maxSizeMB;
-        error.tier = tier;
+        error.maxSizeMB = maxFileSizeMB;
         throw error;
       }
     }
@@ -733,8 +721,7 @@ Lưu ý:
         
         // Check again after conversion (only if not skipping size check)
         if (!skipSizeCheck) {
-          const { maxSizeMB } = this.getFileSizeLimit();
-          const MAX_FILE_SIZE = maxSizeMB * 1024 * 1024;
+          const MAX_FILE_SIZE = maxFileSizeMB * 1024 * 1024;
           
           if (processedAudio.size > MAX_FILE_SIZE) {
             throw new Error(
@@ -952,16 +939,17 @@ Lưu ý:
     return result;
   }
   /**
-   * Split audio blob into chunks for batch processing
-   * IMPORTANT: Should receive WAV blob (already converted), not original WebM
-   * Calculates chunk duration to keep each chunk under size limit
-   * @param audioBlob - Audio blob (preferably WAV for accurate size calculation)
-   * @param maxChunkSizeMB - Maximum chunk size in MB (default: 20MB for free tier)
-   * @returns Promise<Array> - Array of { blob, startTimeMs, endTimeMs }
+   * Split audio into chunks based on size AND duration limits
+   * Each chunk must satisfy: size <= maxChunkSizeMB AND duration <= maxDurationMinutes
+   * @param audioBlob - Audio blob to split (should be WAV format)
+   * @param maxChunkSizeMB - Maximum size per chunk in MB (default: 20)
+   * @param maxDurationMinutes - Maximum duration per chunk in minutes (default: 60)
+   * @returns Array of chunks with blob, startTimeMs, endTimeMs
    */
   public static async splitAudioIntoChunks(
     audioBlob: Blob,
-    maxChunkSizeMB: number = 20
+    maxChunkSizeMB: number = 20,
+    maxDurationMinutes: number = 60
   ): Promise<{ blob: Blob; startTimeMs: number; endTimeMs: number }[]> {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     const reader = new FileReader();
@@ -973,13 +961,25 @@ Lưu ý:
           const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
           const totalDurationMs = audioBuffer.duration * 1000;
+          const totalDurationMinutes = totalDurationMs / (60 * 1000);
           const totalSizeMB = audioBlob.size / (1024 * 1024);
 
-          // Calculate number of chunks needed
-          const numberOfChunks = Math.ceil(totalSizeMB / maxChunkSizeMB);
+          // Calculate number of chunks needed based on BOTH constraints
+          // 1. Chunks needed based on size
+          const chunksBySizeCount = Math.ceil(totalSizeMB / maxChunkSizeMB);
+          
+          // 2. Chunks needed based on duration
+          const chunksByDurationCount = Math.ceil(totalDurationMinutes / maxDurationMinutes);
+          
+          // Take the MAXIMUM to satisfy BOTH constraints
+          const numberOfChunks = Math.max(chunksBySizeCount, chunksByDurationCount);
           const chunkDurationMs = totalDurationMs / numberOfChunks;
+          const chunkDurationMinutes = chunkDurationMs / (60 * 1000);
 
-          console.log(`📦 Splitting audio: ${totalSizeMB.toFixed(2)}MB into ${numberOfChunks} chunks`);
+          console.log(`📏 Audio info: ${totalSizeMB.toFixed(2)}MB, ${totalDurationMinutes.toFixed(1)} minutes`);
+          console.log(`📊 Constraints: maxSize=${maxChunkSizeMB}MB, maxDuration=${maxDurationMinutes} minutes`);
+          console.log(`📦 Splitting into ${numberOfChunks} chunks (by size: ${chunksBySizeCount}, by duration: ${chunksByDurationCount})`);
+          console.log(`⏱️ Each chunk: ~${chunkDurationMinutes.toFixed(1)} minutes, ~${(totalSizeMB / numberOfChunks).toFixed(2)}MB`);
 
           const chunks: { blob: Blob; startTimeMs: number; endTimeMs: number }[] = [];
 
@@ -1066,20 +1066,26 @@ Lưu ý:
 
   /**
    * Process entire audio file by automatically splitting into chunks
-   * Respects Gemini API limits: 15 req/min, 1500 req/day, 20MB per file
+   * Respects Gemini API limits: 15 req/min, 1500 req/day, configurable MB per file and duration
    * @param apiKey - Gemini API key
-   * @param audioBlob - Original audio blob (can be > 20MB)
+   * @param audioBlob - Original audio blob (can be > configurable limit)
    * @param modelName - Gemini model name
    * @param onProgress - Progress callback (progress: number, message: string)
+   * @param maxFileSizeMB - Maximum file size in MB (from config, default: 20)
+   * @param requestDelaySeconds - Delay between requests in seconds (from config, default: 5)
+   * @param maxDurationMinutes - Maximum duration per chunk in minutes (from config, default: 60)
    * @returns Promise<TranscriptionResult[]> - All transcription results, sorted by timestamp
    */
   public static async transcribeEntireAudioWithGemini(
     apiKey: string,
     audioBlob: Blob,
     modelName: string,
-    onProgress?: (progress: number, message: string) => void
+    onProgress?: (progress: number, message: string) => void,
+    maxFileSizeMB: number = 20,
+    requestDelaySeconds: number = 5,
+    maxDurationMinutes: number = 60
   ): Promise<TranscriptionResult[]> {
-    const { maxSizeMB } = this.getFileSizeLimit();
+    const maxSizeMB = maxFileSizeMB;
 
     // CRITICAL: Convert to WAV first, THEN split based on WAV size
     // Because Gemini calculates size based on WAV, not original WebM
@@ -1098,9 +1104,9 @@ Lưu ý:
       console.log(`🔄 Converted: ${originalSizeMB.toFixed(2)}MB (WebM) → ${wavSizeMB.toFixed(2)}MB (WAV)`);
     }
 
-    // Now split the WAV file into chunks based on actual WAV size
+    // Now split the WAV file into chunks based on actual WAV size AND duration
     if (onProgress) onProgress(8, 'Đang phân tích và chia file WAV...');
-    const chunks = await this.splitAudioIntoChunks(wavBlob, maxSizeMB);
+    const chunks = await this.splitAudioIntoChunks(wavBlob, maxSizeMB, maxDurationMinutes);
 
     if (onProgress) onProgress(10, `Đã chia thành ${chunks.length} phần. Bắt đầu chuyển đổi...`);
 
@@ -1129,7 +1135,8 @@ Lưu ý:
               onProgress(totalProgress, `Phần ${i + 1}/${chunks.length}: ${subProgress.toFixed(0)}%`);
             }
           },
-          true // skipSizeCheck = true (chunks already validated)
+          true, // skipSizeCheck = true (chunks already validated)
+          maxSizeMB // Pass maxFileSizeMB to child call
         );
 
         // Adjust timestamps for this chunk
@@ -1138,14 +1145,13 @@ Lưu ý:
 
         // Add delay between chunks to respect rate limits (15 req/min)
         if (i < chunks.length - 1) {
-          const delaySeconds = 5; // 5 seconds = max 12 req/min (safe)
           if (onProgress) {
             onProgress(
               chunkProgress + 5,
-              `Đợi ${delaySeconds}s trước khi xử lý phần tiếp theo...`
+              `Đợi ${requestDelaySeconds}s trước khi xử lý phần tiếp theo...`
             );
           }
-          await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+          await new Promise(resolve => setTimeout(resolve, requestDelaySeconds * 1000));
         }
       } catch (error: any) {
         // Handle quota errors

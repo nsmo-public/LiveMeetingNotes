@@ -77,6 +77,11 @@ export interface SpeechToTextConfig {
   maxSpeakerCount?: number; // Maximum speakers for diarization (2-6)
   segmentTimeout?: number; // Timeout for segment completion in ms (500-2000)
   segmentMaxLength?: number; // Max characters before forcing segment (100-300)
+  
+  // Gemini API Limits Configuration
+  maxAudioDurationMinutes?: number; // Maximum audio duration in minutes (default: 60)
+  maxFileSizeMB?: number; // Maximum file size in MB (default: 20)
+  requestDelaySeconds?: number; // Delay between API requests in seconds (default: 5)
 }
 
 export interface TranscriptionResult {

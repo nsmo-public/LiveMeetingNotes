@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Select, Button, Space, App, Collapse, Spin } from 'antd';
+import { Modal, Form, Input, InputNumber, Select, Button, Space, App, Collapse, Spin } from 'antd';
 import { SettingOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { SpeechToTextConfig, GeminiModel } from '../types/types';
 import { SpeechToTextService } from '../services/speechToText';
@@ -42,7 +42,10 @@ export const TranscriptionConfig: React.FC<Props> = ({
         minSpeakerCount: 2,
         maxSpeakerCount: 6,
         segmentTimeout: 1000,
-        segmentMaxLength: 150
+        segmentMaxLength: 150,
+        maxAudioDurationMinutes: 60,
+        maxFileSizeMB: 20,
+        requestDelaySeconds: 5
       };
       
       // Merge saved config with defaults (ensures new fields have default values)
@@ -132,7 +135,12 @@ export const TranscriptionConfig: React.FC<Props> = ({
         minSpeakerCount: values.minSpeakerCount || 2,
         maxSpeakerCount: values.maxSpeakerCount || 6,
         segmentTimeout: values.segmentTimeout || 1000,
-        segmentMaxLength: values.segmentMaxLength || 150
+        segmentMaxLength: values.segmentMaxLength || 150,
+        
+        // Gemini API Limits
+        maxAudioDurationMinutes: values.maxAudioDurationMinutes || 60,
+        maxFileSizeMB: values.maxFileSizeMB || 20,
+        requestDelaySeconds: values.requestDelaySeconds || 5
       };
 
       // Validate: Speaker diarization requires API Key
@@ -446,6 +454,78 @@ export const TranscriptionConfig: React.FC<Props> = ({
                     <Select.Option value={300}>300 ký tự (dài)</Select.Option>
                   </Select>
                 </Form.Item>
+
+                <div style={{ 
+                  marginTop: 24, 
+                  padding: 16, 
+                  background: 'linear-gradient(135deg, #667eea11 0%, #764ba211 100%)',
+                  border: '2px solid #667eea',
+                  borderRadius: 8 
+                }}>
+                  <div style={{ marginBottom: 12, fontWeight: 'bold', color: '#667eea', fontSize: '14px' }}>
+                    🎯 Giới hạn Gemini API
+                  </div>
+
+                  <Form.Item
+                    label="Thời lượng audio tối đa (phút)"
+                    name="maxAudioDurationMinutes"
+                    initialValue={60}
+                    extra="Thời lượng tối đa của file audio để xử lý (mặc định: 60 phút)"
+                    rules={[{ type: 'number', min: 1, max: 999, message: 'Vui lòng nhập từ 1-999 phút' }]}
+                  >
+                    <InputNumber
+                      placeholder="Nhập thời lượng (phút)"
+                      min={1}
+                      max={999}
+                      style={{ width: '100%' }}
+                      addonAfter="phút"
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Kích thước file tối đa (MB)"
+                    name="maxFileSizeMB"
+                    initialValue={20}
+                    extra="Kích thước tối đa của mỗi file gửi lên Gemini API (mặc định: 20MB, Free tier)"
+                    rules={[{ type: 'number', min: 1, max: 100, message: 'Vui lòng nhập từ 1-100 MB' }]}
+                  >
+                    <InputNumber
+                      placeholder="Nhập kích thước (MB)"
+                      min={1}
+                      max={100}
+                      style={{ width: '100%' }}
+                      addonAfter="MB"
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Delay giữa các request (giây)"
+                    name="requestDelaySeconds"
+                    initialValue={5}
+                    extra="Thời gian chờ giữa 2 lần gửi request để tuân thủ rate limit (mặc định: 5s)"
+                    rules={[{ type: 'number', min: 1, max: 60, message: 'Vui lòng nhập từ 1-60 giây' }]}
+                  >
+                    <InputNumber
+                      placeholder="Nhập delay (giây)"
+                      min={1}
+                      max={60}
+                      style={{ width: '100%' }}
+                      addonAfter="giây"
+                    />
+                  </Form.Item>
+
+                  <div style={{ 
+                    fontSize: '11px', 
+                    color: '#fa8c16',
+                    background: '#fff7e6',
+                    padding: '8px',
+                    borderRadius: '4px',
+                    marginTop: '8px'
+                  }}>
+                    ⚠️ <strong>Lưu ý:</strong> Giới hạn này áp dụng cho tính năng "Chuyển đổi giọng nói bằng Gemini AI"<br />
+                    📊 Free tier: 15 requests/phút, 1500 requests/ngày
+                  </div>
+                </div>
               </>
             )
           }]}
