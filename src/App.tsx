@@ -101,79 +101,222 @@ export const App: React.FC = () => {
         return;
       }
 
-      const confirmed = window.confirm(
-        '🤖 This will use Gemini AI to transcribe the entire audio file.\n\n' +
-        '✨ Features:\n' +
-        '• Auto-detect speakers\n' +
-        '• Add timestamps\n' +
-        '• Clean text (remove filler words)\n\n' +
-        '⚠️ Note: This will replace existing transcription results.\n\n' +
-        'Continue?'
-      );
-      
-      if (!confirmed) return;
+      // Show professional confirmation modal
+      Modal.confirm({
+        title: (
+          <span style={{ fontSize: '18px', fontWeight: 'bold' }}>
+            🤖 Chuyển đổi giọng nói bằng Gemini AI
+          </span>
+        ),
+        icon: <ExclamationCircleOutlined style={{ color: '#667eea' }} />,
+        width: 520,
+        content: (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ 
+              padding: '16px', 
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '8px',
+              marginBottom: '16px',
+              color: 'white'
+            }}>
+              <div style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '12px' }}>
+                ✨ Tính năng nâng cao:
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '20px', lineHeight: '1.8' }}>
+                <li>🎯 Tự động nhận diện người nói</li>
+                <li>⏱️ Gắn timestamp chính xác</li>
+                <li>🧹 Làm sạch văn bản (loại bỏ từ thừa, um uh...)</li>
+                <li>✍️ Tự động thêm dấu câu</li>
+                <li>📝 Định dạng văn bản chuyên nghiệp</li>
+              </ul>
+            </div>
+            
+            <div style={{ 
+              padding: '12px 16px',
+              background: '#fff7e6',
+              border: '1px solid #ffd591',
+              borderRadius: '6px',
+              marginBottom: '12px'
+            }}>
+              <div style={{ color: '#fa8c16', fontSize: '13px', lineHeight: '1.6' }}>
+                <strong>⚠️ Lưu ý quan trọng:</strong><br />
+                • Chức năng này sẽ <strong>thay thế</strong> kết quả chuyển đổi hiện tại<br />
+                • Thời gian xử lý: ~2-5 phút cho audio 1 giờ<br />
+                • Yêu cầu kết nối internet ổn định
+              </div>
+            </div>
 
-      // console.log('🎬 Starting audio file transcription...');
-      
-      // Clear existing transcriptions
-      setTranscriptions([]);
-
-      try {
-        // Show progress notification
-        const progressDiv = document.createElement('div');
-        progressDiv.id = 'transcribe-progress';
-        progressDiv.style.cssText = `
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          background: white;
-          padding: 24px;
-          border-radius: 8px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-          z-index: 10000;
-          min-width: 300px;
-          text-align: center;
-        `;
-        progressDiv.innerHTML = `
-          <div style="font-size: 16px; font-weight: bold; margin-bottom: 12px;">🎤 Transcribing Audio...</div>
-          <div id="progress-text" style="font-size: 14px; color: #666;">Starting...</div>
-          <div style="width: 100%; height: 8px; background: #f0f0f0; border-radius: 4px; margin-top: 12px; overflow: hidden;">
-            <div id="progress-bar" style="width: 0%; height: 100%; background: #1890ff; transition: width 0.3s;"></div>
+            <div style={{ fontSize: '14px', color: '#666' }}>
+              Bạn có muốn tiếp tục?
+            </div>
           </div>
-        `;
-        document.body.appendChild(progressDiv);
+        ),
+        okText: '✅ Bắt đầu chuyển đổi',
+        cancelText: 'Hủy',
+        okButtonProps: { 
+          size: 'large',
+          style: { 
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            border: 'none',
+            height: '40px',
+            fontWeight: 'bold'
+          }
+        },
+        cancelButtonProps: { size: 'large', style: { height: '40px' } },
+        onOk: async () => {
 
-        const updateProgress = (progress: number) => {
-          const progressBar = document.getElementById('progress-bar');
-          const progressText = document.getElementById('progress-text');
-          if (progressBar) progressBar.style.width = `${progress}%`;
-          if (progressText) progressText.textContent = `${Math.floor(progress)}% complete`;
-        };
+          // console.log('🎬 Starting Gemini transcription...');
+          
+          // Clear existing transcriptions
+          setTranscriptions([]);
 
-        // Use Gemini API to transcribe audio
-        const results = await AIRefinementService.transcribeAudioWithGemini(
-          config.geminiApiKey!,
-          audioBlob,
-          config.geminiModel!,
-          updateProgress
-        );
+          try {
+            // Show modern progress modal
+            const progressDiv = document.createElement('div');
+            progressDiv.id = 'transcribe-progress';
+            progressDiv.style.cssText = `
+              position: fixed;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              background: white;
+              padding: 32px;
+              border-radius: 16px;
+              box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+              z-index: 10000;
+              min-width: 400px;
+              text-align: center;
+              border: 2px solid #f0f0f0;
+            `;
+            progressDiv.innerHTML = `
+              <div style="font-size: 24px; margin-bottom: 16px;">🤖</div>
+              <div style="font-size: 18px; font-weight: bold; margin-bottom: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Gemini AI đang xử lý...</div>
+              <div id="progress-text" style="font-size: 14px; color: #888; margin-bottom: 16px;">Đang khởi động...</div>
+              <div style="width: 100%; height: 10px; background: #f5f5f5; border-radius: 5px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
+                <div id="progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); transition: width 0.3s; box-shadow: 0 0 10px rgba(102,126,234,0.5);"></div>
+              </div>
+              <div style="margin-top: 12px; font-size: 12px; color: #bbb;">⏱️ Vui lòng đợi trong giây lát...</div>
+            `;
+            document.body.appendChild(progressDiv);
 
-        // Add results to transcriptions
-        setTranscriptions(results);
-        setHasUnsavedChanges(true);
-        progressDiv.remove();
-        
-        alert(`✅ Gemini transcription complete!\n\n` +
-              `📊 Found ${results.length} segments\n` +
-              `🎤 Speakers: ${new Set(results.map(r => r.speaker)).size}\n\n` +
-              `Click "Save Changes" to save the results.`);
-      } catch (error: any) {
-        const progressDiv = document.getElementById('transcribe-progress');
-        if (progressDiv) progressDiv.remove();
-        alert(`Transcription failed: ${error.message}`);
-        console.error('Transcription error:', error);
-      }
+            const updateProgress = (progress: number) => {
+              const progressBar = document.getElementById('progress-bar');
+              const progressText = document.getElementById('progress-text');
+              if (progressBar) progressBar.style.width = `${progress}%`;
+              if (progressText) {
+                if (progress < 30) {
+                  progressText.textContent = `Đang phân tích audio... ${Math.floor(progress)}%`;
+                } else if (progress < 70) {
+                  progressText.textContent = `Đang nhận dạng giọng nói... ${Math.floor(progress)}%`;
+                } else if (progress < 95) {
+                  progressText.textContent = `Đang xử lý văn bản... ${Math.floor(progress)}%`;
+                } else {
+                  progressText.textContent = `Hoàn tất... ${Math.floor(progress)}%`;
+                }
+              }
+            };
+
+            // Use Gemini API to transcribe audio
+            const results = await AIRefinementService.transcribeAudioWithGemini(
+              config.geminiApiKey!,
+              audioBlob,
+              config.geminiModel!,
+              updateProgress
+            );
+
+            // Add results to transcriptions
+            setTranscriptions(results);
+            setHasUnsavedChanges(true);
+            progressDiv.remove();
+            
+            // Show success modal
+            const speakersCount = new Set(results.map(r => r.speaker)).size;
+            Modal.success({
+              title: (
+                <span style={{ fontSize: '18px', fontWeight: 'bold' }}>
+                  ✅ Chuyển đổi hoàn tất!
+                </span>
+              ),
+              width: 480,
+              content: (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ 
+                    padding: '16px', 
+                    background: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
+                    borderRadius: '8px',
+                    marginBottom: '16px',
+                    color: 'white'
+                  }}>
+                    <div style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '12px' }}>
+                      📊 Kết quả xử lý:
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '20px', lineHeight: '1.8' }}>
+                      <li>📝 <strong>{results.length}</strong> đoạn văn bản</li>
+                      <li>🎤 <strong>{speakersCount}</strong> người nói được nhận diện</li>
+                      <li>⏱️ Đã gắn timestamp đầy đủ</li>
+                      <li>✨ Văn bản đã được làm sạch và định dạng</li>
+                    </ul>
+                  </div>
+
+                  <div style={{ 
+                    padding: '12px 16px',
+                    background: '#e6f7ff',
+                    border: '1px solid #91d5ff',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    color: '#0050b3'
+                  }}>
+                    <strong>💡 Tiếp theo:</strong> Nhấn <strong>"Save Changes"</strong> để lưu kết quả vào dự án
+                  </div>
+                </div>
+              ),
+              okText: 'Đã hiểu',
+              okButtonProps: { 
+                size: 'large',
+                style: { height: '40px' }
+              }
+            });
+          } catch (error: any) {
+            const progressDiv = document.getElementById('transcribe-progress');
+            if (progressDiv) progressDiv.remove();
+            
+            // Show error modal
+            Modal.error({
+              title: '❌ Lỗi chuyển đổi',
+              width: 480,
+              content: (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ 
+                    padding: '12px 16px',
+                    background: '#fff2f0',
+                    border: '1px solid #ffccc7',
+                    borderRadius: '6px',
+                    marginBottom: '12px'
+                  }}>
+                    <div style={{ color: '#cf1322', fontSize: '14px', wordBreak: 'break-word' }}>
+                      <strong>Chi tiết lỗi:</strong><br />
+                      {error.message}
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
+                    <strong>💡 Gợi ý khắc phục:</strong>
+                    <ul style={{ marginTop: '8px', paddingLeft: '20px' }}>
+                      <li>Kiểm tra kết nối internet</li>
+                      <li>Xác nhận Gemini API Key còn hợp lệ</li>
+                      <li>Thử lại với file audio nhỏ hơn</li>
+                      <li>Kiểm tra Console để xem chi tiết lỗi</li>
+                    </ul>
+                  </div>
+                </div>
+              ),
+              okText: 'Đã hiểu',
+              okButtonProps: { size: 'large' }
+            });
+            console.error('Gemini transcription error:', error);
+          }
+        }
+      });
     };
 
     window.addEventListener('transcribe-audio', handleTranscribeAudio);

@@ -180,7 +180,7 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ audioBlob, trans
       // Menu items
       const menuItems = [
         {
-          label: '📝 Insert note at seeked time',
+          label: `📝 Chèn ghi chú tại vị trí ${Math.floor(time / 60)}:${String(Math.floor(time % 60)).padStart(2, '0')}`,
           action: () => {
             window.dispatchEvent(
               new CustomEvent('insert-note-at-time', {
@@ -210,7 +210,7 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ audioBlob, trans
           }
         },
         {
-          label: '🤖 Transcribe audio with Gemini AI',
+          label: '🤖 Chuyển đổi giọng nói sang văn bản bằng Gemini AI',
           action: () => {
             window.dispatchEvent(new CustomEvent('transcribe-audio'));
           }

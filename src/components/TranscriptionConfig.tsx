@@ -217,7 +217,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
           extra={
             <Space direction="vertical" size="small" style={{ marginTop: 8 }}>
               <div style={{ fontSize: '12px', color: '#667eea' }}>
-                🤖 <strong>Cho tính năng "Chuẩn hóa bằng AI":</strong> Làm sạch và cải thiện văn bản chuyển đổi
+                🤖 <strong>Cho tính năng **Chuẩn hóa bằng AI** và **Chuyển đổi giọng nói bằng Gemini AI**:</strong>
               </div>
               <div style={{ fontSize: '12px', color: '#52c41a', fontWeight: 'bold' }}>
                 ✨ MIỄN PHÍ: Lấy tại{' '}
