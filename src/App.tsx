@@ -474,62 +474,58 @@ export const App: React.FC = () => {
       return;
     }
 
-    // Determine provider and API key
-    const provider = transcriptionConfig.aiProvider || 'gemini';
-    let apiKeyToUse = '';
-    
-    if (provider === 'openai') {
-      apiKeyToUse = transcriptionConfig.openaiApiKey || '';
-      if (!apiKeyToUse) {
-        message.error({
-          content: (
-            <div>
-              <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
-                Cần OpenAI API Key để sử dụng ChatGPT
-              </div>
-              <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
-                <strong>Cách lấy API Key:</strong>
-                <ol style={{ paddingLeft: '20px', margin: '8px 0' }}>
-                  <li>Truy cập: <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a></li>
-                  <li>Click "Create new secret key"</li>
-                  <li>Copy API key và paste vào Settings</li>
-                </ol>
-                <div style={{ color: '#ff9800', marginTop: '8px' }}>
-                  ⚠️ Lưu ý: OpenAI API yêu cầu có credit (pay-as-you-go)
-                </div>
-              </div>
+    // Check for Gemini API key
+    const apiKeyToUse = transcriptionConfig.geminiApiKey || transcriptionConfig.apiKey;
+    if (!apiKeyToUse) {
+      message.error({
+        content: (
+          <div>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+              Cần Gemini API Key để sử dụng tính năng AI
             </div>
-          ),
-          duration: 10
-        });
-        setShowTranscriptionConfig(true);
-        return;
-      }
-    } else {
-      // Gemini
-      apiKeyToUse = transcriptionConfig.geminiApiKey || transcriptionConfig.apiKey;
-      if (!apiKeyToUse) {
-        message.error({
-          content: (
-            <div>
-              <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
-                Cần API Key để sử dụng Gemini AI
-              </div>
-              <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
-                <strong>Cách lấy API Key miễn phí:</strong>
-                <ol style={{ paddingLeft: '20px', margin: '8px 0' }}>
-                  <li>Truy cập: <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
-                  <li>Click "Create API Key"</li>
-                  <li>Copy API key và paste vào Settings</li>
-                </ol>
-              </div>
+            <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
+              <strong>Cách lấy API Key miễn phí:</strong>
+              <ol style={{ paddingLeft: '20px', margin: '8px 0' }}>
+                <li>Truy cập: <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
+                <li>Click "Create API Key"</li>
+                <li>Copy API key và paste vào Settings → Gemini API Key</li>
+                <li>Hệ thống sẽ tự động tải danh sách models</li>
+                <li>Chọn model (khuyên dùng: Gemini 2.5 Flash)</li>
+              </ol>
             </div>
-          ),
-          duration: 10
-        });
-        setShowTranscriptionConfig(true);
-        return;
-      }
+          </div>
+        ),
+        duration: 10
+      });
+      setShowTranscriptionConfig(true);
+      return;
+    }
+
+    // Check for model selection
+    const selectedModel = transcriptionConfig.geminiModel;
+    if (!selectedModel || !selectedModel.startsWith('models/')) {
+      message.error({
+        content: (
+          <div>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+              Vui lòng chọn Gemini Model trong Settings
+            </div>
+            <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
+              <strong>Các bước:</strong>
+              <ol style={{ paddingLeft: '20px', margin: '8px 0' }}>
+                <li>Mở Settings</li>
+                <li>Nhập Gemini API Key (nếu chưa có)</li>
+                <li>Đợi hệ thống tải danh sách models</li>
+                <li>Chọn model từ dropdown (khuyên dùng: Gemini 2.5 Flash)</li>
+                <li>Lưu và thử lại</li>
+              </ol>
+            </div>
+          </div>
+        ),
+        duration: 10
+      });
+      setShowTranscriptionConfig(true);
+      return;
     }
 
     if (transcriptions.length === 0) {
@@ -538,7 +534,7 @@ export const App: React.FC = () => {
     }
 
     const confirmed = window.confirm(
-      'Bạn có muốn sử dụng AI để chuẩn hóa và làm sạch văn bản chuyển đổi?\n\n' +
+      'Bạn có muốn sử dụng Gemini AI để chuẩn hóa và làm sạch văn bản chuyển đổi?\n\n' +
       'AI sẽ:\n' +
       '- Sửa lỗi nhận diện\n' +
       '- Loại bỏ từ thừa, từ đệm\n' +
@@ -596,11 +592,11 @@ export const App: React.FC = () => {
         isFinal: t.isFinal
       }));
 
-      // Call AI refinement service
+      // Call AI refinement service with model selection
       const refinedSegments = await AIRefinementService.refineTranscripts(
         apiKeyToUse,
         rawData,
-        provider,
+        selectedModel, // Pass required model name
         updateProgress
       );
 
@@ -746,11 +742,8 @@ export const App: React.FC = () => {
           canRefineWithAI={
             !isRecording && 
             transcriptions.length > 0 && 
-            (
-              !!transcriptionConfig.geminiApiKey || 
-              !!transcriptionConfig.openaiApiKey || 
-              !!transcriptionConfig.apiKey
-            )
+            (!!transcriptionConfig.geminiApiKey || !!transcriptionConfig.apiKey) &&
+            !!transcriptionConfig.geminiModel
           }
         />
       )}

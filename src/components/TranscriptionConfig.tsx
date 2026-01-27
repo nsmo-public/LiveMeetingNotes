@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Select, Switch, Button, Space, App, Collapse, Tag } from 'antd';
-import { SettingOutlined, SaveOutlined, DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import type { SpeechToTextConfig } from '../types/types';
+import { Modal, Form, Input, Select, Switch, Button, Space, App, Collapse, Spin } from 'antd';
+import { SettingOutlined, SaveOutlined, DeleteOutlined, InfoCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import type { SpeechToTextConfig, GeminiModel } from '../types/types';
 import { SpeechToTextService } from '../services/speechToText';
+import { AIRefinementService } from '../services/aiRefinement';
 
 interface Props {
   visible: boolean;
@@ -20,6 +21,8 @@ export const TranscriptionConfig: React.FC<Props> = ({
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const [isSaving, setIsSaving] = useState(false);
+  const [availableModels, setAvailableModels] = useState<GeminiModel[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
 
   // Load saved config or set defaults
   useEffect(() => {
@@ -30,8 +33,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
       const defaultValues = {
         apiKey: '',
         geminiApiKey: '',
-        openaiApiKey: '',
-        aiProvider: 'gemini' as const,
+        geminiModel: 'models/gemini-2.5-flash', // Default model
         apiEndpoint: 'https://speech.googleapis.com/v1/speech:recognize',
         languageCode: 'vi-VN',
         enableSpeakerDiarization: false,
@@ -46,8 +48,72 @@ export const TranscriptionConfig: React.FC<Props> = ({
       // Merge saved config with defaults (ensures new fields have default values)
       const mergedConfig = savedConfig ? { ...defaultValues, ...savedConfig } : defaultValues;
       form.setFieldsValue(mergedConfig);
+      
+      // Auto-load models if API key exists
+      if (mergedConfig.geminiApiKey) {
+        handleLoadModels(mergedConfig.geminiApiKey);
+      }
     }
   }, [visible, currentConfig, form]);
+
+  // Function to load available Gemini models
+  const handleLoadModels = async (apiKey: string) => {
+    if (!apiKey || apiKey.trim().length < 20) {
+      return; // Invalid API key
+    }
+
+    setIsLoadingModels(true);
+    try {
+      const response = await AIRefinementService.listGeminiModels(apiKey);
+      
+      // Filter models that support generateContent
+      const supportedModels = response.models
+        .filter((model: any) => 
+          model.supportedGenerationMethods?.includes('generateContent')
+        )
+        .map((model: any) => ({
+          name: model.name,
+          displayName: model.displayName,
+          description: model.description,
+          inputTokenLimit: model.inputTokenLimit,
+          outputTokenLimit: model.outputTokenLimit,
+          supportedGenerationMethods: model.supportedGenerationMethods
+        })) as GeminiModel[];
+
+      setAvailableModels(supportedModels);
+      
+      if (supportedModels.length > 0) {
+        message.success(`✅ Tìm thấy ${supportedModels.length} Gemini models khả dụng`);
+        
+        // Auto-select first model if none selected
+        const currentModel = form.getFieldValue('geminiModel');
+        if (!currentModel) {
+          // Prefer gemini-2.5-flash if available
+          const preferredModel = supportedModels.find(m => m.name.includes('gemini-2.5-flash')) || supportedModels[0];
+          form.setFieldValue('geminiModel', preferredModel.name);
+        }
+      } else {
+        message.warning('⚠️ Không tìm thấy Gemini model nào hỗ trợ generateContent');
+      }
+    } catch (error: any) {
+      console.error('Failed to load models:', error);
+      message.error(`❌ Không thể tải danh sách models: ${error.message}`);
+      setAvailableModels([]);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
+
+  // Watch for Gemini API key changes
+  const handleGeminiApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const apiKey = e.target.value;
+    if (apiKey && apiKey.length >= 20) {
+      // Auto-load models when valid API key is entered
+      handleLoadModels(apiKey);
+    } else {
+      setAvailableModels([]);
+    }
+  };
 
   const handleSave = async () => {
     try {
@@ -57,8 +123,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
       const config: SpeechToTextConfig = {
         apiKey: values.apiKey?.trim() || '',
         geminiApiKey: values.geminiApiKey?.trim() || '',
-        openaiApiKey: values.openaiApiKey?.trim() || '',
-        aiProvider: values.aiProvider || 'gemini',
+        geminiModel: values.geminiModel || 'models/gemini-2.5-flash',
         apiEndpoint: values.apiEndpoint.trim(),
         languageCode: values.languageCode,
         enableSpeakerDiarization: values.enableSpeakerDiarization,
@@ -179,37 +244,17 @@ export const TranscriptionConfig: React.FC<Props> = ({
           />
         </Form.Item>
 
-        {/* AI Provider Selection */}
         <Form.Item
-          label="AI Provider (cho chuẩn hóa văn bản)"
-          name="aiProvider"
-          rules={[{ required: true, message: 'Vui lòng chọn AI provider' }]}
-          extra="Chọn AI engine để chuẩn hóa văn bản chuyển đổi"
-        >
-          <Select>
-            <Select.Option value="gemini">
-              <Space>
-                <span>🤖 Google Gemini</span>
-                <Tag color="green" style={{ fontSize: '10px' }}>MIỄN PHÍ</Tag>
-              </Space>
-            </Select.Option>
-            <Select.Option value="openai">
-              <Space>
-                <span>💬 OpenAI ChatGPT</span>
-                <Tag color="orange" style={{ fontSize: '10px' }}>TRẢ PHÍ</Tag>
-              </Space>
-            </Select.Option>
-          </Select>
-        </Form.Item>
-
-        <Form.Item
-          label="Gemini API Key (Tùy chọn)"
+          label="Gemini API Key (cho AI Refinement)"
           name="geminiApiKey"
           rules={[
             { min: 20, message: 'API Key phải có ít nhất 20 ký tự' }
           ]}
           extra={
             <Space direction="vertical" size="small" style={{ marginTop: 8 }}>
+              <div style={{ fontSize: '12px', color: '#667eea' }}>
+                🤖 <strong>Cho tính năng "Chuẩn hóa bằng AI":</strong> Làm sạch và cải thiện văn bản chuyển đổi
+              </div>
               <div style={{ fontSize: '12px', color: '#52c41a', fontWeight: 'bold' }}>
                 ✨ MIỄN PHÍ: Lấy tại{' '}
                 <a
@@ -221,7 +266,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
                 </a>
               </div>
               <div style={{ fontSize: '12px', color: '#888' }}>
-                💡 Chỉ cần nếu chọn AI Provider = Gemini
+                💡 Nhập API Key → Hệ thống tự động tải danh sách models
               </div>
             </Space>
           }
@@ -229,38 +274,60 @@ export const TranscriptionConfig: React.FC<Props> = ({
           <Input.Password
             placeholder="Lấy miễn phí tại aistudio.google.com/app/apikey"
             autoComplete="off"
+            onChange={handleGeminiApiKeyChange}
           />
         </Form.Item>
 
-        <Form.Item
-          label="OpenAI API Key (Tùy chọn)"
-          name="openaiApiKey"
-          rules={[
-            { min: 20, message: 'API Key phải có ít nhất 20 ký tự' }
-          ]}
-          extra={
-            <Space direction="vertical" size="small" style={{ marginTop: 8 }}>
-              <div style={{ fontSize: '12px', color: '#ff9800' }}>
-                💰 Trả phí: Lấy tại{' '}
-                <a
-                  href="https://platform.openai.com/api-keys"
-                  target="_blank"
-                  rel="noopener noreferrer"
+        {/* Gemini Model Selection */}
+        {availableModels.length > 0 && (
+          <Form.Item
+            label="Gemini Model"
+            name="geminiModel"
+            rules={[{ required: true, message: 'Vui lòng chọn model' }]}
+            extra={
+              <Space size="small" style={{ marginTop: 8 }}>
+                <div style={{ fontSize: '12px', color: '#888' }}>
+                  🤖 Model AI để chuẩn hóa văn bản
+                </div>
+                <Button
+                  size="small"
+                  icon={<ReloadOutlined />}
+                  loading={isLoadingModels}
+                  onClick={() => {
+                    const apiKey = form.getFieldValue('geminiApiKey');
+                    handleLoadModels(apiKey);
+                  }}
                 >
-                  OpenAI Platform
-                </a>
-              </div>
-              <div style={{ fontSize: '12px', color: '#888' }}>
-                💡 Chỉ cần nếu chọn AI Provider = OpenAI (GPT-3.5-turbo ~$0.0015/1K tokens)
-              </div>
-            </Space>
-          }
-        >
-          <Input.Password
-            placeholder="sk-..."
-            autoComplete="off"
-          />
-        </Form.Item>
+                  Tải lại
+                </Button>
+              </Space>
+            }
+          >
+            <Select
+              placeholder="Chọn Gemini model..."
+              loading={isLoadingModels}
+              notFoundContent={isLoadingModels ? <Spin size="small" /> : 'Không có model khả dụng'}
+              showSearch
+              optionFilterProp="children"
+            >
+              {availableModels.map(model => (
+                <Select.Option key={model.name} value={model.name}>
+                  <Space direction="vertical" size={0} style={{ width: '100%' }}>
+                    <div style={{ fontWeight: 'bold' }}>{model.displayName}</div>
+                    {model.description && (
+                      <div style={{ fontSize: '11px', color: '#888', whiteSpace: 'normal' }}>
+                        {model.description}
+                      </div>
+                    )}
+                    <div style={{ fontSize: '10px', color: '#1890ff' }}>
+                      📥 {model.inputTokenLimit.toLocaleString()} tokens | 📤 {model.outputTokenLimit.toLocaleString()} tokens
+                    </div>
+                  </Space>
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+        )}
 
         <Form.Item
           label="API Endpoint"

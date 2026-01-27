@@ -53,15 +53,21 @@ export interface FileSystemSupport {
   hasFallback: boolean;
 }
 
-// AI Provider types
-export type AIProvider = 'gemini' | 'openai';
+// Gemini Model metadata from API
+export interface GeminiModel {
+  name: string; // e.g., "models/gemini-2.5-flash"
+  displayName: string; // e.g., "Gemini 2.5 Flash"
+  description?: string;
+  inputTokenLimit: number;
+  outputTokenLimit: number;
+  supportedGenerationMethods: string[];
+}
 
 // Google Cloud Speech-to-Text types
 export interface SpeechToTextConfig {
   apiKey: string;
-  geminiApiKey?: string; // Optional: Separate API key for Gemini AI (for refinement)
-  openaiApiKey?: string; // Optional: OpenAI API key for ChatGPT refinement
-  aiProvider?: AIProvider; // AI provider to use for refinement (default: gemini)
+  geminiApiKey?: string; // Optional: API key for Gemini AI (for AI refinement feature)
+  geminiModel?: string; // Selected Gemini model (e.g., "models/gemini-2.5-flash")
   apiEndpoint?: string;
   languageCode: string;
   enableSpeakerDiarization: boolean;
