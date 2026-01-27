@@ -225,7 +225,6 @@ export class SpeechToTextService {
             this.startGoogleCloudTranscription(stream);
           } else {
             console.warn('Google Cloud API Key is not configured. Cannot fall back.');
-            message.error('Google Cloud API Key is not configured. Cannot fall back.');
           }
         } else if (event.error === 'not-allowed') {
           console.error('Microphone access denied. Prompting user to allow access.');
