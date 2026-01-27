@@ -79,6 +79,161 @@ export class AIRefinementService {
   }
 
   /**
+   * Check quota status by making a minimal test request
+   * Returns usage info and recommendations
+   */
+  public static async checkQuotaStatus(apiKey: string, modelName: string): Promise<{
+    status: 'available' | 'limited' | 'exceeded' | 'error';
+    message: string;
+    recommendations: string[];
+  }> {
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/${this.GEMINI_API_VERSION}/${modelName}:generateContent`;
+      
+      const response = await fetch(`${endpoint}?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: 'test' }] }],
+          generationConfig: { maxOutputTokens: 1 }
+        })
+      });
+      
+      if (response.status === 429) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.error?.message || '';
+        
+        if (errorMsg.includes('quota') || errorMsg.includes('250000')) {
+          return {
+            status: 'exceeded',
+            message: '🚫 Đã vượt hạn mức 250,000 tokens/ngày',
+            recommendations: [
+              '🕒 Đợi 24 giờ để quota reset',
+              '💳 Nâng cấp Paid tier: ~$2/tháng, unlimited',
+              '📊 Monitor: https://ai.dev/rate-limit'
+            ]
+          };
+        } else {
+          return {
+            status: 'limited',
+            message: '⏱️ Vượt 15 requests/phút',
+            recommendations: [
+              '⏰ Đợi 1-2 phút rồi thử lại',
+              '🔄 App sẽ tự động delay giữa các batch'
+            ]
+          };
+        }
+      } else if (response.ok) {
+        return {
+          status: 'available',
+          message: '✅ API Key hoạt động bình thường',
+          recommendations: [
+            '🎯 Free tier: 250,000 tokens/ngày',
+            '📊 Mỗi 50 segments ~ 7,500 tokens',
+            '🔍 Monitor: https://ai.dev/rate-limit'
+          ]
+        };
+      } else {
+        return {
+          status: 'error',
+          message: `❌ Lỗi API: ${response.status}`,
+          recommendations: [
+            'Kiểm tra API Key có hợp lệ',
+            'Kiểm tra model đã chọn đúng'
+          ]
+        };
+      }
+    } catch (error: any) {
+      return {
+        status: 'error',
+        message: 'Không thể kiểm tra quota',
+        recommendations: [
+          'Kiểm tra kết nối internet',
+          'Thử lại sau vài phút'
+        ]
+      };
+    }
+  }
+
+  /**
+   * Get usage metadata and quota information from Gemini API
+   * Note: Gemini API doesn't provide direct quota endpoint, but we can infer from rate limit headers
+   */
+  public static async checkQuotaInfo(apiKey: string, modelName: string): Promise<{
+    estimatedUsage: string;
+    quotaStatus: string;
+    recommendations: string[];
+  }> {
+    try {
+      // Make a minimal test request to check quota status
+      const endpoint = `https://generativelanguage.googleapis.com/${this.GEMINI_API_VERSION}/${modelName}:generateContent`;
+      
+      const response = await fetch(`${endpoint}?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: 'test' }]
+          }],
+          generationConfig: {
+            maxOutputTokens: 1
+          }
+        })
+      });
+
+      // Check response headers for quota info (if available)
+      // const remainingRequests = response.headers.get('x-ratelimit-remaining');
+      // const resetTime = response.headers.get('x-ratelimit-reset');
+      
+      // Parse response to check for quota errors
+      const recommendations: string[] = [];
+      let quotaStatus = 'unknown';
+      let estimatedUsage = 'Không có thông tin chi tiết';
+
+      if (response.status === 429) {
+        quotaStatus = 'exceeded';
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.error?.message || '';
+        
+        if (errorMsg.includes('quota')) {
+          estimatedUsage = 'Đã vượt hạn mức 250,000 tokens/ngày';
+          recommendations.push('Đợi 24 giờ để quota reset');
+          recommendations.push('Hoặc nâng cấp lên Paid tier (~$2/tháng)');
+        } else {
+          estimatedUsage = 'Đã vượt 15 requests/phút';
+          recommendations.push('Đợi 1 phút rồi thử lại');
+        }
+      } else if (response.ok) {
+        quotaStatus = 'available';
+        estimatedUsage = 'API Key hoạt động bình thường';
+        
+        // Estimate based on typical usage
+        recommendations.push('✅ Free tier: 250,000 tokens/ngày, 15 requests/phút');
+        recommendations.push('💡 Mỗi 50 segments ~ 7,500 tokens');
+        recommendations.push('📊 Monitor: https://ai.dev/rate-limit');
+      }
+
+      return {
+        estimatedUsage,
+        quotaStatus,
+        recommendations
+      };
+    } catch (error: any) {
+      return {
+        estimatedUsage: 'Không thể kiểm tra quota',
+        quotaStatus: 'error',
+        recommendations: [
+          'Kiểm tra API Key có hợp lệ',
+          'Kiểm tra kết nối internet',
+          'Thử lại sau vài phút'
+        ]
+      };
+    }
+  }
+
+  /**
    * List available Gemini models for the given API key
    * Useful for debugging and verifying API key access
    */
@@ -525,14 +680,46 @@ Lưu ý:
       throw new Error('Please select a Gemini model in Settings');
     }
 
+    // Validate file size (Gemini limit: 20MB for free tier)
+    const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+    const fileSizeMB = audioBlob.size / (1024 * 1024);
+    
+    console.log(`📊 File size: ${fileSizeMB.toFixed(2)} MB (Limit: 20 MB)`);
+    
+    if (audioBlob.size > MAX_FILE_SIZE) {
+      // Return special error object with file size info
+      const error: any = new Error('FILE_TOO_LARGE');
+      error.fileSizeMB = fileSizeMB;
+      error.maxSizeMB = 20;
+      throw error;
+    }
+
     if (onProgress) onProgress(10);
 
     try {
-      // Convert WebM to WAV if needed (Gemini requires WAV or MP3)
+      // Convert WebM to WAV if needed, with size optimization
       let processedAudio = audioBlob;
-      if (audioBlob.type === 'audio/webm' || audioBlob.type === 'video/webm') {
+      const needsConversion = audioBlob.type === 'audio/webm' || audioBlob.type === 'video/webm';
+      
+      if (needsConversion) {
+        console.log('🔄 Converting WebM to WAV...');
         if (onProgress) onProgress(15);
-        processedAudio = await this.convertToWav(audioBlob);
+        
+        // Convert with lower sample rate if file is large
+        const targetSampleRate = audioBlob.size > 10 * 1024 * 1024 ? 16000 : 44100;
+        processedAudio = await this.convertToWav(audioBlob, targetSampleRate);
+        
+        const newSizeMB = processedAudio.size / (1024 * 1024);
+        console.log(`✅ Converted: ${fileSizeMB.toFixed(2)}MB → ${newSizeMB.toFixed(2)}MB`);
+        
+        // Check again after conversion
+        if (processedAudio.size > MAX_FILE_SIZE) {
+          throw new Error(
+            `❌ Sau chuyển đổi, file vẫn quá lớn: ${newSizeMB.toFixed(2)} MB\n\n` +
+            `Vui lòng giảm thời lượng ghi âm hoặc giảm chất lượng.`
+          );
+        }
+        
         if (onProgress) onProgress(25);
       }
 
@@ -628,10 +815,11 @@ Lưu ý:
   }
 
   /**
-   * Convert audio blob to WAV format
+   * Convert audio blob to WAV format with optional sample rate optimization
    * Gemini API requires WAV or MP3 format, not WebM
+   * @param targetSampleRate - Target sample rate (16000 for smaller files, 44100 for quality)
    */
-  private static async convertToWav(audioBlob: Blob): Promise<Blob> {
+  private static async convertToWav(audioBlob: Blob, targetSampleRate: number = 44100): Promise<Blob> {
     return new Promise((resolve, reject) => {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const reader = new FileReader();
@@ -641,8 +829,15 @@ Lưu ý:
           const arrayBuffer = e.target?.result as ArrayBuffer;
           const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
+          // Resample if needed to reduce file size
+          let finalBuffer = audioBuffer;
+          if (audioBuffer.sampleRate !== targetSampleRate) {
+            console.log(`🔊 Resampling: ${audioBuffer.sampleRate}Hz → ${targetSampleRate}Hz`);
+            finalBuffer = await this.resampleAudioBuffer(audioBuffer, targetSampleRate);
+          }
+
           // Convert to WAV
-          const wavBlob = this.audioBufferToWav(audioBuffer);
+          const wavBlob = this.audioBufferToWav(finalBuffer);
           resolve(wavBlob);
         } catch (error) {
           reject(error);
@@ -652,6 +847,24 @@ Lưu ý:
       reader.onerror = reject;
       reader.readAsArrayBuffer(audioBlob);
     });
+  }
+
+  /**
+   * Resample AudioBuffer to target sample rate (reduces file size)
+   */
+  private static async resampleAudioBuffer(audioBuffer: AudioBuffer, targetSampleRate: number): Promise<AudioBuffer> {
+    const offlineContext = new OfflineAudioContext(
+      audioBuffer.numberOfChannels,
+      audioBuffer.duration * targetSampleRate,
+      targetSampleRate
+    );
+
+    const source = offlineContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(offlineContext.destination);
+    source.start();
+
+    return await offlineContext.startRendering();
   }
 
   /**
@@ -714,7 +927,82 @@ Lưu ý:
 
     return result;
   }
+  /**
+   * Extract a segment from audio blob based on time range
+   * @param audioBlob - Original audio blob
+   * @param startTimeMs - Start time in milliseconds
+   * @param endTimeMs - End time in milliseconds
+   * @returns Promise<Blob> - Audio segment blob
+   */
+  public static async extractAudioSegment(
+    audioBlob: Blob,
+    startTimeMs: number,
+    endTimeMs: number
+  ): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const reader = new FileReader();
 
+      reader.onload = async (e) => {
+        try {
+          const arrayBuffer = e.target?.result as ArrayBuffer;
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+          // Calculate start and end in samples
+          const startSample = Math.floor((startTimeMs / 1000) * audioBuffer.sampleRate);
+          const endSample = Math.floor((endTimeMs / 1000) * audioBuffer.sampleRate);
+          const segmentLength = endSample - startSample;
+
+          // Create new buffer for the segment
+          const segmentBuffer = audioContext.createBuffer(
+            audioBuffer.numberOfChannels,
+            segmentLength,
+            audioBuffer.sampleRate
+          );
+
+          // Copy data for each channel
+          for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+            const channelData = audioBuffer.getChannelData(channel);
+            const segmentData = segmentBuffer.getChannelData(channel);
+            for (let i = 0; i < segmentLength; i++) {
+              segmentData[i] = channelData[startSample + i];
+            }
+          }
+
+          // Convert to WAV
+          const wavBlob = this.audioBufferToWav(segmentBuffer);
+          resolve(wavBlob);
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(audioBlob);
+    });
+  }
+
+  /**
+   * Adjust timestamps in transcription results based on segment start time
+   * @param results - Transcription results from segment
+   * @param offsetMs - Offset in milliseconds (segment start time)
+   * @returns Adjusted transcription results
+   */
+  public static adjustTimestamps(
+    results: TranscriptionResult[],
+    offsetMs: number
+  ): TranscriptionResult[] {
+    return results.map(result => ({
+      ...result,
+      audioTimeMs: result.audioTimeMs ? result.audioTimeMs + offsetMs : undefined
+    }));
+  }
+
+  /*
+   * FUTURE ENHANCEMENT: optimizeAudioFormat() method
+   * Could convert WAV to WebM/Opus to reduce file size by 70-90%
+   * Reserved for future implementation
+   */
   /**
    * Write string to DataView
    */
