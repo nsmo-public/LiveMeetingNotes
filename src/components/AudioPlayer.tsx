@@ -210,16 +210,16 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ audioBlob, trans
           }
         },
         {
-          label: '🎤 Transcribe entire audio',
+          label: '🤖 Transcribe audio with Gemini AI',
           action: () => {
             window.dispatchEvent(new CustomEvent('transcribe-audio'));
           }
         }
       ];
       
-      // Only show 'Transcribe entire audio' if API Key is present
-      if (!transcriptionConfig?.apiKey) {
-        menuItems.pop(); // Remove the last item (Transcribe entire audio)
+      // Only show 'Transcribe audio with Gemini AI' if Gemini API Key is present
+      if (!transcriptionConfig?.geminiApiKey) {
+        menuItems.pop(); // Remove the last item (Transcribe audio with Gemini AI)
       }
 
       menuItems.forEach(item => {

@@ -337,4 +337,191 @@ Lưu ý:
       isAIRefined: true // Mark as AI-refined
     }));
   }
+
+  /**
+   * Transcribe audio file using Gemini Multimodal API
+   * Gemini 1.5+ models can directly process audio files (mp3, wav, aac, webm, etc.)
+   */
+  public static async transcribeAudioWithGemini(
+    apiKey: string,
+    audioBlob: Blob,
+    modelName: string, // e.g., "models/gemini-1.5-flash" or "models/gemini-2.0-flash-exp"
+    onProgress?: (progress: number) => void
+  ): Promise<TranscriptionResult[]> {
+    if (!apiKey || apiKey.trim().length === 0) {
+      throw new Error('Gemini API Key is required');
+    }
+
+    if (!modelName || !modelName.startsWith('models/')) {
+      throw new Error('Please select a Gemini model in Settings');
+    }
+
+    if (onProgress) onProgress(10);
+
+    try {
+      // Convert audio blob to base64
+      const base64Audio = await this.blobToBase64(audioBlob);
+      if (onProgress) onProgress(30);
+
+      // Get MIME type
+      const mimeType = audioBlob.type || 'audio/webm';
+
+      // Prepare request
+      const endpoint = `https://generativelanguage.googleapis.com/${this.GEMINI_API_VERSION}/${modelName}:generateContent?key=${apiKey}`;
+
+      const requestBody = {
+        contents: [{
+          parts: [
+            {
+              text: `Hãy nghe file âm thanh cuộc họp này và chuyển thành văn bản. Yêu cầu bắt buộc:
+
+1. Chia văn bản thành các đoạn hội thoại tự nhiên.
+2. Gắn nhãn thời gian [mm:ss] vào đầu mỗi đoạn dựa trên thời điểm người nói bắt đầu trong file âm thanh.
+3. Nếu có nhiều người nói, hãy phân biệt bằng cách ghi 'Người nói 1:', 'Người nói 2:'...
+4. Làm sạch văn bản (loại bỏ từ đệm, sửa lỗi chính tả).
+5. Định dạng: Trả về kết quả dưới dạng JSON với cấu trúc:
+{
+  "segments": [
+    {
+      "timestamp": "mm:ss",
+      "speaker": "Người nói 1",
+      "text": "nội dung"
+    }
+  ]
+}`
+            },
+            {
+              inline_data: {
+                mime_type: mimeType,
+                data: base64Audio
+              }
+            }
+          ]
+        }]
+      };
+
+      if (onProgress) onProgress(40);
+
+      // Make API request
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (onProgress) onProgress(70);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          `Gemini API error (${response.status}): ${errorData.error?.message || response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      if (onProgress) onProgress(90);
+
+      // Parse response
+      const results = this.parseGeminiAudioTranscription(data);
+      if (onProgress) onProgress(100);
+
+      return results;
+
+    } catch (error: any) {
+      console.error('Gemini audio transcription error:', error);
+      throw new Error(`Failed to transcribe audio: ${error.message}`);
+    }
+  }
+
+  /**
+   * Convert Blob to Base64 string
+   */
+  private static blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = (reader.result as string).split(',')[1]; // Remove data:audio/...;base64, prefix
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  /**
+   * Parse Gemini audio transcription response
+   */
+  private static parseGeminiAudioTranscription(apiResponse: any): TranscriptionResult[] {
+    try {
+      const candidates = apiResponse.candidates;
+      if (!candidates || candidates.length === 0) {
+        throw new Error('No response from Gemini API');
+      }
+
+      const content = candidates[0].content;
+      if (!content || !content.parts || content.parts.length === 0) {
+        throw new Error('Empty response from Gemini');
+      }
+
+      const textResponse = content.parts[0].text;
+      if (!textResponse) {
+        throw new Error('No text in Gemini response');
+      }
+
+      // Extract JSON from response (handle markdown code blocks)
+      let jsonText = textResponse.trim();
+      const jsonMatch = jsonText.match(/```json\s*([\s\S]*?)```/) || jsonText.match(/```\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        jsonText = jsonMatch[1].trim();
+      }
+
+      const parsed = JSON.parse(jsonText);
+
+      if (!parsed.segments || !Array.isArray(parsed.segments)) {
+        throw new Error('Invalid JSON structure: missing segments array');
+      }
+
+      // Convert to TranscriptionResult format
+      return parsed.segments.map((segment: any, index: number) => {
+        const timestamp = segment.timestamp || '0:00';
+        const audioTimeMs = this.parseTimestampToMs(timestamp);
+
+        return {
+          id: `gemini-${Date.now()}-${index}`,
+          text: segment.text || '',
+          startTime: new Date().toLocaleString('vi-VN'),
+          endTime: new Date().toLocaleString('vi-VN'),
+          audioTimeMs,
+          confidence: 1.0,
+          speaker: segment.speaker || 'Unknown',
+          isFinal: true,
+          isManuallyEdited: false,
+          isAIRefined: true
+        };
+      });
+
+    } catch (error: any) {
+      console.error('Failed to parse Gemini audio transcription:', error);
+      console.log('Raw API response:', JSON.stringify(apiResponse, null, 2));
+      throw new Error(`Failed to parse Gemini response: ${error.message}`);
+    }
+  }
+
+  /**
+   * Parse timestamp string (mm:ss or m:ss) to milliseconds
+   */
+  private static parseTimestampToMs(timestamp: string): number {
+    try {
+      const parts = timestamp.split(':').map(p => parseInt(p.trim(), 10));
+      if (parts.length === 2) {
+        const [minutes, seconds] = parts;
+        return (minutes * 60 + seconds) * 1000;
+      }
+      return 0;
+    } catch {
+      return 0;
+    }
+  }
 }

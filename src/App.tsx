@@ -89,14 +89,26 @@ export const App: React.FC = () => {
         return;
       }
 
-      if (!speechToTextService.isConfigured()) {
-        alert('Please configure Speech-to-Text settings first');
+      // Check if Gemini API is configured
+      const config = speechToTextService.getConfig();
+      if (!config || !config.geminiApiKey || !config.geminiModel) {
+        alert('Please configure Gemini API Key and Model in Settings first.\n\n' +
+              'Steps:\n' +
+              '1. Click "⚙️ Configure Speech-to-Text"\n' +
+              '2. Enter your Gemini API Key\n' +
+              '3. Select a Gemini Model (e.g., Gemini 2.5 Flash)');
         setShowTranscriptionConfig(true);
         return;
       }
 
       const confirmed = window.confirm(
-        'This will transcribe the entire audio file and replace existing transcription results. Continue?'
+        '🤖 This will use Gemini AI to transcribe the entire audio file.\n\n' +
+        '✨ Features:\n' +
+        '• Auto-detect speakers\n' +
+        '• Add timestamps\n' +
+        '• Clean text (remove filler words)\n\n' +
+        '⚠️ Note: This will replace existing transcription results.\n\n' +
+        'Continue?'
       );
       
       if (!confirmed) return;
@@ -139,16 +151,23 @@ export const App: React.FC = () => {
           if (progressText) progressText.textContent = `${Math.floor(progress)}% complete`;
         };
 
-        await speechToTextService.transcribeAudioFile(
+        // Use Gemini API to transcribe audio
+        const results = await AIRefinementService.transcribeAudioWithGemini(
+          config.geminiApiKey!,
           audioBlob,
-          handleNewTranscription,
-          updateProgress,
-          () => {
-            progressDiv.remove();
-            setHasUnsavedChanges(true); // Mark as unsaved
-            alert('✅ Transcription complete! Click "Save Changes" to save the results.');
-          }
+          config.geminiModel!,
+          updateProgress
         );
+
+        // Add results to transcriptions
+        setTranscriptions(results);
+        setHasUnsavedChanges(true);
+        progressDiv.remove();
+        
+        alert(`✅ Gemini transcription complete!\n\n` +
+              `📊 Found ${results.length} segments\n` +
+              `🎤 Speakers: ${new Set(results.map(r => r.speaker)).size}\n\n` +
+              `Click "Save Changes" to save the results.`);
       } catch (error: any) {
         const progressDiv = document.getElementById('transcribe-progress');
         if (progressDiv) progressDiv.remove();
