@@ -14,16 +14,23 @@
 ## ✨ Features
 
 - 🎙️ **Audio Recording** - Ghi âm chất lượng cao WebM (Opus codec, ~140MB/2.5h)
-- 🎤 **Speech-to-Text** - Chuyển đổi giọng nói sang văn bản real-time (Web Speech API)
-- 🤖 **AI Text Refinement** - Chuẩn hóa và làm sạch văn bản với Google Gemini AI
+- 🎤 **Speech-to-Text** - Chuyển đổi giọng nói sang văn bản real-time (Web Speech API - Miễn phí)
+- 🤖 **AI Text Refinement** - Chuẩn hóa và làm sạch văn bản với Google Gemini AI (Miễn phí với API Key)
+  - Sửa lỗi nhận diện từ Web Speech API
+  - Loại bỏ từ thừa, từ đệm (à, ừm, thì...)
+  - Thêm dấu câu và viết hoa đúng quy tắc
+  - Gộp các đoạn liên quan thành câu hoàn chỉnh
+  - ⚠️ **Cảnh báo bảo mật:** Không dùng với thông tin nhạy cảm (dữ liệu gửi đến Google API)
 - ⏱️ **Real-time Timestamps** - Nhấn ENTER để chèn timestamp tự động
 - 📝 **Rich Text Editor** - Định dạng văn bản với toolbar đầy đủ (Quill.js)
-- 🎯 **Timestamp Seeking** - Double-click timestamp → jump đến vị trí audio
+- 🎯 **Audio Seeking** - Double-click timestamp/audio time → jump đến vị trí audio chính xác
 - ✏️ **Edit Transcriptions** - Double-click segment để chỉnh sửa thời gian, người nói, nội dung
+  - Xóa toàn bộ text và Save → Xóa segment khỏi danh sách
+  - Tự động cập nhật chiều cao panel sau khi xóa
 - 💾 **Local File Storage** - Lưu files trực tiếp vào folder (Chrome/Edge)
 - 🔄 **Auto-backup & Recovery** - Tự động backup mỗi 3s, khôi phục khi crash
-- 📂 **Load Project** - Load lại project cũ để chỉnh sửa
-- 📴 **Offline Support** - Hoạt động 100% offline sau lần load đầu
+- 📂 **Load Project** - Load lại project cũ để chỉnh sửa, bao gồm cả raw transcripts cho AI refinement
+- 📴 **Offline Support** - Hoạt động 100% offline sau lần load đầu (trừ AI refinement cần internet)
 - 🌐 **Cross-Platform** - Tương thích Chrome, Edge, Firefox, Safari
 - 📄 **Word Export** - Export file .docx để chia sẻ
 

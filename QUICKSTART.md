@@ -6,14 +6,19 @@ Dự án đã được thiết lập hoàn chỉnh với tất cả các tính n
 
 ### 📦 Features đã triển khai:
 - ✅ Audio Recording với MediaRecorder API
+- ✅ Speech-to-Text real-time với Web Speech API (miễn phí)
+- ✅ AI Text Refinement với Google Gemini API (miễn phí)
 - ✅ Real-time timestamp insertion (nhấn ENTER khi đang record)
 - ✅ Rich Text Editor với Quill.js
 - ✅ Audio Playback với controls (-10s, +10s, seekbar)
+- ✅ Double-click audio time tag để seek
+- ✅ Edit/Delete transcription segments
 - ✅ File System Access API để lưu file trực tiếp vào folder (Chrome/Edge)
 - ✅ Download fallback cho Safari/Firefox
-- ✅ PWA support (offline capable)
+- ✅ PWA support (offline capable - trừ AI refinement)
 - ✅ Dark theme UI với Ant Design
 - ✅ Metadata format tương thích với C# TranscriptionProject
+- ✅ Auto-save raw transcripts cho AI refinement
 
 ---
 
@@ -40,27 +45,57 @@ Mở browser tại: **http://localhost:5173/**
    - Host
    - Attendees
 
+3. **Cấu hình Speech-to-Text (Optional)** - Nếu muốn chuyển đổi giọng nói sang văn bản:
+   - Click **"Cấu hình Speech-to-Text"**
+   - Chọn ngôn ngữ (Tiếng Việt, English...)
+   - Click **"Lưu"**
+   - Bật toggle **"Tự động chuyển giọng nói thành văn bản: ON"**
+
+4. **Cấu hình AI Refinement (Optional)** - Nếu muốn dùng AI chuẩn hóa văn bản:
+   - Lấy API Key miễn phí: https://aistudio.google.com/app/apikey
+   - Paste vào **Settings → Gemini API Key**
+   - Chọn Model (khuyên dùng: **Gemini 2.5 Flash**)
+   - ⚠️ **Lưu ý:** Không dùng với thông tin nhạy cảm
+
 #### B. Recording:
 1. **Start Recording** - Click nút đỏ "Record"
    - Cho phép microphone permission khi được yêu cầu
    - Timer sẽ bắt đầu đếm
+   - Nếu bật Speech-to-Text → Kết quả hiện real-time
 
 2. **Take Notes** - Gõ notes vào editor
    - **Nhấn ENTER** để chèn timestamp (màu xanh)
    - Timestamp format: `[HH:MM:SS]`
    - Sử dụng formatting toolbar (Bold, Italic, Colors)
 
-3. **Stop Recording** - Click nút "Stop"
+3. **Edit Transcriptions** - Nếu có Speech-to-Text:
+   - **Double-click** vào segment để edit
+   - Chỉnh sửa text, speaker, time
+   - Xóa toàn bộ text → Click Save → Xóa segment
+   - **Double-click audio time tag** (📍 MM:SS) → Seek audio
+
+4. **AI Refinement** - Nếu đã cấu hình Gemini:
+   - Click **"🤖 Chuẩn hóa bằng AI"** trong header Transcription Panel
+   - Đọc kỹ cảnh báo bảo mật
+   - Click **"Đồng ý, tiếp tục"**
+   - Đợi AI xử lý → Kết quả được chuẩn hóa
+
+5. **Stop Recording** - Click nút "Stop"
    - Files sẽ được lưu tự động:
-     - `Meeting_[timestamp].wav` - Audio file
-     - `Meeting_[timestamp]_meeting_info.json` - Meeting metadata
-     - `metadata.json` - Notes với timestamps
+     - `[timestamp]_[Title].webm` - Audio file
+     - `[timestamp]_[Title]_meeting_info.json` - Meeting metadata
+     - `[timestamp]_[Title]_metadata.json` - Notes với timestamps
+     - `[timestamp]_[Title]_transcription.json` - Transcriptions
+     - `[timestamp]_[Title]_rawTranscripts.json` - Raw data cho AI
+     - `[timestamp]_[Title].docx` - Word document
 
 #### C. Playback:
 1. Sau khi stop recording, audio player sẽ hiển thị
 2. **Play/Pause** - Click để phát/tạm dừng
 3. **Skip** - Click -10s hoặc +10s để tua
-4. **Seek** - Kéo seekbar hoặc **double-click vào timestamp** trong notes để jump đến vị trí đó
+4. **Seek** - Kéo seekbar hoặc:
+   - **Double-click vào timestamp** trong notes
+   - **Double-click audio time tag** trong transcriptions
 
 ---
 

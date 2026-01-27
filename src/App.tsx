@@ -220,7 +220,9 @@ export const App: React.FC = () => {
           timestampMap,
           recordingStartTime,
           audioBlob,
-          isSaved
+          isSaved,
+          transcriptions,
+          rawTranscripts
         );
       }, 3000); // Auto-save 3 seconds after last change
     }
@@ -292,6 +294,15 @@ export const App: React.FC = () => {
         setAudioBlob(backup.audioBlob);
       }
       setIsSaved(backup.isSaved);
+      
+      // Restore transcriptions and rawTranscripts if available
+      if (backup.transcriptions && backup.transcriptions.length > 0) {
+        setTranscriptions(backup.transcriptions);
+      }
+      if (backup.rawTranscripts && backup.rawTranscripts.length > 0) {
+        setRawTranscripts(backup.rawTranscripts);
+      }
+      
       setShowBackupDialog(false);
       // console.log('✅ Backup restored successfully');
     }

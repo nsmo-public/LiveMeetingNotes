@@ -18,6 +18,8 @@ interface BackupData {
   recordingStartTime: number;
   hasAudioBlob: boolean;
   isSaved: boolean;
+  transcriptions?: any[]; // Speech-to-Text results
+  rawTranscripts?: any[]; // Raw Speech-to-Text data for AI refinement
 }
 
 // Open IndexedDB connection
@@ -92,7 +94,9 @@ export const saveBackup = async (
   timestampMap: Map<number, number>,
   recordingStartTime: number,
   audioBlob: Blob | null,
-  isSaved: boolean
+  isSaved: boolean,
+  transcriptions?: any[],
+  rawTranscripts?: any[]
 ): Promise<void> => {
   try {
     // Convert Map to array for JSON serialization
@@ -105,7 +109,9 @@ export const saveBackup = async (
       timestampMap: timestampArray,
       recordingStartTime,
       hasAudioBlob: audioBlob !== null,
-      isSaved
+      isSaved,
+      transcriptions,
+      rawTranscripts
     };
     
     // Save to localStorage
@@ -131,6 +137,8 @@ export const loadBackup = async (): Promise<{
   audioBlob: Blob | null;
   isSaved: boolean;
   backupTimestamp: number;
+  transcriptions?: any[];
+  rawTranscripts?: any[];
 } | null> => {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
@@ -154,7 +162,9 @@ export const loadBackup = async (): Promise<{
       recordingStartTime: backupData.recordingStartTime,
       audioBlob,
       isSaved: backupData.isSaved,
-      backupTimestamp: backupData.timestamp
+      backupTimestamp: backupData.timestamp,
+      transcriptions: backupData.transcriptions,
+      rawTranscripts: backupData.rawTranscripts
     };
   } catch (error) {
     console.error('Failed to load backup:', error);

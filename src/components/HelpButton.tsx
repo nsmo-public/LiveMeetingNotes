@@ -21,7 +21,10 @@ export const HelpButton: React.FC = () => {
           <List
             dataSource={[
               '🎙️ Ghi âm và đánh dấu thời gian tự động khi nhập Ghi chú',
-              '�️ Chuyển đổi giọng nói sang văn bản (Speech-to-Text) - Cần kết nối internet',
+              '🗣️ Chuyển đổi giọng nói sang văn bản (Speech-to-Text) miễn phí với Google Web Speech API',
+              '🤖 Chuẩn hóa văn bản bằng AI với Google Gemini (tùy chọn)',
+              '✏️ Chỉnh sửa/Xóa từng đoạn transcription với double-click',
+              '⏯️ Seek audio từ timestamp trong transcription',
               '�📴 Có khả năng làm việc offline',
               '💾 Lưu trữ file trực tiếp vào máy tính',
               '🌐 Tương thích đa nền tảng (Chrome, Edge, Firefox, Safari)',
@@ -67,12 +70,30 @@ export const HelpButton: React.FC = () => {
               <Title level={4}>🗣️ Chuyển đổi giọng nói sang văn bản</Title>
               <List size="small">
                 <List.Item>• <strong>Yêu cầu:</strong> Kết nối Internet</List.Item>
-                <List.Item>• Click <Tag color="orange" icon={<span>⚙️</span>}>Cấu hình Speech-to-Text</Tag> → nhập API Key (nếu có), chọn ngôn ngữ ...</List.Item>
-                <List.Item>• Dùng chức năng Translate của trình duyệt Web để chuyển đổi tự động kết quả sang ngôn ngữ khác (nếu cần)</List.Item>
+                <List.Item>• Sử dụng Google Web Speech API (miễn phí, không cần API key)</List.Item>
+                <List.Item>• Click <Tag color="orange" icon={<span>⚙️</span>}>Cấu hình Speech-to-Text</Tag> → chọn ngôn ngữ</List.Item>
                 <List.Item>• Bật <Tag color="cyan">Tự động chuyển giọng nói thành văn bản</Tag> → tự động chuyển đổi khi ghi âm</List.Item>
-                <List.Item>• Kết quả hiển thị real-time với độ tin cậy (confidence)</List.Item>
-                <List.Item>• Click vào kết quả → seek audio đến vị trí tương ứng</List.Item>
-                <List.Item>• Hỗ trợ speaker diarization (nhận diện người nói - yêu cầu phải có API Key)</List.Item>
+                <List.Item>• Kết quả hiển thị real-time với độ tin cậy (confidence) và timestamp chính xác</List.Item>
+                <List.Item>• <strong>Double-click</strong> vào timestamp → seek audio đến vị trí tương ứng</List.Item>
+                <List.Item>• <strong>Double-click</strong> vào nội dung → chỉnh sửa hoặc xóa đoạn transcription</List.Item>
+                <List.Item>• Panel tự động mở rộng khi có kết quả mới</List.Item>
+                <List.Item>• Lưu tự động cả kết quả chính thức và raw data để phục vụ AI refinement</List.Item>
+              </List>
+            </div>
+
+            <Divider style={{ margin: '12px 0' }} />
+
+            <div>
+              <Title level={4}>🤖 Chuẩn hóa văn bản bằng AI</Title>
+              <List size="small">
+                <List.Item>• <strong>Tùy chọn:</strong> Yêu cầu Google Gemini API Key (miễn phí)</List.Item>
+                <List.Item>• Click <Tag color="orange" icon={<span>⚙️</span>}>Cấu hình Speech-to-Text</Tag> → nhập Gemini API Key</List.Item>
+                <List.Item>• Hệ thống tự động phát hiện các model có sẵn (gemini-2.5-flash, gemini-2.5-pro, gemini-2.0-flash...)</List.Item>
+                <List.Item>• Chọn model phù hợp với nhu cầu (flash = nhanh, pro = chất lượng cao)</List.Item>
+                <List.Item>• Click <Tag color="purple" icon={<span>✨</span>}>Chuẩn hóa bằng AI</Tag> trong panel Transcription</List.Item>
+                <List.Item>• AI sử dụng transcription chính thức (ưu tiên) + raw data (bổ trợ) để cải thiện văn bản</List.Item>
+                <List.Item>• ⚠️ <Text type="danger"><strong>Cảnh báo bảo mật:</strong></Text> Dữ liệu sẽ được gửi đến Google Gemini API</List.Item>
+                <List.Item>• Kết quả được lưu vào transcription.json để export Word</List.Item>
               </List>
             </div>
 
@@ -103,7 +124,8 @@ export const HelpButton: React.FC = () => {
                 <List.Item>📄 <Text code>[ProjectName].webm</Text> - Audio file</List.Item>
                 <List.Item>📄 <Text code>[ProjectName]_meeting_info.json</Text> - Meeting metadata</List.Item>
                 <List.Item>📄 <Text code>[ProjectName]_metadata.json</Text> - Notes + timestamps</List.Item>
-                <List.Item>📄 <Text code>[ProjectName]_transcriptions.json</Text> - Notes + timestamps</List.Item>
+                <List.Item>📄 <Text code>[ProjectName]_transcription.json</Text> - Speech-to-Text results (sau khi edit/AI)</List.Item>
+                <List.Item>📄 <Text code>[ProjectName]_rawTranscripts.json</Text> - Raw Speech-to-Text data (bổ trợ AI)</List.Item>
                 <List.Item>📄 <Text code>[ProjectName].docx</Text> - Word document</List.Item>
               </List>
             </div>
@@ -129,18 +151,31 @@ export const HelpButton: React.FC = () => {
         <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '8px' }}>
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <div>
-              <Title level={4}>Scenario 1: Ghi âm cuộc họp mới</Title>
+              <Title level={4}>Scenario 1: Ghi âm cuộc họp mới với Speech-to-Text</Title>
               <List>
                 <List.Item>1. Click <Tag color="blue">Chọn thư mục</Tag> → chọn thư mục lưu file (Chrome/Edge)</List.Item>
                 <List.Item>2. Điền thông tin cuộc họp (Tên cuộc họp, Ngày, Giờ, Địa điểm, Chủ trì, Thành viên tham dự)</List.Item>
-                <List.Item>3. <strong>(TÙY CHỌN)</strong> Cấu hình Speech-to-Text: Click <Tag color="orange">⚙️ Cấu hình Speech-to-Text</Tag> → nhập API Key</List.Item>
+                <List.Item>3. <strong>(TÙY CHỌN)</strong> Cấu hình Speech-to-Text: 
+                  <List size="small" style={{marginTop: 8}}>
+                    <List.Item>• Click <Tag color="orange">⚙️ Cấu hình Speech-to-Text</Tag></List.Item>
+                    <List.Item>• Chọn ngôn ngữ phù hợp</List.Item>
+                    <List.Item>• Nhập Gemini API Key (nếu muốn dùng AI refinement)</List.Item>
+                    <List.Item>• Chọn Gemini Model (gemini-2.5-flash được khuyên dùng)</List.Item>
+                    <List.Item>• Bật <Tag color="cyan">Tự động chuyển giọng nói thành văn bản</Tag></List.Item>
+                  </List>
+                </List.Item>
                 <List.Item>4. Click <Tag color="red">Ghi âm</Tag> → bắt đầu ghi âm</List.Item>
-                <List.Item>5. Gõ notes, nhấn <Tag>ENTER</Tag> để chèn dòng mới chèn dòng mới → khi gõ văn bản sẽ tự động chèn nhãn thời gian</List.Item>
-                <List.Item>6. Click <Tag>Dừng</Tag> → files tự động lưu vào folder đã chọn</List.Item>
-                <List.Item>7. Phát lại audio, double-click timestamp để tua đến vị trí tương ứng</List.Item>
+                <List.Item>5. Gõ notes thủ công hoặc để Speech-to-Text tự động ghi nhận, nhấn <Tag>ENTER</Tag> để chèn dòng mới</List.Item>
+                <List.Item>6. <strong>(TÙY CHỌN)</strong> Xem kết quả Speech-to-Text trong panel "Kết quả chuyển đổi giọng nói sang văn bản":
+                  <List size="small" style={{marginTop: 8}}>
+                    <List.Item>• <strong>Double-click timestamp</strong> → seek audio</List.Item>
+                    <List.Item>• <strong>Double-click nội dung</strong> → chỉnh sửa hoặc xóa</List.Item>
+                    <List.Item>• Click <Tag color="purple">✨ Chuẩn hóa bằng AI</Tag> để cải thiện văn bản (nếu đã cấu hình)</List.Item>
+                  </List>
+                </List.Item>
+                <List.Item>7. Click <Tag>Dừng</Tag> → files tự động lưu (bao gồm transcription.json và rawTranscripts.json)</List.Item>
+                <List.Item>8. <strong>(TÙY CHỌN)</strong> Dùng chức năng Translate của trình duyệt để chuyển đổi kết quả sang ngôn ngữ khác</List.Item>
               </List>
-              <List.Item>8. <strong>(TÙY CHỌN)</strong> Dùng chức năng Translate của trình duyệt Web để chuyển đổi tự động kết quả sang ngôn ngữ khác: 🎧 Nghe người nói bằng ngôn ngữ A →
-📝 Nhận nội dung chuyển giọng nói → văn bản → 🌍 Dịch tức thời sang ngôn ngữ B</List.Item>
             </div>
 
             <Divider style={{ margin: '12px 0' }} />
@@ -317,8 +352,8 @@ export const HelpButton: React.FC = () => {
                 <Text strong>📬Email:</Text> <a href="mailto:dachungbk@gmail.com">dachungbk@gmail.com</a>
               </>,
               <>
-                <Text strong>🧋💸🎁:</Text> BIDV - Nguyen Dac Hung<br />
-                <Text strong>Số tài khoản:</Text> <Text copyable>2610308803</Text>
+                <Text strong>🧋💸🎁 Ngân hàng BIDV - Nguyen Dac Hung:</Text> <br />
+                <Text strong></Text> <Text copyable>2610308803</Text>
               </>,
               <>
                 <Text type="secondary" italic>

@@ -719,14 +719,34 @@ export const RecordingControls: React.FC<Props> = ({
 
           // Save transcription data if available
           if (transcriptions && transcriptions.length > 0) {
+            const finalTranscriptions = transcriptions.filter(t => t.isFinal);
             const transcriptionData = {
-              transcriptions: transcriptions.filter(t => t.isFinal), // Only save final results
-              totalCount: transcriptions.filter(t => t.isFinal).length,
+              transcriptions: finalTranscriptions, // Only save final results
+              totalCount: finalTranscriptions.length,
               savedAt: new Date().toISOString()
             };
             await fileManager.saveMetadataFile(
               transcriptionData,
               `${newProjectName}_transcription.json`,
+              undefined,
+              true
+            );
+            
+            // Save raw transcripts for AI refinement
+            const rawTranscriptsData = {
+              rawTranscripts: finalTranscriptions.map(t => ({
+                text: t.text,
+                timestamp: t.startTime,
+                audioTimeMs: t.audioTimeMs,
+                confidence: t.confidence,
+                isFinal: t.isFinal
+              })),
+              totalCount: finalTranscriptions.length,
+              savedAt: new Date().toISOString()
+            };
+            await fileManager.saveMetadataFile(
+              rawTranscriptsData,
+              `${newProjectName}_rawTranscripts.json`,
               undefined,
               true
             );
@@ -771,14 +791,32 @@ export const RecordingControls: React.FC<Props> = ({
 
         // Save transcription data if available
         if (transcriptions && transcriptions.length > 0) {
+          const finalTranscriptions = transcriptions.filter(t => t.isFinal);
           const transcriptionData = {
-            transcriptions: transcriptions.filter(t => t.isFinal),
-            totalCount: transcriptions.filter(t => t.isFinal).length,
+            transcriptions: finalTranscriptions,
+            totalCount: finalTranscriptions.length,
             savedAt: new Date().toISOString()
           };
           await downloader.downloadMetadataFile(
             transcriptionData,
             `${newProjectName}_transcription.json`
+          );
+          
+          // Save raw transcripts for AI refinement
+          const rawTranscriptsData = {
+            rawTranscripts: finalTranscriptions.map(t => ({
+              text: t.text,
+              timestamp: t.startTime,
+              audioTimeMs: t.audioTimeMs,
+              confidence: t.confidence,
+              isFinal: t.isFinal
+            })),
+            totalCount: finalTranscriptions.length,
+            savedAt: new Date().toISOString()
+          };
+          await downloader.downloadMetadataFile(
+            rawTranscriptsData,
+            `${newProjectName}_rawTranscripts.json`
           );
           // console.log('💾 Transcription data downloaded in Save Changes:', transcriptionData.totalCount, 'items');
         }

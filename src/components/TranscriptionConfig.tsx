@@ -281,7 +281,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
         {/* Gemini Model Selection */}
         {availableModels.length > 0 && (
           <Form.Item
-            label="Gemini Model"
+            label="Gemini Model (lưu ý: một số mô hình Gemini phải trả phí mới dùng được)"
             name="geminiModel"
             rules={[{ required: true, message: 'Vui lòng chọn model' }]}
             extra={

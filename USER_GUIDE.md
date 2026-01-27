@@ -165,7 +165,105 @@ Phát hiện dữ liệu tự động sao lưu từ 5 phút trước.
 - 🌐 **Online** - Có kết nối internet
 - 📴 **Offline** - Không có internet (vẫn hoạt động bình thường)
 
-### 9. ⚠️ Unsaved Changes Warning
+### 9. 🎤 Speech-to-Text (Chuyển đổi giọng nói sang văn bản)
+
+Chuyển đổi giọng nói thành văn bản real-time trong quá trình ghi âm sử dụng **Google Web Speech API** (hoàn toàn miễn phí).
+
+**Cấu hình:**
+1. Click nút **"Cấu hình Speech-to-Text"** (chỉ hiện khi online)
+2. Điền các thông tin:
+   - **Language**: Chọn ngôn ngữ (Tiếng Việt, English, etc.)
+   - **Max Alternatives**: Số lượng kết quả thay thế (1-5)
+   - **Interim Results**: Bật để xem kết quả tạm thời
+3. Click **"Lưu"**
+
+**Sử dụng:**
+- Bật toggle **"Tự động chuyển giọng nói thành văn bản: ON"** trước khi ghi âm
+- Bắt đầu ghi âm → Nói vào microphone
+- Kết quả hiện real-time trong panel **"Kết quả chuyển đổi giọng nói sang văn bản"**
+- Panel tự động expand/collapse theo nội dung
+
+**Các loại kết quả:**
+- 🔵 **Tạm thời (Interim)**: Kết quả đang xử lý, có thể thay đổi
+- 🟢 **Cuối cùng (Final)**: Kết quả đã xác định, không thay đổi
+- 🟡 **Đã chỉnh sửa (Edited)**: User đã edit thủ công
+
+**Chỉnh sửa transcription:**
+1. **Double-click** vào segment → Mở edit mode
+2. Chỉnh sửa:
+   - **Text**: Nội dung văn bản
+   - **Speaker**: Tên người nói
+   - **Time**: Thời gian (format: `YYYY-MM-DD HH:MM:SS`)
+   - **Audio Time**: Vị trí trên audio (format: `MM:SS` hoặc `H:MM:SS`)
+3. Click **💾 Save** hoặc **❌ Cancel**
+
+**Xóa segment:**
+- Xóa toàn bộ text trong edit mode → Click Save
+- Hiện dialog xác nhận xóa
+- Click **"Xóa segment"** → Segment biến mất khỏi danh sách
+
+**Seek audio:**
+- **Double-click** vào **audio time tag** (📍 MM:SS) → Jump đến vị trí đó trên audio
+- Không trigger edit mode
+
+### 10. 🤖 AI Text Refinement (Chuẩn hóa văn bản bằng AI)
+
+Sử dụng **Google Gemini AI** để chuẩn hóa và làm sạch kết quả chuyển đổi giọng nói.
+
+**⚠️ YÊU CẦU:**
+- Cần **Gemini API Key** (miễn phí)
+- Cần kết nối internet
+- **KHÔNG sử dụng với thông tin nhạy cảm** (dữ liệu gửi đến Google API)
+
+**Lấy Gemini API Key (miễn phí):**
+1. Truy cập: https://aistudio.google.com/app/apikey
+2. Click **"Create API Key"**
+3. Copy API key
+4. Paste vào **Settings → Gemini API Key**
+5. Hệ thống tự động tải danh sách models
+
+**Chọn Gemini Model:**
+- **Gemini 2.5 Flash** (Khuyên dùng): Nhanh, chất lượng tốt
+- **Gemini 2.5 Pro**: Chất lượng cao hơn, chậm hơn
+- **Gemini 2.0 Flash**: Cân bằng giữa tốc độ và chất lượng
+
+**Sử dụng:**
+1. Sau khi có kết quả chuyển đổi giọng nói
+2. Click nút **"🤖 Chuẩn hóa bằng AI"** trong header của Transcription Panel
+3. Đọc kỹ **cảnh báo bảo mật:**
+   - ⚠️ Dữ liệu sẽ gửi đến Google Gemini API
+   - 🚫 **KHÔNG dùng** với:
+     - Mật khẩu, số tài khoản, thông tin tài chính
+     - Thông tin y tế cá nhân (bệnh án, đơn thuốc...)
+     - CCCD/CMND, địa chỉ, số điện thoại nhạy cảm
+     - Bí mật thương mại, kế hoạch kinh doanh
+     - API keys, tokens, credentials
+4. Click **"Đồng ý, tiếp tục"**
+5. Đợi AI xử lý (hiện progress bar)
+6. Kết quả được thay thế toàn bộ transcription hiện tại
+
+**AI sẽ thực hiện:**
+- ✅ Sửa lỗi nhận diện từ Web Speech API
+- ✅ Loại bỏ từ thừa, từ đệm (à, ừm, thì, là, mà...)
+- ✅ Thêm dấu câu đúng quy tắc (dấu chấm, phẩy, hỏi, than...)
+- ✅ Viết hoa chính xác (đầu câu, danh từ riêng, chức danh...)
+- ✅ Gộp các đoạn liên quan thành câu hoàn chỉnh
+
+**Dữ liệu gửi đến AI:**
+- **Primary**: Transcriptions (có thể đã được user edit → độ tin cậy cao)
+- **Supplementary**: Raw transcripts (output gốc từ Web Speech API → chỉ tham khảo metadata)
+
+**Sau khi refine:**
+- Segments được đánh dấu **"🤖 AI"**
+- Có thể **edit lại** nếu cần
+- **Save project** → Lưu cả raw transcripts để refine lại sau
+
+**Tips:**
+- Review kết quả trước khi save
+- Có thể refine nhiều lần với model khác nhau
+- Khi load project cũ, raw transcripts được giữ nguyên để refine lại
+
+### 11. ⚠️ Unsaved Changes Warning
 
 Bảo vệ dữ liệu chưa lưu.
 
