@@ -31,6 +31,7 @@ interface Props {
     speakersMap: Map<number, string>;
     audioBlob: Blob | null;
     recordingStartTime: number;
+    transcriptions?: TranscriptionResult[]; // Add transcriptions array
   }) => void;
   meetingInfo: MeetingInfo;
   notes: string;
@@ -949,21 +950,13 @@ export const RecordingControls: React.FC<Props> = ({
         timestampMap: timestampMapData,
         speakersMap: speakersMapData,
         audioBlob: projectData.audioBlob,
-        recordingStartTime: recordingStart
+        recordingStartTime: recordingStart,
+        transcriptions: projectData.transcriptionData?.transcriptions || [] // Pass transcriptions array
       });
 
-      // Load transcription data if available
-      if (projectData.transcriptionData) {
-        // console.log('📝 Loading transcription data:', projectData.transcriptionData);
-        onClearTranscriptions(); // Clear existing first
-        
-        // Load each transcription result
-        if (projectData.transcriptionData.transcriptions && Array.isArray(projectData.transcriptionData.transcriptions)) {
-          projectData.transcriptionData.transcriptions.forEach((t: TranscriptionResult) => {
-            onNewTranscription(t);
-          });
-          message.success(`Loaded ${projectData.transcriptionData.transcriptions.length} transcription results`);
-        }
+      // Show message if transcriptions loaded
+      if (projectData.transcriptionData?.transcriptions && projectData.transcriptionData.transcriptions.length > 0) {
+        message.success(`Loaded ${projectData.transcriptionData.transcriptions.length} transcription results`);
       }
 
       // console.log('Load complete:', {

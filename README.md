@@ -14,9 +14,12 @@
 ## ✨ Features
 
 - 🎙️ **Audio Recording** - Ghi âm chất lượng cao WebM (Opus codec, ~140MB/2.5h)
+- 🎤 **Speech-to-Text** - Chuyển đổi giọng nói sang văn bản real-time (Web Speech API)
+- 🤖 **AI Text Refinement** - Chuẩn hóa và làm sạch văn bản với Google Gemini AI
 - ⏱️ **Real-time Timestamps** - Nhấn ENTER để chèn timestamp tự động
 - 📝 **Rich Text Editor** - Định dạng văn bản với toolbar đầy đủ (Quill.js)
 - 🎯 **Timestamp Seeking** - Double-click timestamp → jump đến vị trí audio
+- ✏️ **Edit Transcriptions** - Double-click segment để chỉnh sửa thời gian, người nói, nội dung
 - 💾 **Local File Storage** - Lưu files trực tiếp vào folder (Chrome/Edge)
 - 🔄 **Auto-backup & Recovery** - Tự động backup mỗi 3s, khôi phục khi crash
 - 📂 **Load Project** - Load lại project cũ để chỉnh sửa

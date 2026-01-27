@@ -9,7 +9,9 @@ import { TranscriptionPanel } from './components/TranscriptionPanel';
 import { FileManagerService } from './services/fileManager';
 import { saveBackup, loadBackup, clearBackup, hasBackup, getBackupAge } from './services/autoBackup';
 import { speechToTextService, SpeechToTextService } from './services/speechToText';
+import { AIRefinementService, type RawTranscriptData } from './services/aiRefinement';
 import type { MeetingInfo, SpeechToTextConfig, TranscriptionResult } from './types/types';
+import { message } from 'antd';
 import './styles/global.css';
 
 export const App: React.FC = () => {
@@ -306,6 +308,7 @@ export const App: React.FC = () => {
     speakersMap: Map<number, string>;
     audioBlob: Blob | null;
     recordingStartTime: number;
+    transcriptions?: TranscriptionResult[]; // Add transcriptions array
   }) => {
     // console.log('📂 App.handleLoadProject - Data received:', {
     //   meetingInfo: loadedData.meetingInfo,
@@ -313,7 +316,8 @@ export const App: React.FC = () => {
     //   timestampMapSize: loadedData.timestampMap.size,
     //   speakersMapSize: loadedData.speakersMap.size,
     //   audioBlobSize: loadedData.audioBlob?.size || 0,
-    //   hasAudio: loadedData.audioBlob !== null
+    //   hasAudio: loadedData.audioBlob !== null,
+    //   transcriptionsCount: loadedData.transcriptions?.length || 0
     // });
     
     setMeetingInfo(loadedData.meetingInfo);
@@ -322,6 +326,14 @@ export const App: React.FC = () => {
     setSpeakersMap(loadedData.speakersMap);
     setAudioBlob(loadedData.audioBlob);
     setRecordingStartTime(loadedData.recordingStartTime);
+    
+    // Load transcriptions if available
+    if (loadedData.transcriptions && loadedData.transcriptions.length > 0) {
+      setTranscriptions(loadedData.transcriptions);
+    } else {
+      setTranscriptions([]); // Clear transcriptions if none
+    }
+    
     setIsSaved(true);
     setHasUnsavedChanges(false);
     setSavedNotesSnapshot(loadedData.notes);
@@ -454,6 +466,168 @@ export const App: React.FC = () => {
     }
   };
 
+  // Handle AI refinement
+  const handleAIRefine = async () => {
+    if (!transcriptionConfig) {
+      message.warning('Vui lòng cấu hình Speech-to-Text Settings trước');
+      setShowTranscriptionConfig(true);
+      return;
+    }
+
+    // Determine provider and API key
+    const provider = transcriptionConfig.aiProvider || 'gemini';
+    let apiKeyToUse = '';
+    
+    if (provider === 'openai') {
+      apiKeyToUse = transcriptionConfig.openaiApiKey || '';
+      if (!apiKeyToUse) {
+        message.error({
+          content: (
+            <div>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+                Cần OpenAI API Key để sử dụng ChatGPT
+              </div>
+              <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
+                <strong>Cách lấy API Key:</strong>
+                <ol style={{ paddingLeft: '20px', margin: '8px 0' }}>
+                  <li>Truy cập: <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a></li>
+                  <li>Click "Create new secret key"</li>
+                  <li>Copy API key và paste vào Settings</li>
+                </ol>
+                <div style={{ color: '#ff9800', marginTop: '8px' }}>
+                  ⚠️ Lưu ý: OpenAI API yêu cầu có credit (pay-as-you-go)
+                </div>
+              </div>
+            </div>
+          ),
+          duration: 10
+        });
+        setShowTranscriptionConfig(true);
+        return;
+      }
+    } else {
+      // Gemini
+      apiKeyToUse = transcriptionConfig.geminiApiKey || transcriptionConfig.apiKey;
+      if (!apiKeyToUse) {
+        message.error({
+          content: (
+            <div>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+                Cần API Key để sử dụng Gemini AI
+              </div>
+              <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
+                <strong>Cách lấy API Key miễn phí:</strong>
+                <ol style={{ paddingLeft: '20px', margin: '8px 0' }}>
+                  <li>Truy cập: <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
+                  <li>Click "Create API Key"</li>
+                  <li>Copy API key và paste vào Settings</li>
+                </ol>
+              </div>
+            </div>
+          ),
+          duration: 10
+        });
+        setShowTranscriptionConfig(true);
+        return;
+      }
+    }
+
+    if (transcriptions.length === 0) {
+      message.warning('Không có dữ liệu chuyển đổi để chuẩn hóa');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Bạn có muốn sử dụng AI để chuẩn hóa và làm sạch văn bản chuyển đổi?\n\n' +
+      'AI sẽ:\n' +
+      '- Sửa lỗi nhận diện\n' +
+      '- Loại bỏ từ thừa, từ đệm\n' +
+      '- Thêm dấu câu & viết hoa\n' +
+      '- Gộp các đoạn liên quan\n\n' +
+      'Lưu ý: Quá trình này sẽ thay thế toàn bộ kết quả hiện tại.'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      // Show progress dialog
+      const progressDiv = document.createElement('div');
+      progressDiv.id = 'ai-refine-progress';
+      progressDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 10000;
+        min-width: 350px;
+        text-align: center;
+      `;
+      progressDiv.innerHTML = `
+        <div style="font-size: 18px; font-weight: bold; margin-bottom: 12px;">🤖 AI đang chuẩn hóa văn bản...</div>
+        <div id="ai-progress-text" style="font-size: 14px; color: #666;">Đang xử lý...</div>
+        <div style="width: 100%; height: 8px; background: #f0f0f0; border-radius: 4px; margin-top: 12px; overflow: hidden;">
+          <div id="ai-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); transition: width 0.3s;"></div>
+        </div>
+      `;
+      document.body.appendChild(progressDiv);
+
+      const updateProgress = (progress: number) => {
+        const progressBar = document.getElementById('ai-progress-bar');
+        const progressText = document.getElementById('ai-progress-text');
+        if (progressBar) progressBar.style.width = `${progress}%`;
+        if (progressText) {
+          if (progress < 20) progressText.textContent = 'Đang chuẩn bị dữ liệu...';
+          else if (progress < 70) progressText.textContent = 'Đang gửi đến AI...';
+          else if (progress < 90) progressText.textContent = 'Đang xử lý kết quả...';
+          else progressText.textContent = 'Hoàn thành!';
+        }
+      };
+
+      // Prepare raw data
+      const rawData: RawTranscriptData[] = transcriptions.map(t => ({
+        text: t.text,
+        timestamp: t.startTime,
+        audioTimeMs: t.audioTimeMs,
+        confidence: t.confidence,
+        isFinal: t.isFinal
+      }));
+
+      // Call AI refinement service
+      const refinedSegments = await AIRefinementService.refineTranscripts(
+        apiKeyToUse,
+        rawData,
+        provider,
+        updateProgress
+      );
+
+      // Convert to TranscriptionResult format
+      const refinedResults = AIRefinementService.convertToTranscriptionResults(
+        refinedSegments,
+        'Person1'
+      );
+
+      // Update transcriptions
+      setTranscriptions(refinedResults);
+      setHasUnsavedChanges(true);
+
+      // Remove progress dialog
+      progressDiv.remove();
+
+      message.success(`✅ Đã chuẩn hóa thành công ${refinedResults.length} đoạn văn bản!`);
+
+    } catch (error: any) {
+      const progressDiv = document.getElementById('ai-refine-progress');
+      if (progressDiv) progressDiv.remove();
+
+      console.error('AI Refinement Error:', error);
+      message.error(`Lỗi khi chuẩn hóa bằng AI: ${error.message}`);
+    }
+  };
+
   return (
     <div className="app-container">
       {/* Backup Restoration Dialog */}
@@ -568,6 +742,16 @@ export const App: React.FC = () => {
           isOnline={isOnline}
           onSeekAudio={handleSeekToAudio}
           onEditTranscription={handleEditTranscription}
+          onAIRefine={handleAIRefine}
+          canRefineWithAI={
+            !isRecording && 
+            transcriptions.length > 0 && 
+            (
+              !!transcriptionConfig.geminiApiKey || 
+              !!transcriptionConfig.openaiApiKey || 
+              !!transcriptionConfig.apiKey
+            )
+          }
         />
       )}
 

@@ -53,9 +53,15 @@ export interface FileSystemSupport {
   hasFallback: boolean;
 }
 
+// AI Provider types
+export type AIProvider = 'gemini' | 'openai';
+
 // Google Cloud Speech-to-Text types
 export interface SpeechToTextConfig {
   apiKey: string;
+  geminiApiKey?: string; // Optional: Separate API key for Gemini AI (for refinement)
+  openaiApiKey?: string; // Optional: OpenAI API key for ChatGPT refinement
+  aiProvider?: AIProvider; // AI provider to use for refinement (default: gemini)
   apiEndpoint?: string;
   languageCode: string;
   enableSpeakerDiarization: boolean;
@@ -77,6 +83,7 @@ export interface TranscriptionResult {
   speaker: string;  // Speaker identification - default "Person1"
   isFinal: boolean;
   isManuallyEdited?: boolean; // True if user manually edited the text
+  isAIRefined?: boolean; // True if text was refined by AI
 }
 
 export interface SpeechRecognitionAlternative {

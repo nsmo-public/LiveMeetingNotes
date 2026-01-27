@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Collapse, Empty, Tag, Space, Tooltip, Input, Button } from 'antd';
-import { AudioOutlined, ClockCircleOutlined, UserOutlined, CheckCircleOutlined, EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons';
+import { AudioOutlined, ClockCircleOutlined, UserOutlined, CheckCircleOutlined, EditOutlined, SaveOutlined, CloseOutlined, RobotOutlined } from '@ant-design/icons';
 import type { TranscriptionResult } from '../types/types';
 
 interface Props {
@@ -9,6 +9,8 @@ interface Props {
   isOnline: boolean;
   onSeekAudio?: (timeMs: number) => void;
   onEditTranscription?: (id: string, newText: string, newSpeaker: string, newStartTime?: string, newAudioTimeMs?: number) => void;
+  onAIRefine?: () => void;
+  canRefineWithAI?: boolean;
 }
 
 export const TranscriptionPanel: React.FC<Props> = ({
@@ -16,7 +18,9 @@ export const TranscriptionPanel: React.FC<Props> = ({
   isTranscribing,
   isOnline,
   onSeekAudio,
-  onEditTranscription
+  onEditTranscription,
+  onAIRefine,
+  canRefineWithAI
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState<number>(100); // Initial height (1/5 of 500px)
@@ -204,6 +208,30 @@ export const TranscriptionPanel: React.FC<Props> = ({
               flexDirection: 'column',
               transition: 'height 0.3s ease'
             }}>
+              {/* AI Refine Button - Show at top when conditions met */}
+              {canRefineWithAI && !isTranscribing && transcriptions.length > 0 && onAIRefine && (
+                <div style={{ 
+                  padding: '12px 16px',
+                  borderBottom: '1px solid #f0f0f0',
+                  backgroundColor: '#fafafa'
+                }}>
+                  <Tooltip title="Sử dụng AI để chuẩn hóa và làm sạch văn bản chuyển đổi">
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<RobotOutlined />}
+                      onClick={onAIRefine}
+                      style={{ 
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none'
+                      }}
+                    >
+                      🤖 Chuẩn hóa bằng AI
+                    </Button>
+                  </Tooltip>
+                </div>
+              )}
+              
               {transcriptions.length === 0 ? (
                 <div style={{ 
                   height: '100%', 
@@ -342,6 +370,15 @@ export const TranscriptionPanel: React.FC<Props> = ({
                                 <Tooltip title="Đã chỉnh sửa thủ công">
                                   <Tag color="orange" style={{ fontSize: '10px', margin: 0 }}>
                                     ✏️ Edited
+                                  </Tag>
+                                </Tooltip>
+                              )}
+                              
+                              {/* AI refined indicator */}
+                              {item.isAIRefined && (
+                                <Tooltip title="Đã chuẩn hóa bằng AI">
+                                  <Tag color="purple" style={{ fontSize: '10px', margin: 0 }}>
+                                    🤖 AI
                                   </Tag>
                                 </Tooltip>
                               )}

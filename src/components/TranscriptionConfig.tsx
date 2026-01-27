@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Select, Switch, Button, Space, App, Collapse } from 'antd';
+import { Modal, Form, Input, Select, Switch, Button, Space, App, Collapse, Tag } from 'antd';
 import { SettingOutlined, SaveOutlined, DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import type { SpeechToTextConfig } from '../types/types';
 import { SpeechToTextService } from '../services/speechToText';
@@ -29,6 +29,9 @@ export const TranscriptionConfig: React.FC<Props> = ({
       // Default values (recommended settings)
       const defaultValues = {
         apiKey: '',
+        geminiApiKey: '',
+        openaiApiKey: '',
+        aiProvider: 'gemini' as const,
         apiEndpoint: 'https://speech.googleapis.com/v1/speech:recognize',
         languageCode: 'vi-VN',
         enableSpeakerDiarization: false,
@@ -53,6 +56,9 @@ export const TranscriptionConfig: React.FC<Props> = ({
 
       const config: SpeechToTextConfig = {
         apiKey: values.apiKey?.trim() || '',
+        geminiApiKey: values.geminiApiKey?.trim() || '',
+        openaiApiKey: values.openaiApiKey?.trim() || '',
+        aiProvider: values.aiProvider || 'gemini',
         apiEndpoint: values.apiEndpoint.trim(),
         languageCode: values.languageCode,
         enableSpeakerDiarization: values.enableSpeakerDiarization,
@@ -137,7 +143,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
         autoComplete="off"
       >
         <Form.Item
-          label="API Key (Tùy chọn)"
+          label="API Key (Tùy chọn - cho Speech-to-Text)"
           name="apiKey"
           rules={[
             { min: 20, message: 'API Key phải có ít nhất 20 ký tự' }
@@ -164,14 +170,94 @@ export const TranscriptionConfig: React.FC<Props> = ({
                   Google Cloud Console
                 </a>
               </div>
-              <div style={{ fontSize: '12px', color: '#ff9800' }}>
-                ⚠️ API Key sẽ được lưu trên trình duyệt. Không chia sẻ với người khác.
-              </div>
             </Space>
           }
         >
           <Input.Password
             placeholder="Để trống để dùng Web Speech API miễn phí"
+            autoComplete="off"
+          />
+        </Form.Item>
+
+        {/* AI Provider Selection */}
+        <Form.Item
+          label="AI Provider (cho chuẩn hóa văn bản)"
+          name="aiProvider"
+          rules={[{ required: true, message: 'Vui lòng chọn AI provider' }]}
+          extra="Chọn AI engine để chuẩn hóa văn bản chuyển đổi"
+        >
+          <Select>
+            <Select.Option value="gemini">
+              <Space>
+                <span>🤖 Google Gemini</span>
+                <Tag color="green" style={{ fontSize: '10px' }}>MIỄN PHÍ</Tag>
+              </Space>
+            </Select.Option>
+            <Select.Option value="openai">
+              <Space>
+                <span>💬 OpenAI ChatGPT</span>
+                <Tag color="orange" style={{ fontSize: '10px' }}>TRẢ PHÍ</Tag>
+              </Space>
+            </Select.Option>
+          </Select>
+        </Form.Item>
+
+        <Form.Item
+          label="Gemini API Key (Tùy chọn)"
+          name="geminiApiKey"
+          rules={[
+            { min: 20, message: 'API Key phải có ít nhất 20 ký tự' }
+          ]}
+          extra={
+            <Space direction="vertical" size="small" style={{ marginTop: 8 }}>
+              <div style={{ fontSize: '12px', color: '#52c41a', fontWeight: 'bold' }}>
+                ✨ MIỄN PHÍ: Lấy tại{' '}
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Google AI Studio
+                </a>
+              </div>
+              <div style={{ fontSize: '12px', color: '#888' }}>
+                💡 Chỉ cần nếu chọn AI Provider = Gemini
+              </div>
+            </Space>
+          }
+        >
+          <Input.Password
+            placeholder="Lấy miễn phí tại aistudio.google.com/app/apikey"
+            autoComplete="off"
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="OpenAI API Key (Tùy chọn)"
+          name="openaiApiKey"
+          rules={[
+            { min: 20, message: 'API Key phải có ít nhất 20 ký tự' }
+          ]}
+          extra={
+            <Space direction="vertical" size="small" style={{ marginTop: 8 }}>
+              <div style={{ fontSize: '12px', color: '#ff9800' }}>
+                💰 Trả phí: Lấy tại{' '}
+                <a
+                  href="https://platform.openai.com/api-keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  OpenAI Platform
+                </a>
+              </div>
+              <div style={{ fontSize: '12px', color: '#888' }}>
+                💡 Chỉ cần nếu chọn AI Provider = OpenAI (GPT-3.5-turbo ~$0.0015/1K tokens)
+              </div>
+            </Space>
+          }
+        >
+          <Input.Password
+            placeholder="sk-..."
             autoComplete="off"
           />
         </Form.Item>
