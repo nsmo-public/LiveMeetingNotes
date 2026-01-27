@@ -232,6 +232,17 @@ export const TranscriptionConfig: React.FC<Props> = ({
               <div style={{ fontSize: '12px', color: '#888' }}>
                 💡 Nhập API Key → Hệ thống tự động tải danh sách models
               </div>
+              <div style={{ 
+                fontSize: '11px', 
+                color: '#fa8c16',
+                background: '#fff7e6',
+                padding: '8px',
+                borderRadius: '4px',
+                marginTop: '4px'
+              }}>
+                ⚠️ <strong>Hạn mức miễn phí:</strong> 250,000 tokens/ngày • 15 requests/phút<br />
+                📊 Monitor usage: <a href="https://ai.dev/rate-limit" target="_blank" rel="noopener noreferrer">ai.dev/rate-limit</a>
+              </div>
             </Space>
           }
         >

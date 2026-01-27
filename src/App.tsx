@@ -869,6 +869,33 @@ export const App: React.FC = () => {
       return;
     }
 
+    // Show quota estimation before processing
+    const totalChars = transcriptions.reduce((sum, t) => sum + t.text.length, 0);
+    const estimatedTokens = Math.ceil(totalChars / 3) + 1000;
+    const quotaPercent = Math.round((estimatedTokens / 250000) * 100);
+    
+    message.info({
+      content: (
+        <div style={{ textAlign: 'left' }}>
+          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+            📊 Ước tính token sử dụng
+          </div>
+          <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
+            • Segments: {transcriptions.length}<br />
+            • Ước tính: ~{estimatedTokens.toLocaleString()} tokens<br />
+            • Hạn mức free: 250,000 tokens/ngày<br />
+            • Sử dụng: ~{quotaPercent}%<br />
+            {quotaPercent > 80 && (
+              <span style={{ color: '#fa8c16' }}>
+                <br />⚠️ Gần vượt hạn mức! Hệ thống sẽ tự động chia nhỏ xử lý.
+              </span>
+            )}
+          </div>
+        </div>
+      ),
+      duration: 5
+    });
+
     try {
       // Show progress dialog
       const progressDiv = document.createElement('div');
@@ -900,10 +927,21 @@ export const App: React.FC = () => {
         const progressText = document.getElementById('ai-progress-text');
         if (progressBar) progressBar.style.width = `${progress}%`;
         if (progressText) {
-          if (progress < 20) progressText.textContent = 'Đang chuẩn bị dữ liệu...';
-          else if (progress < 70) progressText.textContent = 'Đang gửi đến AI...';
-          else if (progress < 90) progressText.textContent = 'Đang xử lý kết quả...';
-          else progressText.textContent = 'Hoàn thành!';
+          if (progress < 10) {
+            progressText.textContent = 'Đang chuẩn bị dữ liệu...';
+          } else if (progress < 30) {
+            progressText.textContent = 'Đang chia batches để tối ưu quota...';
+          } else if (progress < 90) {
+            const currentBatch = Math.floor((progress / 100) * Math.ceil(transcriptions.length / 50));
+            const totalBatches = Math.ceil(transcriptions.length / 50);
+            if (totalBatches > 1) {
+              progressText.textContent = `Đang xử lý batch ${currentBatch}/${totalBatches}... (${Math.floor(progress)}%)`;
+            } else {
+              progressText.textContent = `Đang gửi đến AI... ${Math.floor(progress)}%`;
+            }
+          } else {
+            progressText.textContent = 'Hoàn thành!';
+          }
         }
       };
 
@@ -949,7 +987,52 @@ export const App: React.FC = () => {
       if (progressDiv) progressDiv.remove();
 
       console.error('AI Refinement Error:', error);
-      message.error(`Lỗi khi chuẩn hóa bằng AI: ${error.message}`);
+      
+      // Show detailed error modal for quota issues
+      if (error.message.includes('quota') || error.message.includes('429') || error.message.includes('Vượt hạn mức')) {
+        Modal.error({
+          title: '🚫 Vượt hạn mức Gemini API',
+          width: 600,
+          content: (
+            <div style={{ fontSize: '14px', lineHeight: '1.8' }}>
+              <div style={{ 
+                padding: '16px', 
+                background: '#fff2f0',
+                border: '1px solid #ffccc7',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                whiteSpace: 'pre-wrap'
+              }}>
+                {error.message}
+              </div>
+
+              <div style={{ 
+                padding: '12px 16px',
+                background: '#e6f7ff',
+                border: '1px solid #91d5ff',
+                borderRadius: '6px'
+              }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#0050b3' }}>
+                  📌 Thông tin hạn mức Gemini Free Tier:
+                </div>
+                <ul style={{ margin: 0, paddingLeft: '20px', color: '#666' }}>
+                  <li>15 requests/phút</li>
+                  <li>1,500 requests/ngày</li>
+                  <li><strong>250,000 tokens/ngày</strong> ← Giới hạn chính</li>
+                  <li>Reset: Mỗi 24 giờ</li>
+                </ul>
+              </div>
+            </div>
+          ),
+          okText: 'Đã hiểu'
+        });
+      } else {
+        // Regular error message
+        message.error({
+          content: `Lỗi khi chuẩn hóa bằng AI: ${error.message}`,
+          duration: 8
+        });
+      }
     }
   };
 

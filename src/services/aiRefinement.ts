@@ -22,6 +22,62 @@ export class AIRefinementService {
   private static readonly GEMINI_MODELS_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
   private static readonly GEMINI_API_VERSION = 'v1beta'; // Use v1beta as it's more stable
 
+  // Gemini Free Tier Limits (per day)
+  private static readonly FREE_TIER_LIMITS = {
+    RPM: 15,           // Requests per minute
+    TPM: 1000000,      // Tokens per minute (1M)
+    RPD: 1500,         // Requests per day
+    TPD: 250000        // Tokens per day (250K) - Main limit users hit
+  };
+
+  // Estimate tokens per segment (rough estimation)
+  private static readonly BATCH_SIZE = 50; // Process 50 segments at a time (~7500 tokens)
+
+  /**
+   * Estimate token count for transcripts
+   */
+  private static estimateTokenCount(transcriptions: TranscriptionResult[]): number {
+    // Rough estimation: 1 token ≈ 4 characters for English, ~2-3 for Vietnamese
+    const totalChars = transcriptions.reduce((sum, t) => sum + t.text.length, 0);
+    // Vietnamese: ~2.5 chars per token, English: ~4 chars per token
+    // Use 3 as average + overhead for prompt
+    const estimatedTokens = Math.ceil(totalChars / 3) + 1000; // +1000 for prompt overhead
+    return estimatedTokens;
+  }
+
+  /**
+   * Check if processing would exceed quota
+   */
+  private static checkQuotaEstimate(transcriptions: TranscriptionResult[]): {
+    estimatedTokens: number;
+    withinLimit: boolean;
+    message: string;
+  } {
+    const estimatedTokens = this.estimateTokenCount(transcriptions);
+    const withinLimit = estimatedTokens < this.FREE_TIER_LIMITS.TPD;
+
+    let message = '';
+    if (!withinLimit) {
+      message = `⚠️ Ước tính ${estimatedTokens.toLocaleString()} tokens - vượt hạn mức miễn phí (${this.FREE_TIER_LIMITS.TPD.toLocaleString()} tokens/ngày)`;
+    } else {
+      const percentUsed = Math.round((estimatedTokens / this.FREE_TIER_LIMITS.TPD) * 100);
+      message = `✅ Ước tính ${estimatedTokens.toLocaleString()} tokens (~${percentUsed}% hạn mức miễn phí)`;
+    }
+
+    return { estimatedTokens, withinLimit, message };
+  }
+
+  /**
+   * Split transcriptions into batches for processing
+   */
+  private static splitIntoBatches(transcriptions: TranscriptionResult[], batchSize: number): TranscriptionResult[][] {
+    const batches: TranscriptionResult[][] = [];
+    for (let i = 0; i < transcriptions.length; i += batchSize) {
+      batches.push(transcriptions.slice(i, i + batchSize));
+    }
+    return batches;
+  }
+
   /**
    * List available Gemini models for the given API key
    * Useful for debugging and verifying API key access
@@ -56,7 +112,7 @@ export class AIRefinementService {
   }
 
   /**
-   * Refine transcripts using Gemini AI
+   * Refine transcripts using Gemini AI with automatic batching
    * @param transcriptions - Primary data (user-edited, highest reliability)
    * @param rawData - Supplementary data (original Web Speech API output for reference)
    */
@@ -67,7 +123,86 @@ export class AIRefinementService {
     modelName: string, // REQUIRED: specific Gemini model (e.g., "models/gemini-2.5-flash")
     onProgress?: (progress: number) => void
   ): Promise<RefinedSegment[]> {
+    // Check quota estimate first
+    const quotaCheck = this.checkQuotaEstimate(transcriptions);
+    console.log('📊 Quota Check:', quotaCheck.message);
+
+    // If estimated tokens exceed limit, use batch processing
+    if (quotaCheck.estimatedTokens > this.FREE_TIER_LIMITS.TPD * 0.8) { // 80% threshold
+      console.log('🔄 Using batch processing to avoid quota limits...');
+      return this.refineTranscriptsInBatches(apiKey, transcriptions, rawData, modelName, onProgress);
+    }
+
+    // Otherwise, process normally
     return this.refineWithGemini(apiKey, transcriptions, rawData, modelName, onProgress);
+  }
+
+  /**
+   * Refine transcripts in batches to avoid quota limits
+   */
+  private static async refineTranscriptsInBatches(
+    apiKey: string,
+    transcriptions: TranscriptionResult[],
+    rawData: RawTranscriptData[],
+    modelName: string,
+    onProgress?: (progress: number) => void
+  ): Promise<RefinedSegment[]> {
+    const batches = this.splitIntoBatches(transcriptions, this.BATCH_SIZE);
+    const allRefinedSegments: RefinedSegment[] = [];
+
+    console.log(`📦 Processing ${transcriptions.length} segments in ${batches.length} batches...`);
+
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+      const batchProgress = (i / batches.length) * 100;
+
+      console.log(`🔄 Processing batch ${i + 1}/${batches.length} (${batch.length} segments)...`);
+
+      try {
+        // Find corresponding raw data for this batch
+        const batchStartIndex = i * this.BATCH_SIZE;
+        const batchRawData = rawData.slice(batchStartIndex, batchStartIndex + batch.length);
+
+        // Process this batch
+        const refinedBatch = await this.refineWithGemini(
+          apiKey,
+          batch,
+          batchRawData,
+          modelName,
+          (subProgress) => {
+            if (onProgress) {
+              const totalProgress = batchProgress + (subProgress / batches.length);
+              onProgress(Math.min(totalProgress, 99));
+            }
+          }
+        );
+
+        allRefinedSegments.push(...refinedBatch);
+
+        // Add delay between batches to avoid rate limiting (except for last batch)
+        if (i < batches.length - 1) {
+          console.log('⏳ Waiting 5 seconds before next batch...');
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+      } catch (error: any) {
+        // If quota exceeded, throw error with helpful message
+        if (error.message.includes('429') || error.message.includes('quota')) {
+          throw new Error(
+            `Vượt hạn mức API tại batch ${i + 1}/${batches.length}.\n\n` +
+            `✅ Đã xử lý: ${allRefinedSegments.length}/${transcriptions.length} segments\n\n` +
+            `Nguyên nhân: ${error.message}\n\n` +
+            `💡 Giải pháp:\n` +
+            `• Đợi 24 giờ để quota reset (hạn mức: 250,000 tokens/ngày)\n` +
+            `• Hoặc nâng cấp lên Gemini API trả phí tại console.cloud.google.com`
+          );
+        }
+        throw error;
+      }
+    }
+
+    if (onProgress) onProgress(100);
+    console.log(`✅ Batch processing complete: ${allRefinedSegments.length} segments refined`);
+    return allRefinedSegments;
   }
 
   /**
@@ -176,7 +311,41 @@ export class AIRefinementService {
         const errorData = await response.json().catch(() => ({}));
         const errorMsg = errorData.error?.message || response.statusText;
         
-        // Provide helpful error messages
+        // Handle quota/rate limit errors (429)
+        if (response.status === 429) {
+          // Extract retry time if available
+          const retryMatch = errorMsg.match(/retry in ([\d.]+)s/);
+          const retrySeconds = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) : 60;
+          const retryMinutes = Math.ceil(retrySeconds / 60);
+
+          // Check if it's daily quota or rate limit
+          if (errorMsg.includes('quota') || errorMsg.includes('250000')) {
+            throw new Error(
+              `🚫 Đã vượt hạn mức miễn phí của Gemini API\n\n` +
+              `📊 Hạn mức free tier: 250,000 tokens/ngày\n` +
+              `⏰ Thời gian reset: Sau ${retrySeconds}s (~ ${retryMinutes} phút)\n\n` +
+              `💡 Giải pháp:\n` +
+              `1️⃣ Đợi ${retryMinutes} phút rồi thử lại\n` +
+              `2️⃣ Xử lý ít segments hơn (chọn đoạn quan trọng để chuẩn hóa)\n` +
+              `3️⃣ Nâng cấp lên Gemini API trả phí:\n` +
+              `   • Truy cập: https://console.cloud.google.com\n` +
+              `   • Enable billing để có quota cao hơn (60 requests/phút)\n\n` +
+              `📈 Monitor usage: https://ai.dev/rate-limit\n\n` +
+              `Chi tiết: ${errorMsg}`
+            );
+          } else {
+            // Rate limit (RPM)
+            throw new Error(
+              `⏱️ Vượt giới hạn requests/phút\n\n` +
+              `📊 Hạn mức: 15 requests/phút (free tier)\n` +
+              `⏰ Thử lại sau: ${retrySeconds}s\n\n` +
+              `💡 Giải pháp: Đợi ${Math.ceil(retrySeconds / 60)} phút rồi thử lại\n\n` +
+              `Chi tiết: ${errorMsg}`
+            );
+          }
+        }
+        
+        // Provide helpful error messages for other errors
         if (response.status === 403) {
           if (errorMsg.includes('API has not been used') || errorMsg.includes('SERVICE_DISABLED')) {
             throw new Error(
