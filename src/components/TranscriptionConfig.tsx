@@ -309,20 +309,36 @@ export const TranscriptionConfig: React.FC<Props> = ({
               notFoundContent={isLoadingModels ? <Spin size="small" /> : 'Không có model khả dụng'}
               showSearch
               optionFilterProp="children"
+              optionLabelProp="label"
+              listHeight={400}
+              dropdownStyle={{ maxHeight: '500px' }}
             >
               {availableModels.map(model => (
-                <Select.Option key={model.name} value={model.name}>
-                  <Space direction="vertical" size={0} style={{ width: '100%' }}>
-                    <div style={{ fontWeight: 'bold' }}>{model.displayName}</div>
+                <Select.Option 
+                  key={model.name} 
+                  value={model.name}
+                  label={model.displayName}
+                  style={{ height: 'auto', padding: '8px 12px' }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '13px' }}>
+                      {model.displayName}
+                    </div>
                     {model.description && (
-                      <div style={{ fontSize: '11px', color: '#888', whiteSpace: 'normal' }}>
+                      <div style={{ 
+                        fontSize: '11px', 
+                        color: '#666', 
+                        lineHeight: '1.4',
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word'
+                      }}>
                         {model.description}
                       </div>
                     )}
-                    <div style={{ fontSize: '10px', color: '#1890ff' }}>
-                      📥 {model.inputTokenLimit.toLocaleString()} tokens | 📤 {model.outputTokenLimit.toLocaleString()} tokens
+                    <div style={{ fontSize: '10px', color: '#1890ff', marginTop: '2px' }}>
+                      📥 Input: {model.inputTokenLimit.toLocaleString()} | 📤 Output: {model.outputTokenLimit.toLocaleString()} tokens
                     </div>
-                  </Space>
+                  </div>
                 </Select.Option>
               ))}
             </Select>

@@ -185,21 +185,50 @@ export const TranscriptionPanel: React.FC<Props> = ({
         {
           key: '1',
           label: (
-            <Space>
-              <AudioOutlined />
-              <span>Kết quả chuyển đổi giọng nói sang văn bản</span>
-              {isTranscribing && (
-                <Tag color="processing" icon={<AudioOutlined />}>
-                  Đang nhận dạng...
-                </Tag>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              width: '100%',
+              paddingRight: '16px'
+            }}>
+              <Space>
+                <AudioOutlined />
+                <span>Kết quả chuyển đổi giọng nói sang văn bản</span>
+                {isTranscribing && (
+                  <Tag color="processing" icon={<AudioOutlined />}>
+                    Đang nhận dạng...
+                  </Tag>
+                )}
+                {!isOnline && (
+                  <Tag color="default">Offline</Tag>
+                )}
+                {transcriptions.length > 0 && (
+                  <Tag color="blue">{transcriptions.length} đoạn</Tag>
+                )}
+              </Space>
+              
+              {/* AI Refine Button in header */}
+              {canRefineWithAI && !isTranscribing && transcriptions.length > 0 && onAIRefine && (
+                <Tooltip title="Sử dụng AI để chuẩn hóa và làm sạch văn bản chuyển đổi">
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<RobotOutlined />}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent collapse toggle
+                      onAIRefine();
+                    }}
+                    style={{ 
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      border: 'none'
+                    }}
+                  >
+                    🤖 Chuẩn hóa bằng AI
+                  </Button>
+                </Tooltip>
               )}
-              {!isOnline && (
-                <Tag color="default">Offline</Tag>
-              )}
-              {transcriptions.length > 0 && (
-                <Tag color="blue">{transcriptions.length} đoạn</Tag>
-              )}
-            </Space>
+            </div>
           ),
           children: (
             <div style={{ 
@@ -208,30 +237,6 @@ export const TranscriptionPanel: React.FC<Props> = ({
               flexDirection: 'column',
               transition: 'height 0.3s ease'
             }}>
-              {/* AI Refine Button - Show at top when conditions met */}
-              {canRefineWithAI && !isTranscribing && transcriptions.length > 0 && onAIRefine && (
-                <div style={{ 
-                  padding: '12px 16px',
-                  borderBottom: '1px solid #f0f0f0',
-                  backgroundColor: '#fafafa'
-                }}>
-                  <Tooltip title="Sử dụng AI để chuẩn hóa và làm sạch văn bản chuyển đổi">
-                    <Button
-                      type="primary"
-                      size="small"
-                      icon={<RobotOutlined />}
-                      onClick={onAIRefine}
-                      style={{ 
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        border: 'none'
-                      }}
-                    >
-                      🤖 Chuẩn hóa bằng AI
-                    </Button>
-                  </Tooltip>
-                </div>
-              )}
-              
               {transcriptions.length === 0 ? (
                 <div style={{ 
                   height: '100%', 
