@@ -8,7 +8,7 @@ interface Props {
   isTranscribing: boolean;
   isOnline: boolean;
   onSeekAudio?: (timeMs: number) => void;
-  onEditTranscription?: (id: string, newText: string, newSpeaker: string) => void;
+  onEditTranscription?: (id: string, newText: string, newSpeaker: string, newStartTime?: string, newAudioTimeMs?: number) => void;
 }
 
 export const TranscriptionPanel: React.FC<Props> = ({
@@ -19,26 +19,41 @@ export const TranscriptionPanel: React.FC<Props> = ({
   onEditTranscription
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [contentHeight, setContentHeight] = useState<number>(300); // Initial height
+  const [contentHeight, setContentHeight] = useState<number>(100); // Initial height (1/5 of 500px)
+  const [isExpanded, setIsExpanded] = useState<boolean>(false); // Track collapse/expand state
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState<string>('');
   const [editSpeaker, setEditSpeaker] = useState<string>('');
+  const [editStartTime, setEditStartTime] = useState<string>('');
+  const [editAudioTimeMs, setEditAudioTimeMs] = useState<number | undefined>(undefined);
 
-  // Auto-scroll to bottom when new transcription arrives
+  // Auto-scroll to bottom when new transcription arrives (but not when editing)
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && !editingId) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [transcriptions]);
+  }, [transcriptions, editingId]);
 
-  // Auto-expand height based on content, up to max 500px
+  // Auto-expand height based on content: min 100px (1/5 of 500), max 500px
   useEffect(() => {
-    if (scrollRef.current && transcriptions.length > 0) {
-      const scrollHeight = scrollRef.current.scrollHeight;
-      const newHeight = Math.min(scrollHeight + 80, 500); // +80 for header/footer, max 500px
-      setContentHeight(Math.max(newHeight, 300)); // Minimum 300px
-    }
-  }, [transcriptions]);
+    const updateHeight = () => {
+      if (scrollRef.current && transcriptions.length > 0 && isExpanded) {
+        const scrollHeight = scrollRef.current.scrollHeight;
+        const newHeight = Math.min(scrollHeight + 80, 500); // +80 for header/footer, max 500px
+        setContentHeight(Math.max(newHeight, 100)); // Minimum 100px (1/5 of 500px)
+      } else if (transcriptions.length === 0) {
+        setContentHeight(100); // Reset to minimum when empty
+      }
+    };
+
+    // Update immediately
+    updateHeight();
+
+    // Update after DOM renders (important for loaded projects with many segments or after expand)
+    const timeoutId = setTimeout(updateHeight, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [transcriptions, isExpanded]);
 
   const formatTime = (isoTime: string): string => {
     const date = new Date(isoTime);
@@ -47,6 +62,32 @@ export const TranscriptionPanel: React.FC<Props> = ({
       minute: '2-digit',
       second: '2-digit'
     });
+  };
+
+  const formatDateTimeForEdit = (isoTime: string): string => {
+    const date = new Date(isoTime);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  };
+
+  const parseDateTimeFromEdit = (dateTimeStr: string): string => {
+    // Parse yyyy-MM-dd HH:mm:ss format and convert back to ISO
+    const parts = dateTimeStr.trim().split(' ');
+    if (parts.length === 2) {
+      const datePart = parts[0];
+      const timePart = parts[1];
+      const date = new Date(`${datePart}T${timePart}`);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString();
+      }
+    }
+    // If parsing fails, return original or current time
+    return new Date().toISOString();
   };
 
   const formatAudioTime = (ms: number): string => {
@@ -61,6 +102,18 @@ export const TranscriptionPanel: React.FC<Props> = ({
     return `${minutes}:${String(seconds).padStart(2, '0')}`;
   };
 
+  const parseAudioTime = (timeStr: string): number => {
+    const parts = timeStr.split(':').map(p => parseInt(p, 10));
+    if (parts.length === 2) {
+      // mm:ss
+      return (parts[0] * 60 + parts[1]) * 1000;
+    } else if (parts.length === 3) {
+      // hh:mm:ss
+      return (parts[0] * 3600 + parts[1] * 60 + parts[2]) * 1000;
+    }
+    return 0;
+  };
+
   const handleSeekToTime = (timeMs: number) => {
     if (onSeekAudio) {
       onSeekAudio(timeMs);
@@ -71,14 +124,21 @@ export const TranscriptionPanel: React.FC<Props> = ({
     setEditingId(item.id);
     setEditText(item.text);
     setEditSpeaker(item.speaker);
+    setEditStartTime(formatDateTimeForEdit(item.startTime));
+    setEditAudioTimeMs(item.audioTimeMs);
   };
 
   const handleSaveEdit = (id: string) => {
     if (onEditTranscription && editText.trim()) {
-      onEditTranscription(id, editText.trim(), editSpeaker.trim() || 'Person1');
+      // Convert formatted datetime back to ISO before saving
+      const isoStartTime = parseDateTimeFromEdit(editStartTime);
+      // Update transcription with edited values
+      onEditTranscription(id, editText.trim(), editSpeaker.trim() || 'Person1', isoStartTime, editAudioTimeMs);
       setEditingId(null);
       setEditText('');
       setEditSpeaker('');
+      setEditStartTime('');
+      setEditAudioTimeMs(undefined);
     }
   };
 
@@ -86,6 +146,14 @@ export const TranscriptionPanel: React.FC<Props> = ({
     setEditingId(null);
     setEditText('');
     setEditSpeaker('');
+    setEditStartTime('');
+    setEditAudioTimeMs(undefined);
+  };
+
+  const handleDoubleClickSegment = (item: TranscriptionResult) => {
+    if (item.isFinal) {
+      handleStartEdit(item);
+    }
   };
 
   const getConfidenceColor = (confidence: number): string => {
@@ -100,9 +168,15 @@ export const TranscriptionPanel: React.FC<Props> = ({
     return 'Thấp';
   };
 
+  const handleCollapseChange = (keys: string | string[]) => {
+    const activeKeys = Array.isArray(keys) ? keys : [keys];
+    setIsExpanded(activeKeys.includes('1'));
+  };
+
   return (
     <Collapse
       defaultActiveKey={[]}
+      onChange={handleCollapseChange}
       items={[
         {
           key: '1',
@@ -143,7 +217,7 @@ export const TranscriptionPanel: React.FC<Props> = ({
                     description={
                       isTranscribing
                         ? 'Đang chờ kết quả chuyển đổi...'
-                        : 'Chưa có dữ liệu chuyển đổi. Bật chế độ ghi âm và Auto Transcribe để bắt đầu.'
+                        : 'Chưa có dữ liệu chuyển đổi. Bật chế độ ghi âm và Tự động chuyển giọng nói thành văn bản để bắt đầu.'
                     }
                   />
                 </div>
@@ -169,8 +243,11 @@ export const TranscriptionPanel: React.FC<Props> = ({
                             backgroundColor: item.isFinal ? (item.isManuallyEdited ? '#fff7e6' : '#f6ffed') : '#e6f7ff',
                             border: `1px solid ${item.isFinal ? (item.isManuallyEdited ? '#ffa940' : '#b7eb8f') : '#91d5ff'}`,
                             borderRadius: '8px',
-                            position: 'relative'
+                            position: 'relative',
+                            cursor: item.isFinal && !isEditing ? 'pointer' : 'default'
                           }}
+                          onDoubleClick={() => handleDoubleClickSegment(item)}
+                          title={item.isFinal ? "Double-click để chỉnh sửa" : ""}
                         >
                           {/* Header with metadata */}
                           <div
@@ -274,18 +351,61 @@ export const TranscriptionPanel: React.FC<Props> = ({
                           {/* Editable content */}
                           {isEditing ? (
                             <div style={{ marginTop: '8px' }}>
-                              {/* Edit Speaker */}
-                              <div style={{ marginBottom: '8px' }}>
-                                <label style={{ fontSize: '12px', color: '#666', marginRight: '8px' }}>
-                                  Người nói:
-                                </label>
-                                <Input
-                                  size="small"
-                                  value={editSpeaker}
-                                  onChange={(e) => setEditSpeaker(e.target.value)}
-                                  placeholder="Người nói 1"
-                                  style={{ width: '150px' }}
-                                />
+                              {/* All metadata fields in one row */}
+                              <div style={{ 
+                                display: 'flex', 
+                                gap: '12px', 
+                                marginBottom: '8px',
+                                flexWrap: 'wrap',
+                                alignItems: 'center'
+                              }}>
+                                {/* Edit Start Time */}
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                  <label style={{ fontSize: '12px', color: '#666', marginRight: '6px', whiteSpace: 'nowrap' }}>
+                                    Thời điểm:
+                                  </label>
+                                  <Input
+                                    size="small"
+                                    value={editStartTime}
+                                    onChange={(e) => setEditStartTime(e.target.value)}
+                                    placeholder="yyyy-MM-dd HH:mm:ss"
+                                    style={{ width: '170px' }}
+                                  />
+                                </div>
+                                
+                                {/* Edit Timestamp (Audio Time) */}
+                                {editAudioTimeMs !== undefined && (
+                                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                                    <label style={{ fontSize: '12px', color: '#666', marginRight: '6px', whiteSpace: 'nowrap' }}>
+                                      Vị trí audio:
+                                    </label>
+                                    <Input
+                                      size="small"
+                                      value={formatAudioTime(editAudioTimeMs)}
+                                      onChange={(e) => {
+                                        const timeMs = parseAudioTime(e.target.value);
+                                        setEditAudioTimeMs(timeMs);
+                                      }}
+                                      placeholder="0:00"
+                                      style={{ width: '80px' }}
+                                    />
+                                  </div>
+                                )}
+
+                                
+                                {/* Edit Speaker */}
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                  <label style={{ fontSize: '12px', color: '#666', marginRight: '6px', whiteSpace: 'nowrap' }}>
+                                    Người nói:
+                                  </label>
+                                  <Input
+                                    size="small"
+                                    value={editSpeaker}
+                                    onChange={(e) => setEditSpeaker(e.target.value)}
+                                    placeholder="Người nói 1"
+                                    style={{ width: '120px' }}
+                                  />
+                                </div>
                               </div>
                               
                               {/* Edit Text */}

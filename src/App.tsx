@@ -337,16 +337,23 @@ export const App: React.FC = () => {
   };
 
   // Handle edit transcription
-  const handleEditTranscription = (id: string, newText: string, newSpeaker: string) => {
+  const handleEditTranscription = (id: string, newText: string, newSpeaker: string, newStartTime?: string, newAudioTimeMs?: number) => {
     setTranscriptions(prev => 
       prev.map(item => 
         item.id === id 
-          ? { ...item, text: newText, speaker: newSpeaker, isManuallyEdited: true }
+          ? { 
+              ...item, 
+              text: newText, 
+              speaker: newSpeaker, 
+              startTime: newStartTime !== undefined ? newStartTime : item.startTime,
+              audioTimeMs: newAudioTimeMs !== undefined ? newAudioTimeMs : item.audioTimeMs,
+              isManuallyEdited: true 
+            }
           : item
       )
     );
     setHasUnsavedChanges(true);
-    // console.log('✏️ Transcription edited:', { id, newText, newSpeaker });
+    // console.log('✏️ Transcription edited:', { id, newText, newSpeaker, newStartTime, newAudioTimeMs });
   };
 
   // Handle new transcription result
