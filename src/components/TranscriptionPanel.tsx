@@ -224,7 +224,7 @@ export const TranscriptionPanel: React.FC<Props> = ({
                       border: 'none'
                     }}
                   >
-                    🤖 Chuẩn hóa bằng AI
+                    ✨Chuẩn hóa bằng AI
                   </Button>
                 </Tooltip>
               )}
@@ -311,7 +311,10 @@ export const TranscriptionPanel: React.FC<Props> = ({
                                       userSelect: 'none',
                                       fontSize: '11px'
                                     }}
-                                    onDoubleClick={() => handleSeekToTime(item.audioTimeMs!)}
+                                    onDoubleClick={(e) => {
+                                      e.stopPropagation(); // Prevent triggering edit mode
+                                      handleSeekToTime(item.audioTimeMs!);
+                                    }}
                                   >
                                     📍 {formatAudioTime(item.audioTimeMs)}
                                   </Tag>
@@ -381,7 +384,7 @@ export const TranscriptionPanel: React.FC<Props> = ({
                               
                               {/* AI refined indicator */}
                               {item.isAIRefined && (
-                                <Tooltip title="Đã chuẩn hóa bằng AI">
+                                <Tooltip title="Đã chuẩn hóa bằng AI ✨">
                                   <Tag color="purple" style={{ fontSize: '10px', margin: 0 }}>
                                     🤖 AI
                                   </Tag>

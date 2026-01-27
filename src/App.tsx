@@ -11,7 +11,8 @@ import { saveBackup, loadBackup, clearBackup, hasBackup, getBackupAge } from './
 import { speechToTextService, SpeechToTextService } from './services/speechToText';
 import { AIRefinementService, type RawTranscriptData } from './services/aiRefinement';
 import type { MeetingInfo, SpeechToTextConfig, TranscriptionResult } from './types/types';
-import { message } from 'antd';
+import { message, Modal } from 'antd';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
 import './styles/global.css';
 
 export const App: React.FC = () => {
@@ -573,27 +574,110 @@ export const App: React.FC = () => {
       return;
     }
 
-    const confirmed = window.confirm(
-      '🤖 Bạn có muốn sử dụng Gemini AI để chuẩn hóa và làm sạch văn bản chuyển đổi?\n\n' +
-      '✨ AI sẽ:\n' +
-      '  • Sửa lỗi nhận diện\n' +
-      '  • Loại bỏ từ thừa, từ đệm\n' +
-      '  • Thêm dấu câu & viết hoa\n' +
-      '  • Gộp các đoạn liên quan\n\n' +
-      '⚠️ CẢNH BÁO QUAN TRỌNG VỀ BẢO MẬT:\n' +
-      '  • Dữ liệu sẽ được gửi đến Google Gemini API để xử lý\n' +
-      '  • KHÔNG sử dụng với thông tin nhạy cảm như:\n' +
-      '    - Mật khẩu, thông tin tài khoản\n' +
-      '    - Thông tin y tế cá nhân\n' +
-      '    - Dữ liệu tài chính, ngân hàng\n' +
-      '    - Bí mật thương mại, kế hoạch kinh doanh\n' +
-      '    - Thông tin cá nhân nhạy cảm (CCCD, địa chỉ...)\n' +
-      '  • Hãy xem lại nội dung transcript trước khi chuẩn hóa\n\n' +
-      'ℹ️ Lưu ý: Quá trình này sẽ thay thế toàn bộ kết quả hiện tại.\n\n' +
-      'Bạn có chắc chắn muốn tiếp tục?'
-    );
+    // Show warning modal with better design
+    Modal.confirm({
+      title: (
+        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#1890ff' }}>
+          🤖 Chuẩn hóa văn bản bằng Gemini AI
+        </div>
+      ),
+      icon: <ExclamationCircleOutlined style={{ color: '#1890ff' }} />,
+      width: 680,
+      content: (
+        <div style={{ fontSize: '14px', lineHeight: '1.8' }}>
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#52c41a' }}>
+              ✨ AI sẽ thực hiện:
+            </div>
+            <ul style={{ paddingLeft: '20px', margin: '0' }}>
+              <li>Sửa lỗi nhận diện từ Web Speech API</li>
+              <li>Loại bỏ từ thừa, từ đệm (à, ừm, thì...)</li>
+              <li>Thêm dấu câu và viết hoa đúng quy tắc</li>
+              <li>Gộp các đoạn liên quan thành câu hoàn chỉnh</li>
+            </ul>
+          </div>
 
-    if (!confirmed) return;
+          <div style={{ 
+            background: '#fff7e6', 
+            border: '2px solid #ffa940',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '16px'
+          }}>
+            <div style={{ 
+              fontWeight: 'bold', 
+              marginBottom: '12px', 
+              color: '#fa8c16',
+              fontSize: '15px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span style={{ fontSize: '20px' }}>⚠️</span>
+              CẢNH BÁO QUAN TRỌNG VỀ BẢO MẬT
+            </div>
+            
+            <div style={{ marginBottom: '12px', color: '#595959' }}>
+              Dữ liệu của bạn sẽ được <strong>gửi đến Google Gemini API</strong> để xử lý.
+            </div>
+
+            <div style={{ 
+              background: '#fff1f0',
+              border: '1px solid #ffccc7',
+              borderRadius: '6px',
+              padding: '12px',
+              marginBottom: '12px'
+            }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#cf1322' }}>
+                🚫 KHÔNG sử dụng với thông tin nhạy cảm
+              </div>
+              <ul style={{ paddingLeft: '20px', margin: '0', color: '#595959' }}>
+                <li><strong>Tài chính:</strong> Mật khẩu, số tài khoản, số thẻ, giao dịch ngân hàng</li>
+                <li><strong>Y tế:</strong> Bệnh án, đơn thuốc, kết quả xét nghiệm</li>
+                <li><strong>Cá nhân:</strong> CCCD/CMND, địa chỉ, số điện thoại nhạy cảm</li>
+                <li><strong>Doanh nghiệp:</strong> Bí mật thương mại, kế hoạch kinh doanh, các nội dung mật khác</li>
+                <li><strong>Bảo mật:</strong> API keys, tokens, credentials</li>
+              </ul>
+            </div>
+
+            <div style={{ 
+              fontStyle: 'italic', 
+              color: '#8c8c8c',
+              fontSize: '13px'
+            }}>
+              💡 Khuyến nghị: Hãy xem lại nội dung transcript trước khi sử dụng chức năng này
+            </div>
+          </div>
+
+          <div style={{ 
+            background: '#e6f7ff',
+            border: '1px solid #91d5ff',
+            borderRadius: '6px',
+            padding: '12px',
+            fontSize: '13px',
+            color: '#595959'
+          }}>
+            <strong>ℹ️ Lưu ý:</strong> Quá trình này sẽ thay thế toàn bộ kết quả hiện tại. 
+            Bạn có thể chỉnh sửa lại sau nếu cần.
+          </div>
+        </div>
+      ),
+      okText: 'Đồng ý, tiếp tục',
+      cancelText: 'Hủy bỏ',
+      okButtonProps: {
+        danger: false,
+        type: 'primary'
+      },
+      onOk: async () => {
+        await performAIRefinement();
+      }
+    });
+  };
+
+  // Separate function to perform AI refinement
+  const performAIRefinement = async () => {
+    const apiKeyToUse = transcriptionConfig!.geminiApiKey || transcriptionConfig!.apiKey;
+    const selectedModel = transcriptionConfig!.geminiModel;
 
     try {
       // Show progress dialog
