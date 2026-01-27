@@ -359,12 +359,20 @@ Lưu ý:
     if (onProgress) onProgress(10);
 
     try {
+      // Convert WebM to WAV if needed (Gemini requires WAV or MP3)
+      let processedAudio = audioBlob;
+      if (audioBlob.type === 'audio/webm' || audioBlob.type === 'video/webm') {
+        if (onProgress) onProgress(15);
+        processedAudio = await this.convertToWav(audioBlob);
+        if (onProgress) onProgress(25);
+      }
+
       // Convert audio blob to base64
-      const base64Audio = await this.blobToBase64(audioBlob);
+      const base64Audio = await this.blobToBase64(processedAudio);
       if (onProgress) onProgress(30);
 
-      // Get MIME type
-      const mimeType = audioBlob.type || 'audio/webm';
+      // Get MIME type (use WAV if converted)
+      const mimeType = processedAudio.type || 'audio/wav';
 
       // Prepare request
       const endpoint = `https://generativelanguage.googleapis.com/${this.GEMINI_API_VERSION}/${modelName}:generateContent?key=${apiKey}`;
@@ -448,6 +456,113 @@ Lưu ý:
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
+  }
+
+  /**
+   * Convert audio blob to WAV format
+   * Gemini API requires WAV or MP3 format, not WebM
+   */
+  private static async convertToWav(audioBlob: Blob): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const reader = new FileReader();
+
+      reader.onload = async (e) => {
+        try {
+          const arrayBuffer = e.target?.result as ArrayBuffer;
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+          // Convert to WAV
+          const wavBlob = this.audioBufferToWav(audioBuffer);
+          resolve(wavBlob);
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(audioBlob);
+    });
+  }
+
+  /**
+   * Convert AudioBuffer to WAV Blob
+   */
+  private static audioBufferToWav(audioBuffer: AudioBuffer): Blob {
+    const numberOfChannels = audioBuffer.numberOfChannels;
+    const sampleRate = audioBuffer.sampleRate;
+    const format = 1; // PCM
+    const bitDepth = 16;
+
+    const bytesPerSample = bitDepth / 8;
+    const blockAlign = numberOfChannels * bytesPerSample;
+
+    const data = [];
+    for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
+      data.push(audioBuffer.getChannelData(i));
+    }
+
+    const interleaved = this.interleave(data);
+    const dataLength = interleaved.length * bytesPerSample;
+    const buffer = new ArrayBuffer(44 + dataLength);
+    const view = new DataView(buffer);
+
+    // Write WAV header
+    this.writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + dataLength, true);
+    this.writeString(view, 8, 'WAVE');
+    this.writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true); // fmt chunk size
+    view.setUint16(20, format, true);
+    view.setUint16(22, numberOfChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * blockAlign, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitDepth, true);
+    this.writeString(view, 36, 'data');
+    view.setUint32(40, dataLength, true);
+
+    // Write audio data
+    this.floatTo16BitPCM(view, 44, interleaved);
+
+    return new Blob([buffer], { type: 'audio/wav' });
+  }
+
+  /**
+   * Interleave multiple audio channels
+   */
+  private static interleave(channelData: Float32Array[]): Float32Array {
+    const length = channelData[0].length;
+    const numberOfChannels = channelData.length;
+    const result = new Float32Array(length * numberOfChannels);
+
+    let offset = 0;
+    for (let i = 0; i < length; i++) {
+      for (let channel = 0; channel < numberOfChannels; channel++) {
+        result[offset++] = channelData[channel][i];
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Write string to DataView
+   */
+  private static writeString(view: DataView, offset: number, string: string): void {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  }
+
+  /**
+   * Convert Float32 samples to 16-bit PCM
+   */
+  private static floatTo16BitPCM(view: DataView, offset: number, input: Float32Array): void {
+    for (let i = 0; i < input.length; i++, offset += 2) {
+      const s = Math.max(-1, Math.min(1, input[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    }
   }
 
   /**
