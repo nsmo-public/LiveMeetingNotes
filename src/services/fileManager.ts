@@ -118,6 +118,7 @@ export class FileManagerService {
     audioBlob: Blob | null;
     projectName: string;
     transcriptionData?: any;
+    rawTranscriptsData?: any;
   } | null> {
     try {
       // Let user select a project folder
@@ -151,6 +152,7 @@ export class FileManagerService {
       let metadataData = null;
       let audioBlob = null;
       let transcriptionData = null;
+      let rawTranscriptsData = null; // Raw data from Web Speech API
 
       // console.log('Loading project from folder:', projectName);
 
@@ -176,15 +178,15 @@ export class FileManagerService {
           }
           
           // Load transcription.json
-          if (name.includes('transcription.json')) {
+          if (name.includes('transcription.json') && !name.includes('raw')) {
             const text = await file.text();
             transcriptionData = JSON.parse(text);
-            // console.log('Loaded transcription.json:', {
-            //   totalCount: transcriptionData.transcriptions?.length || 0,
-            //   sample: transcriptionData.transcriptions?.[0] || null,
-            //   speakers: transcriptionData.transcriptions ? 
-            //     [...new Set(transcriptionData.transcriptions.map((t: any) => t.speaker))] : []
-            // });
+          }
+          
+          // Load rawTranscripts.json
+          if (name.includes('rawTranscripts.json')) {
+            const text = await file.text();
+            rawTranscriptsData = JSON.parse(text);
           }
           
           // Load audio file (.webm, .wav, .mp4, .ogg - support multiple formats)
@@ -219,7 +221,8 @@ export class FileManagerService {
         metadata: metadataData,
         audioBlob: audioBlob,
         projectName: projectName,
-        transcriptionData: transcriptionData
+        transcriptionData: transcriptionData,
+        rawTranscriptsData: rawTranscriptsData
       };
     } catch (error: any) {
       if (error.name === 'AbortError') {

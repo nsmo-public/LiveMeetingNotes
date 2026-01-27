@@ -44,6 +44,7 @@ export const App: React.FC = () => {
   const [showTranscriptionConfig, setShowTranscriptionConfig] = useState(false);
   const [transcriptionConfig, setTranscriptionConfig] = useState<SpeechToTextConfig | null>(null);
   const [transcriptions, setTranscriptions] = useState<TranscriptionResult[]>([]);
+  const [rawTranscripts, setRawTranscripts] = useState<RawTranscriptData[]>([]); // Raw data from Web Speech API
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Check browser compatibility
@@ -309,6 +310,7 @@ export const App: React.FC = () => {
     audioBlob: Blob | null;
     recordingStartTime: number;
     transcriptions?: TranscriptionResult[]; // Add transcriptions array
+    rawTranscripts?: RawTranscriptData[]; // Add raw transcripts for AI refinement
   }) => {
     // console.log('📂 App.handleLoadProject - Data received:', {
     //   meetingInfo: loadedData.meetingInfo,
@@ -334,6 +336,13 @@ export const App: React.FC = () => {
       setTranscriptions([]); // Clear transcriptions if none
     }
     
+    // Load raw transcripts if available
+    if (loadedData.rawTranscripts && loadedData.rawTranscripts.length > 0) {
+      setRawTranscripts(loadedData.rawTranscripts);
+    } else {
+      setRawTranscripts([]); // Clear raw transcripts if none
+    }
+    
     setIsSaved(true);
     setHasUnsavedChanges(false);
     setSavedNotesSnapshot(loadedData.notes);
@@ -350,6 +359,27 @@ export const App: React.FC = () => {
 
   // Handle edit transcription
   const handleEditTranscription = (id: string, newText: string, newSpeaker: string, newStartTime?: string, newAudioTimeMs?: number) => {
+    // Check if user deleted all text (wants to remove segment)
+    if (!newText || newText.trim() === '') {
+      const confirmed = window.confirm(
+        '⚠️ Bạn đã xóa toàn bộ nội dung.\n\n' +
+        'Bạn có muốn xóa segment này không?\n\n' +
+        '• Đồng ý: Xóa segment này khỏi danh sách\n' +
+        '• Hủy: Giữ nguyên segment (không lưu thay đổi)'
+      );
+      
+      if (confirmed) {
+        // Remove the segment
+        setTranscriptions(prev => prev.filter(item => item.id !== id));
+        setHasUnsavedChanges(true);
+        message.success('Đã xóa segment');
+        // console.log('🗑️ Transcription segment deleted:', id);
+      }
+      // If not confirmed, do nothing (keep original segment)
+      return;
+    }
+
+    // Normal edit: update text and other fields
     setTranscriptions(prev => 
       prev.map(item => 
         item.id === id 
@@ -375,6 +405,16 @@ export const App: React.FC = () => {
       console.warn('⚠️ Received invalid transcription result:', result);
       return;
     }
+
+    // Collect raw transcript data for AI refinement
+    const rawData: RawTranscriptData = {
+      text: result.text,
+      timestamp: result.startTime,
+      audioTimeMs: result.audioTimeMs,
+      confidence: result.confidence,
+      isFinal: result.isFinal
+    };
+    setRawTranscripts(prev => [...prev, rawData]);
 
     setTranscriptions(prev => {
       // Nếu là kết quả final
@@ -534,13 +574,23 @@ export const App: React.FC = () => {
     }
 
     const confirmed = window.confirm(
-      'Bạn có muốn sử dụng Gemini AI để chuẩn hóa và làm sạch văn bản chuyển đổi?\n\n' +
-      'AI sẽ:\n' +
-      '- Sửa lỗi nhận diện\n' +
-      '- Loại bỏ từ thừa, từ đệm\n' +
-      '- Thêm dấu câu & viết hoa\n' +
-      '- Gộp các đoạn liên quan\n\n' +
-      'Lưu ý: Quá trình này sẽ thay thế toàn bộ kết quả hiện tại.'
+      '🤖 Bạn có muốn sử dụng Gemini AI để chuẩn hóa và làm sạch văn bản chuyển đổi?\n\n' +
+      '✨ AI sẽ:\n' +
+      '  • Sửa lỗi nhận diện\n' +
+      '  • Loại bỏ từ thừa, từ đệm\n' +
+      '  • Thêm dấu câu & viết hoa\n' +
+      '  • Gộp các đoạn liên quan\n\n' +
+      '⚠️ CẢNH BÁO QUAN TRỌNG VỀ BẢO MẬT:\n' +
+      '  • Dữ liệu sẽ được gửi đến Google Gemini API để xử lý\n' +
+      '  • KHÔNG sử dụng với thông tin nhạy cảm như:\n' +
+      '    - Mật khẩu, thông tin tài khoản\n' +
+      '    - Thông tin y tế cá nhân\n' +
+      '    - Dữ liệu tài chính, ngân hàng\n' +
+      '    - Bí mật thương mại, kế hoạch kinh doanh\n' +
+      '    - Thông tin cá nhân nhạy cảm (CCCD, địa chỉ...)\n' +
+      '  • Hãy xem lại nội dung transcript trước khi chuẩn hóa\n\n' +
+      'ℹ️ Lưu ý: Quá trình này sẽ thay thế toàn bộ kết quả hiện tại.\n\n' +
+      'Bạn có chắc chắn muốn tiếp tục?'
     );
 
     if (!confirmed) return;
@@ -583,19 +633,24 @@ export const App: React.FC = () => {
         }
       };
 
-      // Prepare raw data
-      const rawData: RawTranscriptData[] = transcriptions.map(t => ({
-        text: t.text,
-        timestamp: t.startTime,
-        audioTimeMs: t.audioTimeMs,
-        confidence: t.confidence,
-        isFinal: t.isFinal
-      }));
+      // Prepare raw data for supplementary reference
+      let rawData: RawTranscriptData[] = [];
+      if (rawTranscripts && rawTranscripts.length > 0) {
+        // Use saved raw data (preserves original Web Speech API output)
+        rawData = rawTranscripts;
+        console.log('📦 Using saved raw transcripts as supplementary data:', rawData.length, 'items');
+      } else {
+        // No raw data available - AI will only use transcriptions
+        console.log('ℹ️ No raw data available - using transcriptions only');
+      }
 
       // Call AI refinement service with model selection
+      // Primary data: transcriptions (user-edited, highest reliability)
+      // Supplementary data: rawTranscripts (original Web Speech API output for reference)
       const refinedSegments = await AIRefinementService.refineTranscripts(
         apiKeyToUse,
-        rawData,
+        transcriptions, // Primary data
+        rawData, // Supplementary data
         selectedModel, // Pass required model name
         updateProgress
       );
@@ -726,7 +781,10 @@ export const App: React.FC = () => {
         transcriptionConfig={transcriptionConfig}
         shouldBlink={!transcriptionConfig} 
         onNewTranscription={handleNewTranscription}
-        onClearTranscriptions={() => setTranscriptions([])}
+        onClearTranscriptions={() => {
+          setTranscriptions([]);
+          setRawTranscripts([]); // Also clear raw transcripts
+        }}
         transcriptions={transcriptions}
       />
 

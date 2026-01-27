@@ -57,14 +57,17 @@ export class AIRefinementService {
 
   /**
    * Refine transcripts using Gemini AI
+   * @param transcriptions - Primary data (user-edited, highest reliability)
+   * @param rawData - Supplementary data (original Web Speech API output for reference)
    */
   public static async refineTranscripts(
     apiKey: string,
-    rawData: RawTranscriptData[],
+    transcriptions: TranscriptionResult[], // Primary data source
+    rawData: RawTranscriptData[], // Optional: supplementary raw data
     modelName: string, // REQUIRED: specific Gemini model (e.g., "models/gemini-2.5-flash")
     onProgress?: (progress: number) => void
   ): Promise<RefinedSegment[]> {
-    return this.refineWithGemini(apiKey, rawData, modelName, onProgress);
+    return this.refineWithGemini(apiKey, transcriptions, rawData, modelName, onProgress);
   }
 
   /**
@@ -72,7 +75,8 @@ export class AIRefinementService {
    */
   private static async refineWithGemini(
     apiKey: string,
-    rawData: RawTranscriptData[],
+    transcriptions: TranscriptionResult[], // Primary data
+    rawData: RawTranscriptData[], // Supplementary data
     modelName: string, // REQUIRED: specific model like "models/gemini-2.5-flash"
     onProgress?: (progress: number) => void
   ): Promise<RefinedSegment[]> {
@@ -80,7 +84,7 @@ export class AIRefinementService {
       throw new Error('API Key is required for AI refinement');
     }
 
-    if (rawData.length === 0) {
+    if (transcriptions.length === 0) {
       throw new Error('No transcript data to refine');
     }
 
@@ -96,18 +100,29 @@ export class AIRefinementService {
     }
 
     try {
-      // Prepare data for AI
-      const transcriptData = rawData.map((item, index) => ({
+      // Prepare primary data from transcriptions (user-edited, highest reliability)
+      const transcriptData = transcriptions.map((item, index) => ({
         index: index + 1,
-        timestamp: item.timestamp,
+        timestamp: item.startTime,
         audioTime: item.audioTimeMs !== undefined ? this.formatAudioTime(item.audioTimeMs) : undefined,
         text: item.text,
         confidence: item.confidence,
         type: item.isFinal ? 'final' : 'interim'
       }));
 
+      // Prepare supplementary raw data (if available)
+      const hasRawData = rawData && rawData.length > 0;
+      const rawMetadata = hasRawData ? rawData.map((item, index) => ({
+        index: index + 1,
+        timestamp: item.timestamp,
+        audioTime: item.audioTimeMs !== undefined ? this.formatAudioTime(item.audioTimeMs) : undefined,
+        text: item.text,
+        confidence: item.confidence,
+        type: item.isFinal ? 'final' : 'interim'
+      })) : null;
+
       // Create prompt
-      const prompt = this.createRefinementPrompt(transcriptData);
+      const prompt = this.createRefinementPrompt(transcriptData, rawMetadata);
 
       if (onProgress) onProgress(10);
 
@@ -206,13 +221,17 @@ export class AIRefinementService {
 
   /**
    * Create refinement prompt for AI
+   * @param transcriptData - Primary data from transcriptions (user-edited)
+   * @param rawMetadata - Optional raw data for reference
    */
-  private static createRefinementPrompt(transcriptData: any[]): string {
+  private static createRefinementPrompt(transcriptData: any[], rawMetadata: any[] | null): string {
     const dataJson = JSON.stringify(transcriptData, null, 2);
+    const hasRawData = rawMetadata && rawMetadata.length > 0;
+    const rawDataJson = hasRawData ? JSON.stringify(rawMetadata, null, 2) : null;
 
     return `Vai trò: Bạn là một thư ký chuyên nghiệp chuyên soạn thảo biên bản cuộc họp.
 
-Nhiệm vụ: Tôi sẽ cung cấp cho bạn một đoạn văn bản thô (raw transcript) được chuyển từ giọng nói sang text (có thể có lỗi nhận diện, lặp từ, thiếu dấu câu). Hãy thực hiện:
+Nhiệm vụ: Tôi sẽ cung cấp cho bạn văn bản đã chuyển từ giọng nói sang text (có thể có lỗi nhận diện, lặp từ, thiếu dấu câu). Hãy thực hiện:
 
 1. Sửa lỗi nhận diện: Chỉnh lại các từ bị sai (ví dụ: 'thành viên hội đồng' thành 'Hội đồng thành viên').
 2. Loại bỏ từ thừa: Xóa các từ đệm như 'à', 'ừm', 'thì', 'là', 'mà' hoặc các đoạn bị lặp lại do người nói ngập ngừng.
@@ -231,10 +250,12 @@ Trả về dưới dạng JSON array với format sau (chỉ JSON, không có ma
   ...
 ]
 
-Dữ liệu transcript thô:
+=== DỮ LIỆU CHÍNH (Độ tin cậy tuyệt đối - Có thể đã được người dùng chỉnh sửa) ===
 ${dataJson}
+${hasRawData ? `\n=== DỮ LIỆU BỔ TRỢ (Raw output từ Google Web Speech API - Chỉ tham khảo) ===\n${rawDataJson}\n\nChú ý: Dữ liệu raw chỉ dùng để tham khảo thêm về confidence và metadata gốc. Ưu tiên sử dụng "Dữ liệu chính" vì có thể đã được người dùng edit trực tiếp.` : ''}
 
 Lưu ý: 
+- Sử dụng văn bản từ "Dữ liệu chính" làm nguồn chính
 - Giữ nguyên timestamp và audioTimeMs từ dữ liệu gốc
 - Gộp các segment có nội dung liên tiếp thành câu hoàn chỉnh
 - Chỉ trả về JSON array, không thêm giải thích`;

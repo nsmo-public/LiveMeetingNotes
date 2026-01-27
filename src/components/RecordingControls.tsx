@@ -15,6 +15,7 @@ import { MetadataBuilder } from '../services/metadataBuilder';
 import { WordExporter } from '../services/wordExporter';
 import { speechToTextService } from '../services/speechToText';
 import { AudioMerger, AudioSegment } from '../services/audioMerger';
+import type { RawTranscriptData } from '../services/aiRefinement';
 import type { MeetingInfo, SpeechToTextConfig, TranscriptionResult } from '../types/types';
 
 interface Props {
@@ -32,6 +33,7 @@ interface Props {
     audioBlob: Blob | null;
     recordingStartTime: number;
     transcriptions?: TranscriptionResult[]; // Add transcriptions array
+    rawTranscripts?: RawTranscriptData[]; // Add raw transcripts for AI refinement
   }) => void;
   meetingInfo: MeetingInfo;
   notes: string;
@@ -342,6 +344,26 @@ export const RecordingControls: React.FC<Props> = ({
             undefined,
             true
           );
+          
+          // Save raw transcripts for AI refinement
+          const finalTranscriptions = transcriptions.filter(t => t.isFinal);
+          const rawTranscriptsData = {
+            rawTranscripts: finalTranscriptions.map(t => ({
+              text: t.text,
+              timestamp: t.startTime,
+              audioTimeMs: t.audioTimeMs,
+              confidence: t.confidence,
+              isFinal: t.isFinal
+            })),
+            totalCount: finalTranscriptions.length,
+            savedAt: new Date().toISOString()
+          };
+          await fileManager.saveMetadataFile(
+            rawTranscriptsData,
+            `${projectName}_rawTranscripts.json`,
+            undefined,
+            true
+          );
           // console.log('💾 Transcription data saved:', transcriptionData.totalCount, 'items');
         }
 
@@ -396,6 +418,23 @@ export const RecordingControls: React.FC<Props> = ({
             `${projectName}_transcription.json`
           );
           // console.log('💾 Transcription data saved:', transcriptionData.totalCount, 'items');
+
+          // Save raw transcripts for AI refinement
+          const rawTranscriptsData = {
+            rawTranscripts: transcriptions.filter(t => t.isFinal).map(t => ({
+              text: t.text,
+              timestamp: t.startTime,
+              audioTimeMs: t.audioTimeMs,
+              confidence: t.confidence,
+              isFinal: t.isFinal
+            })),
+            totalCount: transcriptions.filter(t => t.isFinal).length,
+            savedAt: new Date().toISOString()
+          };
+          await downloader.downloadMetadataFile(
+            rawTranscriptsData,
+            `${projectName}_rawTranscripts.json`
+          );
         }
 
         // Export Word document
@@ -800,28 +839,31 @@ export const RecordingControls: React.FC<Props> = ({
         return; // User cancelled
       }
 
+      // Extract data (with rawTranscripts support)
+      const { meetingInfo: meetingInfoData, metadata: metadataData, audioBlob, transcriptionData, rawTranscriptsData } = projectData;
+
       // Map PascalCase from saved files to camelCase for MeetingInfo
       const loadedMeetingInfo = {
-        title: projectData.meetingInfo.MeetingTitle || '',
-        date: projectData.meetingInfo.MeetingDate || '',
-        time: projectData.meetingInfo.MeetingTime || '',
-        location: projectData.meetingInfo.Location || '',
-        host: projectData.meetingInfo.Host || '',
-        attendees: projectData.meetingInfo.Attendees || ''
+        title: meetingInfoData.MeetingTitle || '',
+        date: meetingInfoData.MeetingDate || '',
+        time: meetingInfoData.MeetingTime || '',
+        location: meetingInfoData.Location || '',
+        host: meetingInfoData.Host || '',
+        attendees: meetingInfoData.Attendees || ''
       };
 
       // console.log('📋 Mapping meetingInfo from file:', {
-      //   rawData: projectData.meetingInfo,
+      //   rawData: meetingInfoData,
       //   mapped: loadedMeetingInfo
       // });
       
       // console.log('🔍 Individual field mapping:', {
-      //   'MeetingTitle → title': `"${projectData.meetingInfo.MeetingTitle}" → "${loadedMeetingInfo.title}"`,
-      //   'MeetingDate → date': `"${projectData.meetingInfo.MeetingDate}" → "${loadedMeetingInfo.date}"`,
-      //   'MeetingTime → time': `"${projectData.meetingInfo.MeetingTime}" → "${loadedMeetingInfo.time}"`,
-      //   'Location → location': `"${projectData.meetingInfo.Location}" → "${loadedMeetingInfo.location}"`,
-      //   'Host → host': `"${projectData.meetingInfo.Host}" → "${loadedMeetingInfo.host}"`,
-      //   'Attendees → attendees': `"${projectData.meetingInfo.Attendees}" → "${loadedMeetingInfo.attendees}"`
+      //   'MeetingTitle → title': `"${meetingInfoData.MeetingTitle}" → "${loadedMeetingInfo.title}"`,
+      //   'MeetingDate → date': `"${meetingInfoData.MeetingDate}" → "${loadedMeetingInfo.date}"`,
+      //   'MeetingTime → time': `"${meetingInfoData.MeetingTime}" → "${loadedMeetingInfo.time}"`,
+      //   'Location → location': `"${meetingInfoData.Location}" → "${loadedMeetingInfo.location}"`,
+      //   'Host → host': `"${meetingInfoData.Host}" → "${loadedMeetingInfo.host}"`,
+      //   'Attendees → attendees': `"${meetingInfoData.Attendees}" → "${loadedMeetingInfo.attendees}"`
       // });
 
       // Parse metadata to reconstruct timestampMap, speakersMap and notes
@@ -832,18 +874,18 @@ export const RecordingControls: React.FC<Props> = ({
       // Get recording start time - prefer from metadata, fallback to calculation
       let recordingStart = Date.now();
       
-      if (projectData.metadata.RecordingStartTime) {
+      if (metadataData.RecordingStartTime) {
         // Use saved RecordingStartTime from metadata (chuẩn nhất)
-        recordingStart = new Date(projectData.metadata.RecordingStartTime).getTime();
+        recordingStart = new Date(metadataData.RecordingStartTime).getTime();
         
         // console.log('🕐 Using RecordingStartTime from metadata:', {
-        //   raw: projectData.metadata.RecordingStartTime,
+        //   raw: metadataData.RecordingStartTime,
         //   parsed: new Date(recordingStart).toISOString(),
         //   timestamp: recordingStart
         // });
-      } else if (projectData.metadata.Timestamps && projectData.metadata.Timestamps.length > 0) {
+      } else if (metadataData.Timestamps && metadataData.Timestamps.length > 0) {
         // Fallback: Calculate from first timestamp (old projects without RecordingStartTime)
-        const firstTimestamp = projectData.metadata.Timestamps[0];
+        const firstTimestamp = metadataData.Timestamps[0];
         const firstDatetime = new Date(firstTimestamp.DateTime).getTime();
         // Parse StartTime to get offset (format: HH:MM:SS.NNNNNNN with 7 decimal digits)
         const startTimeMatch = firstTimestamp.StartTime.match(/(\d+):(\d+):(\d+)\.(\d+)/);
@@ -868,10 +910,10 @@ export const RecordingControls: React.FC<Props> = ({
         }
       }
       
-      if (projectData.metadata.Timestamps && Array.isArray(projectData.metadata.Timestamps)) {
+      if (metadataData.Timestamps && Array.isArray(metadataData.Timestamps)) {
         // Reconstruct notes from Timestamps array
         const BLOCK_SEPARATOR = '§§§';
-        const sortedTimestamps = projectData.metadata.Timestamps.sort((a: any, b: any) => a.Index - b.Index);
+        const sortedTimestamps = metadataData.Timestamps.sort((a: any, b: any) => a.Index - b.Index);
         
         sortedTimestamps.forEach((ts: any, index: number) => {
           // Add BLOCK_SEPARATOR before text (except for first line)
@@ -929,8 +971,8 @@ export const RecordingControls: React.FC<Props> = ({
 
       // Parse duration string to milliseconds (format: HH:MM:SS.NNNNNNN with 7 decimal digits)
       let durationMs = 0;
-      if (projectData.metadata.Duration) {
-        const durationStr = projectData.metadata.Duration;
+      if (metadataData.Duration) {
+        const durationStr = metadataData.Duration;
         const match = durationStr.match(/(\d+):(\d+):(\d+)\.(\d+)/);
         if (match) {
           const hours = parseInt(match[1]);
@@ -949,14 +991,15 @@ export const RecordingControls: React.FC<Props> = ({
         notes: notesText,
         timestampMap: timestampMapData,
         speakersMap: speakersMapData,
-        audioBlob: projectData.audioBlob,
+        audioBlob: audioBlob,
         recordingStartTime: recordingStart,
-        transcriptions: projectData.transcriptionData?.transcriptions || [] // Pass transcriptions array
+        transcriptions: transcriptionData?.transcriptions || [], // Pass transcriptions array
+        rawTranscripts: rawTranscriptsData?.rawTranscripts || [] // Pass raw transcripts for AI refinement
       });
 
       // Show message if transcriptions loaded
-      if (projectData.transcriptionData?.transcriptions && projectData.transcriptionData.transcriptions.length > 0) {
-        message.success(`Loaded ${projectData.transcriptionData.transcriptions.length} transcription results`);
+      if (transcriptionData?.transcriptions && transcriptionData.transcriptions.length > 0) {
+        message.success(`Loaded ${transcriptionData.transcriptions.length} transcription results`);
       }
 
       // console.log('Load complete:', {
