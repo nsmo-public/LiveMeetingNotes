@@ -710,38 +710,16 @@ Lưu ý:
     if (onProgress) onProgress(10);
 
     try {
-      // Convert WebM to WAV if needed, with size optimization
-      let processedAudio = audioBlob;
-      const needsConversion = audioBlob.type === 'audio/webm' || audioBlob.type === 'video/webm';
+      // Gemini API supports WebM directly - no need to convert to WAV
+      // This keeps file size smaller (WebM is compressed, WAV is uncompressed)
+      const processedAudio = audioBlob;
+      const mimeType = audioBlob.type || 'audio/webm';
       
-      if (needsConversion) {
-        console.log('🔄 Converting WebM to WAV...');
-        if (onProgress) onProgress(15);
-        
-        // Convert with lower sample rate if file is large
-        const targetSampleRate = audioBlob.size > 10 * 1024 * 1024 ? 16000 : 44100;
-        processedAudio = await this.convertToWav(audioBlob, targetSampleRate);
-        
-        const newSizeMB = processedAudio.size / (1024 * 1024);
-        console.log(`✅ Converted: ${fileSizeMB.toFixed(2)}MB → ${newSizeMB.toFixed(2)}MB`);
-        
-        // Check again after conversion
-        if (processedAudio.size > MAX_FILE_SIZE) {
-          throw new Error(
-            `❌ Sau chuyển đổi, file vẫn quá lớn: ${newSizeMB.toFixed(2)} MB\n\n` +
-            `Vui lòng giảm thời lượng ghi âm hoặc giảm chất lượng.`
-          );
-        }
-        
-        if (onProgress) onProgress(25);
-      }
+      console.log(`📤 Sending ${mimeType} file directly to Gemini (${fileSizeMB.toFixed(2)} MB)`);
 
       // Convert audio blob to base64
       const base64Audio = await this.blobToBase64(processedAudio);
       if (onProgress) onProgress(30);
-
-      // Get MIME type (use WAV if converted)
-      const mimeType = processedAudio.type || 'audio/wav';
 
       // Prepare request
       const endpoint = `https://generativelanguage.googleapis.com/${this.GEMINI_API_VERSION}/${modelName}:generateContent?key=${apiKey}`;
@@ -828,10 +806,11 @@ Lưu ý:
   }
 
   /**
-   * Convert audio blob to WAV format with optional sample rate optimization
-   * Gemini API requires WAV or MP3 format, not WebM
-   * @param targetSampleRate - Target sample rate (16000 for smaller files, 44100 for quality)
+   * [DEPRECATED] Convert audio blob to WAV format
+   * No longer needed - Gemini API supports WebM directly, which is smaller
+   * Kept for reference in case needed for other APIs
    */
+  /*
   private static async convertToWav(audioBlob: Blob, targetSampleRate: number = 44100): Promise<Blob> {
     return new Promise((resolve, reject) => {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -861,10 +840,13 @@ Lưu ý:
       reader.readAsArrayBuffer(audioBlob);
     });
   }
+  */
 
   /**
-   * Resample AudioBuffer to target sample rate (reduces file size)
+   * [DEPRECATED] Resample AudioBuffer to target sample rate
+   * No longer needed - kept for reference
    */
+  /*
   private static async resampleAudioBuffer(audioBuffer: AudioBuffer, targetSampleRate: number): Promise<AudioBuffer> {
     const offlineContext = new OfflineAudioContext(
       audioBuffer.numberOfChannels,
@@ -879,10 +861,13 @@ Lưu ý:
 
     return await offlineContext.startRendering();
   }
+  */
 
   /**
-   * Convert AudioBuffer to WAV Blob
+   * [DEPRECATED] Convert AudioBuffer to WAV Blob
+   * No longer needed - kept for reference
    */
+  /*
   private static audioBufferToWav(audioBuffer: AudioBuffer): Blob {
     const numberOfChannels = audioBuffer.numberOfChannels;
     const sampleRate = audioBuffer.sampleRate;
@@ -922,10 +907,13 @@ Lưu ý:
 
     return new Blob([buffer], { type: 'audio/wav' });
   }
+  */
 
   /**
-   * Interleave multiple audio channels
+   * [DEPRECATED] Interleave multiple audio channels
+   * No longer needed - kept for reference
    */
+  /*
   private static interleave(channelData: Float32Array[]): Float32Array {
     const length = channelData[0].length;
     const numberOfChannels = channelData.length;
@@ -940,6 +928,8 @@ Lưu ý:
 
     return result;
   }
+  */
+  
   /**
    * Split audio blob into chunks for batch processing
    * Automatically calculates chunk duration to keep each chunk under size limit
@@ -999,10 +989,11 @@ Lưu ý:
 
   /**
    * Extract a segment from audio blob based on time range
+   * Returns WebM format to keep file size small
    * @param audioBlob - Original audio blob
    * @param startTimeMs - Start time in milliseconds
    * @param endTimeMs - End time in milliseconds
-   * @returns Promise<Blob> - Audio segment blob
+   * @returns Promise<Blob> - Audio segment blob in WebM format
    */
   public static async extractAudioSegment(
     audioBlob: Blob,
@@ -1039,9 +1030,10 @@ Lưu ý:
             }
           }
 
-          // Convert to WAV
-          const wavBlob = this.audioBufferToWav(segmentBuffer);
-          resolve(wavBlob);
+          // Convert to WebM using MediaRecorder
+          // This keeps file size small compared to WAV
+          const webmBlob = await this.audioBufferToWebM(segmentBuffer);
+          resolve(webmBlob);
         } catch (error) {
           reject(error);
         }
@@ -1049,6 +1041,67 @@ Lưu ý:
 
       reader.onerror = reject;
       reader.readAsArrayBuffer(audioBlob);
+    });
+  }
+
+  /**
+   * Convert AudioBuffer to WebM Blob using MediaRecorder
+   * Much smaller file size than WAV (compressed audio)
+   */
+  private static async audioBufferToWebM(audioBuffer: AudioBuffer): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      try {
+        // Create a regular audio context (not offline) to get MediaStream
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+        // Create a buffer source
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+
+        // Create a destination to capture the audio as MediaStream
+        const dest = audioContext.createMediaStreamDestination();
+        source.connect(dest);
+
+        // Set up MediaRecorder to record to WebM
+        const mediaRecorder = new MediaRecorder(dest.stream, {
+          mimeType: 'audio/webm;codecs=opus'
+        });
+
+        const chunks: Blob[] = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            chunks.push(e.data);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          const webmBlob = new Blob(chunks, { type: 'audio/webm' });
+          // Clean up
+          audioContext.close();
+          resolve(webmBlob);
+        };
+
+        mediaRecorder.onerror = () => {
+          audioContext.close();
+          reject(new Error('MediaRecorder error'));
+        };
+
+        // Start recording
+        mediaRecorder.start();
+        source.start();
+
+        // Stop recording when audio finishes
+        source.onended = () => {
+          // Give it a little time to finish recording
+          setTimeout(() => {
+            mediaRecorder.stop();
+          }, 100);
+        };
+
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
@@ -1162,23 +1215,29 @@ Lưu ý:
    * Reserved for future implementation
    */
   /**
-   * Write string to DataView
+   * [DEPRECATED] Write string to DataView
+   * No longer needed - kept for reference
    */
+  /*
   private static writeString(view: DataView, offset: number, string: string): void {
     for (let i = 0; i < string.length; i++) {
       view.setUint8(offset + i, string.charCodeAt(i));
     }
   }
+  */
 
   /**
-   * Convert Float32 samples to 16-bit PCM
+   * [DEPRECATED] Convert Float32 samples to 16-bit PCM
+   * No longer needed - kept for reference
    */
+  /*
   private static floatTo16BitPCM(view: DataView, offset: number, input: Float32Array): void {
     for (let i = 0; i < input.length; i++, offset += 2) {
       const s = Math.max(-1, Math.min(1, input[i]));
       view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
     }
   }
+  */
 
   /**
    * Parse Gemini audio transcription response

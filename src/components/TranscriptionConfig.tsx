@@ -209,7 +209,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
       >
         {/* Gemini API Key */}
         <Form.Item
-          label="Gemini API Key (cho AI Refinement)"
+          label="Gemini API Key"
           name="geminiApiKey"
           rules={[
             { min: 20, message: 'API Key phải có ít nhất 20 ký tự' }
