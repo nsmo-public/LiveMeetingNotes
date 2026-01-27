@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Select, Switch, Button, Space, App, Collapse, Spin } from 'antd';
+import { Modal, Form, Input, Select, Button, Space, App, Collapse, Spin } from 'antd';
 import { SettingOutlined, SaveOutlined, DeleteOutlined, InfoCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { SpeechToTextConfig, GeminiModel } from '../types/types';
 import { SpeechToTextService } from '../services/speechToText';
@@ -207,43 +207,7 @@ export const TranscriptionConfig: React.FC<Props> = ({
         layout="vertical"
         autoComplete="off"
       >
-        <Form.Item
-          label="API Key (Tùy chọn - cho Speech-to-Text)"
-          name="apiKey"
-          rules={[
-            { min: 20, message: 'API Key phải có ít nhất 20 ký tự' }
-          ]}
-          extra={
-            <Space direction="vertical" size="small" style={{ marginTop: 8 }}>
-              <div style={{ fontSize: '12px', color: '#52c41a' }}>
-                ℹ️ <strong>Không bắt buộc:</strong> Nếu để trống, sẽ dùng Web Speech API miễn phí của trình duyệt
-              </div>
-              <div style={{ fontSize: '12px', color: '#888' }}>
-                <InfoCircleOutlined /> Chỉ cần nhập nếu muốn:
-                <ul style={{ margin: '4px 0', paddingLeft: 20 }}>
-                  <li>Nhận diện người nói (speaker diarization)</li>
-                  <li>Độ chính xác cao hơn với Google Cloud</li>
-                </ul>
-              </div>
-              <div style={{ fontSize: '12px', color: '#888' }}>
-                Lấy API Key từ{' '}
-                <a
-                  href="https://console.cloud.google.com/apis/credentials"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Google Cloud Console
-                </a>
-              </div>
-            </Space>
-          }
-        >
-          <Input.Password
-            placeholder="Để trống để dùng Web Speech API miễn phí"
-            autoComplete="off"
-          />
-        </Form.Item>
-
+        {/* Gemini API Key */}
         <Form.Item
           label="Gemini API Key (cho AI Refinement)"
           name="geminiApiKey"
@@ -378,22 +342,6 @@ export const TranscriptionConfig: React.FC<Props> = ({
         </Form.Item>
 
         <Form.Item
-          label="Nhận diện người nói"
-          name="enableSpeakerDiarization"
-          valuePropName="checked"
-          extra={
-            <div>
-              <div style={{ marginTop: 4 }}>Tự động phân biệt và gán nhãn cho từng người nói trong cuộc họp</div>
-              <div style={{ marginTop: 4, color: '#ff9800', fontSize: '12px' }}>
-                ⚠️ Chức năng này chỉ khả dụng với Google Cloud API (có phí) khi chuyển đổi file ghi âm.
-              </div>
-            </div>
-          }
-        >
-          <Switch />
-        </Form.Item>
-
-        <Form.Item
           noStyle
           shouldUpdate={(prevValues, currentValues) => 
             prevValues.enableSpeakerDiarization !== currentValues.enableSpeakerDiarization
@@ -434,15 +382,6 @@ export const TranscriptionConfig: React.FC<Props> = ({
               </>
             ) : null
           }
-        </Form.Item>
-
-        <Form.Item
-          label="Tự động thêm dấu câu"
-          name="enableAutomaticPunctuation"
-          valuePropName="checked"
-          extra="Tự động thêm dấu chấm, phấy, hỏi,... vào văn bản"
-        >
-          <Switch />
         </Form.Item>
 
         <Collapse 
@@ -510,7 +449,6 @@ export const TranscriptionConfig: React.FC<Props> = ({
             borderRadius: 4
           }}
         >
-          <h4 style={{ marginTop: 0, color: '#1890ff' }}>📌 Hai chế độ hoạt động:</h4>
           <div style={{ marginBottom: 16 }}>
             <strong style={{ color: '#52c41a' }}>🆓 Web Speech API (Miễn phí - Mặc định)</strong>
             <ul style={{ marginBottom: 0, paddingLeft: 20, fontSize: '13px' }}>
@@ -519,16 +457,6 @@ export const TranscriptionConfig: React.FC<Props> = ({
               <li>Miễn phí 100%</li>
               <li><strong>Luôn được dùng</strong> cho ghi âm trực tiếp (live transcription)</li>
               <li><strong style={{ color: '#ff4d4f' }}>Không</strong> hỗ trợ nhận diện người nói</li>
-            </ul>
-          </div>
-          <div>
-            <strong style={{ color: '#1890ff' }}>💰 Google Cloud API (Có phí - Nâng cao)</strong>
-            <ul style={{ marginBottom: 0, paddingLeft: 20, fontSize: '13px' }}>
-              <li>Cần API Key từ <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer">Google Cloud Console</a></li>
-              <li>Độ chính xác cao hơn</li>
-              <li><strong>Chỉ được dùng</strong> khi chuyển đổi file ghi âm đã lưu</li>
-              <li>Hỗ trợ nhận diện người nói (speaker diarization)</li>
-              <li>Chi phí: ~$0.006/15 giây audio (theo biểu giá của Google Cloud)</li>
             </ul>
           </div>
         </div>
