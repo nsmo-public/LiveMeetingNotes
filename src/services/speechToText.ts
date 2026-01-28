@@ -120,7 +120,7 @@ export class SpeechToTextService {
       this.segmentStartTimeMs = 0;
 
       // Start interval to check for segment completion
-      const segmentTimeout = this.config?.segmentTimeout || 1000; // Default 1s (improved from 500ms)
+      const segmentTimeout = this.config?.segmentTimeout || 2500; // Increased to 2.5s for better grouping
       this.segmentCheckInterval = setInterval(() => {
         this.checkSegmentCompletion(onTranscription);
       }, segmentTimeout);
@@ -265,7 +265,7 @@ export class SpeechToTextService {
     if (isFinal) return false; // Already final, no need to force
 
     const trimmedText = transcript.trim();
-    const maxLength = this.config?.segmentMaxLength || 150; // Configurable, default 150
+    const maxLength = this.config?.segmentMaxLength || 200; // Increased to 200 for more complete sentences
 
     // Force segment if text is too long
     if (trimmedText.length > maxLength) {
@@ -291,11 +291,11 @@ export class SpeechToTextService {
 
     const now = Date.now();
     const timeSinceLastUpdate = now - this.lastUpdateTime;
-    const segmentTimeout = this.config?.segmentTimeout || 1000; // Configurable, default 1s
+    const segmentTimeout = this.config?.segmentTimeout || 2500; // Increased to 2.5s for better sentence grouping
 
     // Nếu chúng ta có văn bản tạm thời và chưa nhận được cập nhật trong timeout, hãy hoàn tất nó
     if (this.lastInterimText && timeSinceLastUpdate > segmentTimeout) {
-      // console.log('🔸 Force segment: Silence timeout (0.5s)');
+      // console.log('🔸 Force segment: Silence timeout (2.5s)');
       
       const transcriptionResult: TranscriptionResult = {
         id: `transcription-${++this.transcriptionIdCounter}`,
