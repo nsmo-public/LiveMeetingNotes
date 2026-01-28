@@ -299,25 +299,30 @@ export class SpeechToTextService {
     const timeSinceLastUpdate = now - this.lastUpdateTime;
     const segmentTimeout = this.config?.segmentTimeout || 2500; // Increased to 2.5s for better sentence grouping
 
-    // Nếu chúng ta có văn bản tạm thời và chưa nhận được cập nhật trong timeout, hãy hoàn tất nó
-    if (this.lastInterimText && timeSinceLastUpdate > segmentTimeout) {
-      // console.log('🔸 Force segment: Silence timeout (2.5s)');
+    // Nếu có segment đang active (có segmentStartTimestamp) và đã im lặng quá timeout
+    if (this.segmentStartTimestamp && timeSinceLastUpdate > segmentTimeout) {
+      // Nếu có text interim đang pending, gửi nó như final result
+      if (this.lastInterimText) {
+        // console.log('🔸 Force segment: Silence timeout (2.5s) with interim text');
+        
+        const transcriptionResult: TranscriptionResult = {
+          id: `transcription-${++this.transcriptionIdCounter}`,
+          text: this.lastInterimText.trim(),
+          startTime: this.segmentStartTimestamp,
+          endTime: this.segmentStartTimestamp,
+          audioTimeMs: this.segmentStartTimeMs, // cố định thời gian tại đoạn bắt đầu
+          confidence: 0.8, // Moderate confidence for timeout-forced segments
+          speaker: 'Person1', // Default speaker
+          isFinal: true
+        };
+        
+        onTranscription(transcriptionResult);
+        this.lastInterimText = '';
+      }
       
-      const transcriptionResult: TranscriptionResult = {
-        id: `transcription-${++this.transcriptionIdCounter}`,
-        text: this.lastInterimText.trim(),
-        startTime: this.segmentStartTimestamp,
-        endTime: this.segmentStartTimestamp,
-        audioTimeMs: this.segmentStartTimeMs, // cố định thời gian tại đoạn bắt đầu
-        confidence: 0.8, // Moderate confidence for timeout-forced segments
-        speaker: 'Person1', // Default speaker
-        isFinal: true
-      };
-      
-      onTranscription(transcriptionResult);
-      this.lastInterimText = '';
-      this.segmentStartTimeMs = 0; // Reset for next segment
-      this.segmentStartTimestamp = ''; // Reset for next segment
+      // Reset segment để bắt đầu segment mới
+      this.segmentStartTimeMs = 0;
+      this.segmentStartTimestamp = '';
       this.lastUpdateTime = now;
     }
   }

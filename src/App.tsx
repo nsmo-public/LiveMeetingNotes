@@ -1287,26 +1287,6 @@ export const App: React.FC = () => {
     }
   };
 
-  // Calculate text similarity (Levenshtein-based)
-  const calculateSimilarity = (text1: string, text2: string): number => {
-    const longer = text1.length > text2.length ? text1 : text2;
-    const shorter = text1.length > text2.length ? text2 : text1;
-    
-    if (longer.length === 0) return 1.0;
-    
-    // Quick check: if one contains the other
-    if (longer.includes(shorter)) {
-      return shorter.length / longer.length;
-    }
-    
-    // Simple word-based similarity
-    const words1 = text1.split(/\s+/);
-    const words2 = text2.split(/\s+/);
-    const commonWords = words1.filter(w => words2.includes(w)).length;
-    
-    return (2 * commonWords) / (words1.length + words2.length);
-  };
-
   // Handle seek to audio time
   const handleSeekToAudio = (timeMs: number) => {
     if (audioPlayerRef.current) {
