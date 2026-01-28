@@ -14,9 +14,9 @@ export default defineConfig({
       manifest: {
         name: 'Live Meeting Notes',
         short_name: 'MeetingNotes',
-        description: 'Record meetings with timestamps - Works Offline',
-        theme_color: '#1e1e1e',
-        background_color: '#1e1e1e',
+        description: 'Voice Recording + AI-Powered Meeting Notes',
+        theme_color: '#667eea',
+        background_color: '#667eea',
         display: 'standalone',
         orientation: 'any',
         scope: '/LiveMeetingNotes/',

@@ -1,4 +1,21 @@
-<svg width="32" height="32" xmlns="http://www.w3.org/2000/svg">
-  <rect width="32" height="32" fill="#4096ff"/>
-  <text x="16" y="22" font-size="18" text-anchor="middle" fill="white" font-family="Arial, sans-serif">📝</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="6" fill="url(#gradient)"/>
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Microphone icon -->
+  <path d="M16 4C14.9 4 14 4.9 14 6V14C14 15.1 14.9 16 16 16C17.1 16 18 15.1 18 14V6C18 4.9 17.1 4 16 4Z" fill="white" opacity="0.9"/>
+  <path d="M12 12V14C12 16.21 13.79 18 16 18C18.21 18 20 16.21 20 14V12H21V14C21 16.76 18.93 19.03 16.25 19.47V22H19V23H13V23H15.75V19.47C13.07 19.03 11 16.76 11 14V12H12Z" fill="white" opacity="0.9"/>
+  
+  <!-- Document lines (notes) -->
+  <path d="M10 25H13" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+  <path d="M10 27H15" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+  
+  <!-- AI Sparkle -->
+  <circle cx="24" cy="9" r="1.5" fill="#FFD700"/>
+  <path d="M24 6L24 12M21 9L27 9" stroke="#FFD700" stroke-width="1" stroke-linecap="round"/>
 </svg>

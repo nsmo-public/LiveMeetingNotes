@@ -1,5 +1,44 @@
-<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" fill="#4096ff"/>
-  <text x="256" y="300" font-size="200" text-anchor="middle" fill="white" font-family="Arial, sans-serif">📝</text>
-  <text x="256" y="420" font-size="50" text-anchor="middle" fill="white" font-family="Arial, sans-serif">Meeting Notes</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="112" fill="url(#gradient)"/>
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Microphone -->
+  <path d="M256 85C234 85 218 101 218 123V218C218 240 234 256 256 256C278 256 294 240 294 218V123C294 101 278 85 256 85Z" fill="white" opacity="0.95" filter="url(#glow)"/>
+  <path d="M187 192V218C187 267 224 304 269 312V352H309V373H203V394H309V373H291V352V312C336 304 373 267 373 218V192H357V218C357 256 325 288 288 293C251 288 219 256 219 218V192H187Z" fill="white" opacity="0.95" filter="url(#glow)"/>
+  
+  <!-- Document/Notes background with shadow -->
+  <rect x="139" y="293" width="234" height="139" rx="21" fill="white" opacity="0.25"/>
+  <rect x="145" y="299" width="222" height="127" rx="16" fill="white" opacity="0.15"/>
+  
+  <!-- Text lines -->
+  <line x1="171" y1="336" x2="288" y2="336" stroke="white" stroke-width="11" stroke-linecap="round" opacity="0.7"/>
+  <line x1="171" y1="368" x2="320" y2="368" stroke="white" stroke-width="11" stroke-linecap="round" opacity="0.7"/>
+  <line x1="171" y1="400" x2="267" y2="400" stroke="white" stroke-width="11" stroke-linecap="round" opacity="0.7"/>
+  
+  <!-- AI Sparkles with glow -->
+  <g filter="url(#glow)">
+    <circle cx="410" cy="128" r="21" fill="#FFD700"/>
+    <path d="M410 85L410 171M367 128L453 128" stroke="#FFD700" stroke-width="11" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Additional sparkles -->
+  <circle cx="394" cy="181" r="11" fill="#FFF" opacity="0.8"/>
+  <circle cx="442" cy="165" r="8" fill="#FFF" opacity="0.6"/>
+  <circle cx="378" cy="160" r="6" fill="#FFF" opacity="0.5"/>
+  
+  <!-- Small accent sparkles -->
+  <circle cx="340" cy="245" r="5" fill="#FFD700" opacity="0.6"/>
+  <circle cx="365" cy="258" r="4" fill="#FFD700" opacity="0.5"/>
 </svg>
