@@ -198,13 +198,42 @@ export class FileManagerService {
         }
       }
 
-      if (!meetingInfoData || !metadataData) {
-        throw new Error('Missing required files: meeting_info.json and metadata.json are mandatory');
+      // Flexible loading: Allow audio-only projects without JSON files
+      // If JSON files are missing, use default values
+      if (!meetingInfoData && !metadataData && !audioBlob) {
+        throw new Error('Thư mục trống - không tìm thấy file audio hoặc file thông tin cuộc họp');
+      }
+      
+      // If only audio file exists, create default metadata
+      if (!meetingInfoData) {
+        console.warn('⚠️ Không tìm thấy meeting_info.json - sử dụng thông tin mặc định');
+        const now = new Date();
+        meetingInfoData = {
+          title: `${now.toISOString().split('T')[0]} _ `,
+          date: now.toISOString().split('T')[0],
+          time: now.toTimeString().slice(0, 5),
+          location: '',
+          host: '',
+          attendees: ''
+        };
+      }
+      
+      if (!metadataData) {
+        console.warn('⚠️ Không tìm thấy metadata.json - sử dụng metadata mặc định');
+        metadataData = {
+          MeetingTitle: meetingInfoData.title,
+          MeetingDate: meetingInfoData.date,
+          MeetingTime: meetingInfoData.time,
+          Location: meetingInfoData.location,
+          Host: meetingInfoData.host,
+          Attendees: meetingInfoData.attendees,
+          CreatedAt: new Date().toISOString()
+        };
       }
       
       // Audio file is optional (for notes-only projects)
       if (!audioBlob) {
-        console.warn('No audio file found - this is a notes-only project');
+        console.warn('⚠️ Không tìm thấy file audio - đây là project chỉ có ghi chú');
       }
 
       // console.log('Loaded project data:', {
