@@ -104,12 +104,52 @@ export const NotesEditor: React.FC<Props> = ({
     // });
   }, [timestampMap, notes]);
   
-  // Sync lineSpeakers when initialSpeakers changes (e.g., when loading project)
+  // Sync lineSpeakers ONLY when initialSpeakers is externally updated (restore/load), not during typing
+  const lastSyncedInitialSpeakersRef = React.useRef<Map<number, string>>(new Map());
+  const lineSpeakersRef = React.useRef<Map<number, string>>(lineSpeakers);
+  
+  // Keep ref in sync with state
   React.useEffect(() => {
-    if (initialSpeakers && initialSpeakers.size > 0) {
-      setLineSpeakers(new Map(initialSpeakers));
+    lineSpeakersRef.current = lineSpeakers;
+  }, [lineSpeakers]);
+  
+  React.useEffect(() => {
+    if (!initialSpeakers) return;
+    
+    // Check if initialSpeakers is different from what we last synced
+    let isDifferentFromLastSync = initialSpeakers.size !== lastSyncedInitialSpeakersRef.current.size;
+    if (!isDifferentFromLastSync) {
+      for (const [key, value] of initialSpeakers.entries()) {
+        if (lastSyncedInitialSpeakersRef.current.get(key) !== value) {
+          isDifferentFromLastSync = true;
+          break;
+        }
+      }
     }
-  }, [initialSpeakers]);
+    
+    // Also check if it's different from current lineSpeakers (using ref to avoid dependency)
+    let isDifferentFromCurrent = initialSpeakers.size !== lineSpeakersRef.current.size;
+    if (!isDifferentFromCurrent) {
+      for (const [key, value] of initialSpeakers.entries()) {
+        if (lineSpeakersRef.current.get(key) !== value) {
+          isDifferentFromCurrent = true;
+          break;
+        }
+      }
+    }
+    
+    // Only sync if initialSpeakers changed externally (not from our own updates)
+    if (isDifferentFromLastSync && isDifferentFromCurrent) {
+      console.log('🔄 Syncing lineSpeakers from initialSpeakers:', { 
+        initialSize: initialSpeakers.size, 
+        currentSize: lineSpeakersRef.current.size,
+        initialEntries: Array.from(initialSpeakers.entries()),
+        currentEntries: Array.from(lineSpeakersRef.current.entries())
+      });
+      setLineSpeakers(new Map(initialSpeakers));
+      lastSyncedInitialSpeakersRef.current = new Map(initialSpeakers);
+    }
+  }, [initialSpeakers]); // REMOVED lineSpeakers from deps - use ref instead
   
   // Sync speakers back to parent when they change (with deep equality check to avoid loops)
   const lastNotifiedSpeakersRef = React.useRef<Map<number, string>>(new Map());
@@ -127,6 +167,10 @@ export const NotesEditor: React.FC<Props> = ({
       }
       
       if (isDifferent) {
+        console.log('🔔 Notifying parent about speaker changes:', { 
+          size: lineSpeakers.size, 
+          entries: Array.from(lineSpeakers.entries()) 
+        });
         onSpeakersChange(lineSpeakers);
         lastNotifiedSpeakersRef.current = new Map(lineSpeakers);
       }
@@ -543,6 +587,8 @@ export const NotesEditor: React.FC<Props> = ({
   const handleSpeakerChange = (index: number, value: string) => {
     const oldSpeaker = lineSpeakers.get(index) || '';
     
+    console.log('🎤 handleSpeakerChange:', { index, oldSpeaker, newValue: value });
+    
     // Update speakers map
     const newSpeakers = new Map(lineSpeakers);
     if (value) {
@@ -551,6 +597,11 @@ export const NotesEditor: React.FC<Props> = ({
       newSpeakers.delete(index);
     }
     setLineSpeakers(newSpeakers);
+    
+    console.log('📝 Updated lineSpeakers:', { 
+      size: newSpeakers.size, 
+      entries: Array.from(newSpeakers.entries()) 
+    });
     
     // Auto-create timestamp: Only in Live Mode when speaker goes from empty to having content
     if (isLiveMode) {

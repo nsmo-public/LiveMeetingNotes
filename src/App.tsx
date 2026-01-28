@@ -951,6 +951,11 @@ export const App: React.FC = () => {
           participants: meetingInfo.attendees
         };
         
+        console.log('💾 Auto-backup saving with speakersMap:', { 
+          size: speakersMap.size, 
+          entries: Array.from(speakersMap.entries()) 
+        });
+        
         saveBackup(
           meetingInfoForBackup,
           notes,
