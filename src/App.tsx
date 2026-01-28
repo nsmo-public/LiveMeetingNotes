@@ -1190,81 +1190,117 @@ export const App: React.FC = () => {
 
   // Handle new transcription result
   const handleNewTranscription = (result: TranscriptionResult) => {
-    // Validate result has text
-    if (!result || !result.text) {
-      console.warn('⚠️ Received invalid transcription result:', result);
-      return;
-    }
-
-    // Collect raw transcript data for AI refinement
-    const rawData: RawTranscriptData = {
-      text: result.text,
-      timestamp: result.startTime,
-      audioTimeMs: result.audioTimeMs,
-      confidence: result.confidence,
-      isFinal: result.isFinal
-    };
-    setRawTranscripts(prev => [...prev, rawData]);
-
-    setTranscriptions(prev => {
-      // Nếu là kết quả final
-      if (result.isFinal) {
-        // Loại bỏ kết quả tạm thời (nếu có)
-        const finalResults = prev.filter(item => item.isFinal);
-        
-        // Kiểm tra xem kết quả mới có phải là phiên bản mở rộng của kết quả cũ không
-        // Nếu kết quả cuối cùng chứa hầu hết text của kết quả mới hoặc ngược lại
-        if (finalResults.length > 0) {
-          const lastResult = finalResults[finalResults.length - 1];
-          
-          // Validate both texts exist
-          if (!lastResult.text) {
-            // If last result has no text, replace it with new result
-            finalResults[finalResults.length - 1] = result;
-            return finalResults;
-          }
-          
-          const newText = result.text.trim().toLowerCase();
-          const lastText = lastResult.text.trim().toLowerCase();
-          
-          // Case 1: Kết quả mới là phiên bản mở rộng của kết quả cũ
-          // VD: Cũ: "như vậy là", Mới: "như vậy là cái mẫu"
-          if (newText.startsWith(lastText) && newText.length > lastText.length) {
-            // console.log('🔄 Replacing with extended version:', {
-            //   old: lastText.substring(0, 50) + '...',
-            //   new: newText.substring(0, 50) + '...'
-            // });
-            // Thay thế kết quả cũ bằng kết quả mới
-            finalResults[finalResults.length - 1] = result;
-            return finalResults;
-          }
-          
-          // Case 2: Kết quả cũ là phiên bản mở rộng của kết quả mới → bỏ qua kết quả mới
-          // VD: Cũ: "như vậy là cái mẫu", Mới: "như vậy là"
-          if (lastText.startsWith(newText)) {
-            // console.log('⏭️ Skipping shorter duplicate');
-            return prev; // Giữ nguyên
-          }
-          
-          // Case 3: Kiểm tra độ tương đồng cao (>80% giống nhau)
-          const similarity = calculateSimilarity(newText, lastText);
-          if (similarity > 0.8) {
-            // console.log('⏭️ Skipping similar result (similarity: ' + (similarity * 100).toFixed(0) + '%)');
-            return prev;
-          }
-        }
-        
-        // Thêm kết quả mới
-        return [...finalResults, result];
-      } else {
-        // Nếu là kết quả tạm thời, chỉ giữ 1 kết quả tạm thời mới nhất
-        const finalResults = prev.filter(item => item.isFinal);
-        return [...finalResults, result];
+    try {
+      // Validate result has text
+      if (!result || !result.text) {
+        console.warn('⚠️ Received invalid transcription result:', result);
+        return;
       }
-    });
-    
-    if (result.isFinal) {
-      // console.log('✅ Final transcription:', result.text.substring(0, 50) + '...');
+
+      // Collect raw transcript data for AI refinement
+      const rawData: RawTranscriptData = {
+        text: result.text,
+        timestamp: result.startTime,
+        audioTimeMs: result.audioTimeMs,
+        confidence: result.confidence,
+        isFinal: result.isFinal
+      };
+      setRawTranscripts(prev => [...prev, rawData]);
+
+      setTranscriptions(prev => {
+        // Nếu là kết quả final
+        if (result.isFinal) {
+          // Tách final results và draft segment (nếu có)
+          const finalResults = prev.filter(item => item.isFinal);
+          const existingDraft = prev.find(item => !item.isFinal);
+          
+          // Kiểm tra xem kết quả mới có phải là phiên bản mở rộng của kết quả cũ không
+          // Nếu kết quả cuối cùng chứa hầu hết text của kết quả mới hoặc ngược lại
+          if (finalResults.length > 0) {
+            const lastResult = finalResults[finalResults.length - 1];
+            
+            // Validate both texts exist
+            if (!lastResult.text) {
+              // If last result has no text, replace it with new result
+              finalResults[finalResults.length - 1] = result;
+              // Giữ draft segment nếu có
+              return existingDraft ? [...finalResults, existingDraft] : finalResults;
+            }
+            
+            const newText = result.text.trim().toLowerCase();
+            const lastText = lastResult.text.trim().toLowerCase();
+            
+            // Case 1: Kết quả mới là phiên bản mở rộng của kết quả cũ
+            // VD: Cũ: "như vậy là", Mới: "như vậy là cái mẫu"
+            if (newText.startsWith(lastText) && newText.length > lastText.length) {
+              // console.log('🔄 Replacing with extended version:', {
+              //   old: lastText.substring(0, 50) + '...',
+              //   new: newText.substring(0, 50) + '...'
+              // });
+              // Thay thế kết quả cũ bằng kết quả mới NHƯNG GIỮ TẤT CẢ TIMESTAMP CŨ
+              finalResults[finalResults.length - 1] = {
+                ...result,
+                startTime: lastResult.startTime, // Preserve original timestamp
+                endTime: lastResult.endTime,
+                audioTimeMs: lastResult.audioTimeMs // Preserve audio position
+              };
+              // Giữ draft segment nếu có
+              return existingDraft ? [...finalResults, existingDraft] : finalResults;
+            }
+            
+            // Case 2: Kết quả cũ là phiên bản mở rộng của kết quả mới → bỏ qua kết quả mới
+            // VD: Cũ: "như vậy là cái mẫu", Mới: "như vậy là"
+            if (lastText.startsWith(newText)) {
+              // console.log('⏭️ Skipping shorter duplicate');
+              return prev; // Giữ nguyên (bao gồm cả draft)
+            }
+            
+            // Case 3: Kiểm tra độ tương đồng cao (>80% giống nhau)
+            const similarity = calculateSimilarity(newText, lastText);
+            if (similarity > 0.8) {
+              // console.log('⏭️ Skipping similar result (similarity: ' + (similarity * 100).toFixed(0) + '%)');
+              return prev; // Giữ nguyên (bao gồm cả draft)
+            }
+          }
+          
+          // Thêm kết quả final mới và giữ draft segment nếu có
+          return existingDraft ? [...finalResults, result, existingDraft] : [...finalResults, result];
+        } else {
+          // Nếu là kết quả tạm thời, giữ tất cả final + update/thêm 1 draft segment cố định
+          const finalResults = prev.filter(item => item.isFinal);
+          const existingDraft = prev.find(item => !item.isFinal);
+          
+          // Nếu đã có draft segment, CHỈ update nếu text thực sự thay đổi
+          if (existingDraft) {
+            // If text hasn't changed, return prev to prevent re-render
+            if (existingDraft.text === result.text) {
+              return prev;
+            }
+            
+            // Update text and confidence, keep ID but allow timestamp to update
+            const updatedDraft = {
+              ...existingDraft,
+              text: result.text,
+              confidence: result.confidence,
+              // Allow timestamps to update for draft (keep only ID)
+              startTime: result.startTime,
+              endTime: result.endTime,
+              audioTimeMs: result.audioTimeMs
+            };
+            
+            return [...finalResults, updatedDraft];
+          }
+          
+          // Nếu chưa có, tạo draft segment mới
+          return [...finalResults, result];
+        }
+      });
+      
+      if (result.isFinal) {
+        // console.log('✅ Final transcription:', result.text.substring(0, 50) + '...');
+      }
+    } catch (error) {
+      console.error('❌ Error handling transcription:', error);
     }
   };
 
@@ -1899,6 +1935,7 @@ export const App: React.FC = () => {
         isLiveMode={isLiveMode}
         onSpeakersChange={setSpeakersMap}
         initialSpeakers={speakersMap}
+        timestampDelay={transcriptionConfig?.timestampDelay || 8}
       />
 
       <AudioPlayer ref={audioPlayerRef} audioBlob={audioBlob} transcriptionConfig={transcriptionConfig} />

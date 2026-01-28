@@ -137,13 +137,13 @@ export class SpeechToTextService {
           this.lastUpdateTime = Date.now();
 
           // Set segment start time when first text arrives in new segment
-          if (!this.lastInterimText && transcript.trim()) {
+          if (!this.segmentStartTimestamp && transcript.trim()) {
             // Estimate audio start time by subtracting ~1 second (typical speech-to-text delay)
             this.segmentStartTimeMs = this.lastUpdateTime - this.transcriptionStartTime - 1000;
             if (this.segmentStartTimeMs < 0) this.segmentStartTimeMs = 0;
             // Save fixed timestamp for this segment
             this.segmentStartTimestamp = new Date().toISOString();
-            // console.log('🎬 New segment started at audio time:', this.segmentStartTimeMs, 'ms');
+            // console.log('🎬 New segment started at:', this.segmentStartTimestamp, 'audio time:', this.segmentStartTimeMs, 'ms');
           }
 
           // Check if we should force segment completion
@@ -195,8 +195,13 @@ export class SpeechToTextService {
 
               // Debounce: wait 100ms before sending (avoid rapid updates)
               this.interimDebounceTimer = setTimeout(() => {
+                // Safety check: ensure timestamp is set
+                if (!this.segmentStartTimestamp) {
+                  this.segmentStartTimestamp = new Date().toISOString();
+                }
+                
                 const transcriptionResult: TranscriptionResult = {
-                  id: `transcription-${this.transcriptionIdCounter + 1}`, // Use next ID but don't increment
+                  id: 'draft-segment-interim', // Use fixed ID for all interim results to prevent re-render
                   text: transcript,
                   startTime: this.segmentStartTimestamp, // Use fixed timestamp from segment start
                   endTime: this.segmentStartTimestamp,
@@ -269,15 +274,7 @@ export class SpeechToTextService {
   private shouldForceSegment(transcript: string, isFinal: boolean): boolean {
     if (isFinal) return false; // Already final, no need to force
 
-    const trimmedText = transcript.trim();
-    const maxLength = this.config?.segmentMaxLength || 200; // Increased to 200 for more complete sentences
-
-    // Force segment if text is too long
-    if (trimmedText.length > maxLength) {
-      // console.log('🔸 Force segment: Text too long (' + trimmedText.length + ' chars)');
-      return true;
-    }
-
+    // Chỉ dựa vào dấu câu để tách segment, không giới hạn độ dài
     // Force segment if ends with sentence punctuation + space
     // This catches natural pauses after complete sentences
     if (/[.!?]\s+$/.test(transcript)) {

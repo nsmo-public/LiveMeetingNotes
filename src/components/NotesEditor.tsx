@@ -13,6 +13,7 @@ interface Props {
   isLiveMode?: boolean; // true when recording/just recorded, false when loaded from project
   onSpeakersChange?: (speakers: Map<number, string>) => void; // Callback to sync speaker data
   initialSpeakers?: Map<number, string>; // Initial speakers data when loading project
+  timestampDelay?: number; // Timestamp delay in seconds (from config, default: 8)
 }
 
 export const NotesEditor: React.FC<Props> = ({
@@ -23,17 +24,12 @@ export const NotesEditor: React.FC<Props> = ({
   recordingStartTime,
   isLiveMode = true,
   onSpeakersChange,
-  initialSpeakers
+  initialSpeakers,
+  timestampDelay = 8 // Default 8 seconds
 }) => {
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [editingDatetimeIndex, setEditingDatetimeIndex] = useState<number | null>(null);
   const [editingDatetimeValue, setEditingDatetimeValue] = useState<string>('');
-  
-  // Timestamp delay setting (in seconds) - người gõ note thường chậm hơn người nói
-  const [timestampDelay, setTimestampDelay] = useState<number>(() => {
-    const saved = localStorage.getItem('timestampDelay');
-    return saved ? parseInt(saved, 8) : 8; // Mặc định 10 giây
-  });
   
   const containerRef = useRef<HTMLDivElement>(null);
   const speakerRefs = useRef<Map<number, TextAreaRef>>(new Map());
@@ -1019,37 +1015,6 @@ export const NotesEditor: React.FC<Props> = ({
               : '💡 Nhấp chuột phải vào sóng âm để chèn ghi chú • Enter/Shift+Enter để ngắt dòng trong văn bản'
             }
           </span>
-          {isLiveMode && (
-            <div className="timestamp-delay-control" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '12px' }}>
-              <label htmlFor="timestamp-delay" style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>
-                ⏱️ Trễ:
-              </label>
-              <input
-                id="timestamp-delay"
-                type="number"
-                min="0"
-                max="60"
-                value={timestampDelay}
-                onChange={(e) => {
-                  const value = Math.max(0, Math.min(60, parseInt(e.target.value, 8) || 0));
-                  setTimestampDelay(value);
-                  localStorage.setItem('timestampDelay', value.toString());
-                }}
-                style={{
-                  width: '50px',
-                  padding: '4px 8px',
-                  fontSize: '12px',
-                  border: '1px solid #434343',
-                  borderRadius: '4px',
-                  backgroundColor: '#1e1e1e',
-                  color: '#d4d4d4'
-                }}
-                title="Timestamp sẽ lùi lại bao nhiêu giây (người gõ note thường chậm hơn người nói)"
-              />
-              <span style={{ fontSize: '12px' }}>giây</span>
-            
-            </div>
-          )}
           <button
             className="toggle-timestamps-btn"
             onClick={() => setShowTimestamps(!showTimestamps)}

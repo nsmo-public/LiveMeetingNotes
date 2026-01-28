@@ -40,8 +40,9 @@ export const TranscriptionConfig: React.FC<Props> = ({
         maxAlternatives: 1,
         minSpeakerCount: 2,
         maxSpeakerCount: 6,
-        segmentTimeout: 1000,
+        segmentTimeout: 2000,
         segmentMaxLength: 150,
+        timestampDelay: 8,
         maxAudioDurationMinutes: 60,
         maxFileSizeMB: 20,
         requestDelaySeconds: 5
@@ -132,8 +133,9 @@ export const TranscriptionConfig: React.FC<Props> = ({
         maxAlternatives: values.maxAlternatives || 1,
         minSpeakerCount: values.minSpeakerCount || 2,
         maxSpeakerCount: values.maxSpeakerCount || 6,
-        segmentTimeout: values.segmentTimeout || 1000,
+        segmentTimeout: values.segmentTimeout || 2500,
         segmentMaxLength: values.segmentMaxLength || 150,
+        timestampDelay: values.timestampDelay || 8,
         
         // Gemini API Limits
         maxAudioDurationMinutes: values.maxAudioDurationMinutes || 60,
@@ -414,33 +416,36 @@ export const TranscriptionConfig: React.FC<Props> = ({
                 <Form.Item
                   label="Thời gian chờ kết thúc đoạn (ms)"
                   name="segmentTimeout"
-                  initialValue={1000}
-                  extra="Thời gian tạm dừng trước khi tự động kết thúc đoạn văn bản (500-2000ms)"
+                  initialValue={2000}
+                  extra="Thời gian tạm dừng trước khi tự động kết thúc đoạn văn bản. Giá trị cao hơn = câu dài hơn, ít bị cắt ngang (1000-5000ms)"
                 >
                   <Select placeholder="Chọn thời gian chờ">
-                    <Select.Option value={500}>500ms (nhanh)</Select.Option>
-                    <Select.Option value={750}>750ms</Select.Option>
-                    <Select.Option value={1000}>1000ms (khuyến nghị)</Select.Option>
-                    <Select.Option value={1500}>1500ms</Select.Option>
-                    <Select.Option value={2000}>2000ms (chậm)</Select.Option>
+                    <Select.Option value={1000}>1.0s (nhanh, câu ngắn)</Select.Option>
+                    <Select.Option value={1500}>1.5s</Select.Option>
+                    <Select.Option value={2000}>2.0s(khuyến nghị)</Select.Option>
+                    <Select.Option value={2500}>2.5s</Select.Option>
+                    <Select.Option value={3000}>3.0s</Select.Option>
+                    <Select.Option value={4000}>4.0s</Select.Option>
+                    <Select.Option value={5000}>5.0s (chậm, câu rất dài)</Select.Option>
                   </Select>
                 </Form.Item>
 
                 <Form.Item
-                  label="Độ dài tối đa mỗi đoạn"
-                  name="segmentMaxLength"
-                  initialValue={150}
-                  extra="Số ký tự tối đa trước khi tự động chia đoạn (100-300)"
+                  label="Độ trễ timestamp khi gõ notes (giây)"
+                  name="timestampDelay"
+                  initialValue={8}
+                  extra="Khi gõ notes thủ công, timestamp sẽ lùi lại X giây để bù thời gian phản ứng (0-60 giây)"
                 >
-                  <Select placeholder="Chọn độ dài tối đa">
-                    <Select.Option value={100}>100 ký tự (ngắn)</Select.Option>
-                    <Select.Option value={150}>150 ký tự (khuyến nghị)</Select.Option>
-                    <Select.Option value={200}>200 ký tự</Select.Option>
-                    <Select.Option value={250}>250 ký tự</Select.Option>
-                    <Select.Option value={300}>300 ký tự (dài)</Select.Option>
+                  <Select placeholder="Chọn độ trễ">
+                    <Select.Option value={0}>0s (không trễ)</Select.Option>
+                    <Select.Option value={3}>3s</Select.Option>
+                    <Select.Option value={5}>5s</Select.Option>
+                    <Select.Option value={8}>8s (khuyến nghị)</Select.Option>
+                    <Select.Option value={10}>10s</Select.Option>
+                    <Select.Option value={15}>15s</Select.Option>
+                    <Select.Option value={20}>20s</Select.Option>
                   </Select>
                 </Form.Item>
-
                 <div style={{ 
                   marginTop: 24, 
                   padding: 16, 

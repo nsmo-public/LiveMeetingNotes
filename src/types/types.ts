@@ -74,8 +74,9 @@ export interface SpeechToTextConfig {
   maxAlternatives?: number; // Number of alternative transcriptions (1-5)
   minSpeakerCount?: number; // Minimum speakers for diarization (2-6)
   maxSpeakerCount?: number; // Maximum speakers for diarization (2-6)
-  segmentTimeout?: number; // Timeout for segment completion in ms (500-2000)
+  segmentTimeout?: number; // Timeout for segment completion in ms (1000-5000, default 2500)
   segmentMaxLength?: number; // Max characters before forcing segment (100-300)
+  timestampDelay?: number; // Timestamp delay offset in seconds for manual note-taking (0-60, default: 8)
   
   // Gemini API Limits Configuration
   maxAudioDurationMinutes?: number; // Maximum audio duration in minutes (default: 60)
