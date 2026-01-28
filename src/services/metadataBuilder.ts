@@ -29,7 +29,7 @@ export class MetadataBuilder {
 
     // Metadata JSON with new structure
     const metadataJson = {
-      ProjectName: audioFileName.replace('.wav', ''),
+      ProjectName: audioFileName.replace('.webm', ''),
       Model: 'Live Recording',
       Language: 'vi',
       OriginalFileName: audioFileName,

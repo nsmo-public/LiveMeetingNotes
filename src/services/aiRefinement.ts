@@ -687,7 +687,8 @@ Giữ timestamp/audioTimeMs gốc. Chỉ trả về JSON array.`;
 
   /**
    * Transcribe audio file using Gemini Multimodal API
-   * Gemini 1.5+ models can directly process audio files (mp3, wav, aac, webm, etc.)
+   * Gemini API officially supports: WAV and MP3 only
+   * Other formats (WebM, MP4, OGG, AAC, FLAC) must be converted to WAV first
    */
   public static async transcribeAudioWithGemini(
     apiKey: string,
@@ -725,12 +726,16 @@ Giữ timestamp/audioTimeMs gốc. Chỉ trả về JSON array.`;
     if (onProgress) onProgress(10);
 
     try {
-      // Convert WebM to WAV if needed, with size optimization
+      // Convert to WAV if needed
+      // Gemini API officially supports: WAV and MP3 only
+      // All other formats need conversion to WAV
       let processedAudio = audioBlob;
-      const needsConversion = audioBlob.type === 'audio/webm' || audioBlob.type === 'video/webm';
+      const audioType = audioBlob.type.toLowerCase();
+      const isWavOrMp3 = audioType.includes('wav') || audioType.includes('mpeg') || audioType.includes('mp3');
+      const needsConversion = !isWavOrMp3;
       
       if (needsConversion) {
-        console.log('🔄 Converting WebM to WAV...');
+        console.log(`🔄 Converting ${audioType} to WAV (Gemini requires WAV or MP3)...`);
         if (onProgress) onProgress(15);
         
         const originalSizeMB = audioBlob.size / (1024 * 1024);
@@ -850,7 +855,7 @@ Giữ timestamp/audioTimeMs gốc. Chỉ trả về JSON array.`;
 
   /**
    * Convert audio blob to WAV format with optional sample rate optimization
-   * Gemini API requires WAV or MP3 format, not WebM
+   * Gemini API officially supports WAV and MP3 only
    * @param targetSampleRate - Target sample rate (16000 for smaller files, 44100 for quality)
    */
   private static async convertToWav(audioBlob: Blob, targetSampleRate: number = 44100): Promise<Blob> {
@@ -1110,21 +1115,27 @@ Giữ timestamp/audioTimeMs gốc. Chỉ trả về JSON array.`;
   ): Promise<TranscriptionResult[]> {
     const maxSizeMB = maxFileSizeMB;
 
-    // CRITICAL: Convert to WAV first, THEN split based on WAV size
-    // Because Gemini calculates size based on WAV, not original WebM
-    if (onProgress) onProgress(3, 'Đang chuyển đổi sang định dạng WAV...');
+    // CRITICAL: Convert to WAV first if needed, THEN split based on size
+    // Gemini API officially supports: WAV and MP3 only
+    // All other formats (WebM, MP4, OGG, AAC, FLAC) must be converted to WAV
+    if (onProgress) onProgress(3, 'Đang kiểm tra định dạng audio...');
     
     let wavBlob = audioBlob;
-    const needsConversion = audioBlob.type === 'audio/webm' || audioBlob.type === 'video/webm';
+    const audioType = audioBlob.type.toLowerCase();
+    const isWavOrMp3 = audioType.includes('wav') || audioType.includes('mpeg') || audioType.includes('mp3');
+    const needsConversion = !isWavOrMp3;
     
     if (needsConversion) {
+      if (onProgress) onProgress(5, `Đang chuyển đổi ${audioType} sang WAV...`);
       // Convert with lower sample rate for smaller file size
       const targetSampleRate = 16000; // Lower sample rate = smaller file
       wavBlob = await this.convertToWav(audioBlob, targetSampleRate);
       
       const originalSizeMB = audioBlob.size / (1024 * 1024);
       const wavSizeMB = wavBlob.size / (1024 * 1024);
-      console.log(`🔄 Converted: ${originalSizeMB.toFixed(2)}MB (WebM) → ${wavSizeMB.toFixed(2)}MB (WAV)`);
+      console.log(`✅ Converted ${audioType}: ${originalSizeMB.toFixed(2)}MB → ${wavSizeMB.toFixed(2)}MB (WAV)`);
+    } else {
+      console.log(`✅ Audio format ${audioType} is supported by Gemini (WAV/MP3) - no conversion needed`);
     }
 
     // Now split the WAV file into chunks based on actual WAV size AND duration
