@@ -336,12 +336,15 @@ export const TranscriptionPanel: React.FC<Props> = ({
                             }}
                           >
                             <Space size="small">
-                              {/* Time */}
-                              <Tooltip title="Thời gian">
-                                <Tag icon={<ClockCircleOutlined />} color="blue" style={{ fontSize: '11px' }}>
-                                  {formatTime(item.startTime)}
-                                </Tag>
-                              </Tooltip>
+                              {/* Time - Only show if it's real recording time (not Gemini transcription) */}
+                              {/* Gemini transcription uses current time as placeholder, so we hide it */}
+                              {!item.isAIRefined && (
+                                <Tooltip title="Thời gian">
+                                  <Tag icon={<ClockCircleOutlined />} color="blue" style={{ fontSize: '11px' }}>
+                                    {formatTime(item.startTime)}
+                                  </Tag>
+                                </Tooltip>
+                              )}
 
                               {/* Audio Time - Clickable */}
                               {item.audioTimeMs !== undefined && (

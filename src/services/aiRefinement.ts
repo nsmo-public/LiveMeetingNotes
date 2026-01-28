@@ -1288,12 +1288,16 @@ Giữ timestamp/audioTimeMs gốc. Chỉ trả về JSON array.`;
         const timestamp = segment.timestamp || '0:00';
         const audioTimeMs = this.parseTimestampToMs(timestamp);
 
+        // For Gemini transcription, we don't have actual wall-clock time
+        // Use current time as base, but mark it clearly
+        const now = new Date();
+        
         return {
           id: `gemini-${Date.now()}-${index}`,
           text: segment.text || '',
-          startTime: new Date().toLocaleString('vi-VN'),
-          endTime: new Date().toLocaleString('vi-VN'),
-          audioTimeMs,
+          startTime: now.toISOString(), // Use ISO format to avoid NaN display
+          endTime: now.toISOString(),   // Same time since we don't have duration
+          audioTimeMs, // This is the relative position in audio file (mm:ss)
           confidence: 1.0,
           speaker: segment.speaker || 'Unknown',
           isFinal: true,
