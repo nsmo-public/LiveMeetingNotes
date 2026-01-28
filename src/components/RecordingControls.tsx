@@ -51,6 +51,7 @@ interface Props {
   onNewTranscription: (result: TranscriptionResult) => void;
   onClearTranscriptions: () => void;
   transcriptions: TranscriptionResult[];
+  onSpeakerChange?: (lineIndex: number, speaker: string) => void; // Add handler for speaker changes
 }
 
 export const RecordingControls: React.FC<Props> = ({
@@ -74,7 +75,8 @@ export const RecordingControls: React.FC<Props> = ({
   transcriptionConfig,
   onNewTranscription,
   onClearTranscriptions,
-  transcriptions
+  transcriptions,
+  onSpeakerChange,
 }) => {
   const { message } = App.useApp();
   const [duration, setDuration] = useState<number>(0);
@@ -756,7 +758,7 @@ export const RecordingControls: React.FC<Props> = ({
           }
 
           // Export Word document
-          const finalTranscriptions = transcriptions?.filter(t => t.isFinal) || []; // Lọc các kết quả isFinal
+          const finalTranscriptions = transcriptions?.filter(t => t.isFinal) || [];
           const wordBlob = await WordExporter.createWordBlob(meetingInfo, notes, finalTranscriptions, speakersMap);
           await fileManager.saveWordFile(wordBlob, `${newProjectName}.docx`, undefined, true);
           // console.log('✓ Saved Word document');

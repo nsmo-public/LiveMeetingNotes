@@ -11,6 +11,7 @@ interface Props {
   onEditTranscription?: (id: string, newText: string, newSpeaker: string, newStartTime?: string, newAudioTimeMs?: number) => void;
   onAIRefine?: () => void;
   canRefineWithAI?: boolean;
+  onMarkUnsaved?: () => void; // Callback to mark data as unsaved when user starts editing
 }
 
 export const TranscriptionPanel: React.FC<Props> = ({
@@ -20,7 +21,8 @@ export const TranscriptionPanel: React.FC<Props> = ({
   onSeekAudio,
   onEditTranscription,
   onAIRefine,
-  canRefineWithAI
+  canRefineWithAI,
+  onMarkUnsaved
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState<number>(100); // Initial height (1/5 of 500px)
@@ -501,7 +503,10 @@ export const TranscriptionPanel: React.FC<Props> = ({
                                   <Input
                                     size="small"
                                     value={editSpeaker}
-                                    onChange={(e) => setEditSpeaker(e.target.value)}
+                                    onChange={(e) => {
+                                      setEditSpeaker(e.target.value);
+                                      onMarkUnsaved?.(); // Mark as unsaved when user types
+                                    }}
                                     placeholder="Người nói 1"
                                     style={{ width: '120px' }}
                                   />
@@ -511,7 +516,10 @@ export const TranscriptionPanel: React.FC<Props> = ({
                               {/* Edit Text */}
                               <Input.TextArea
                                 value={editText}
-                                onChange={(e) => setEditText(e.target.value)}
+                                onChange={(e) => {
+                                  setEditText(e.target.value);
+                                  onMarkUnsaved?.(); // Mark as unsaved when user types
+                                }}
                                 autoSize={{ minRows: 2, maxRows: 6 }}
                                 style={{ marginBottom: '8px' }}
                               />

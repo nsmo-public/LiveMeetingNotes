@@ -509,9 +509,18 @@ export const NotesEditor: React.FC<Props> = ({
       const oldLineEmpty = oldLine.trim().length === 0;
       const newLineHasContent = value.trim().length > 0;
       
+      console.log('⏰ Auto-timestamp check:', { 
+        index, 
+        oldLineEmpty, 
+        newLineHasContent, 
+        hasTimestamp: lineTimestamps.has(index),
+        isLiveMode 
+      });
+      
       if (oldLineEmpty && newLineHasContent && !lineTimestamps.has(index)) {
         // Save datetime with delay offset (người gõ note thường chậm hơn người nói)
         const currentDatetime = Date.now() - (timestampDelay * 1000);
+        console.log('✅ Creating timestamp:', { index, currentDatetime, delay: timestampDelay });
         
         const newLineTimestamps = new Map(lineTimestamps);
         newLineTimestamps.set(index, currentDatetime);
@@ -528,6 +537,47 @@ export const NotesEditor: React.FC<Props> = ({
     onNotesChange(lines.join(BLOCK_SEPARATOR));
     syncToParentTimestampMap(lines, lineTimestamps);
     debouncedSaveToHistory(); // Auto-save after typing
+  };
+  
+  // Handle speaker change with auto-timestamp
+  const handleSpeakerChange = (index: number, value: string) => {
+    const oldSpeaker = lineSpeakers.get(index) || '';
+    
+    // Update speakers map
+    const newSpeakers = new Map(lineSpeakers);
+    if (value) {
+      newSpeakers.set(index, value);
+    } else {
+      newSpeakers.delete(index);
+    }
+    setLineSpeakers(newSpeakers);
+    
+    // Auto-create timestamp: Only in Live Mode when speaker goes from empty to having content
+    if (isLiveMode) {
+      const oldSpeakerEmpty = oldSpeaker.trim().length === 0;
+      const newSpeakerHasContent = value.trim().length > 0;
+      
+      console.log('⏰ Auto-timestamp check (Speaker):', { 
+        index, 
+        oldSpeakerEmpty, 
+        newSpeakerHasContent, 
+        hasTimestamp: lineTimestamps.has(index),
+        isLiveMode 
+      });
+      
+      if (oldSpeakerEmpty && newSpeakerHasContent && !lineTimestamps.has(index)) {
+        // Save datetime with delay offset
+        const currentDatetime = Date.now() - (timestampDelay * 1000);
+        console.log('✅ Creating timestamp (Speaker):', { index, currentDatetime, delay: timestampDelay });
+        
+        const newLineTimestamps = new Map(lineTimestamps);
+        newLineTimestamps.set(index, currentDatetime);
+        setLineTimestamps(newLineTimestamps);
+        
+        const lines = notes.split('§§§');
+        syncToParentTimestampMap(lines, newLineTimestamps);
+      }
+    }
   };
   
   // Convert line-based timestamps to position-based for parent state
@@ -1053,40 +1103,9 @@ export const NotesEditor: React.FC<Props> = ({
                     }
                   }}
                   value={lineSpeakers.get(index) || ''}
-                  onChange={(e) => {
-                    const oldSpeaker = lineSpeakers.get(index) || '';
-                    const newSpeaker = e.target.value;
-                    
-                    const newSpeakers = new Map(lineSpeakers);
-                    if (newSpeaker) {
-                      newSpeakers.set(index, newSpeaker);
-                    } else {
-                      newSpeakers.delete(index);
-                    }
-                    setLineSpeakers(newSpeakers);
-                    
-                    // Auto-create timestamp: Only in Live Mode when speaker goes from empty to having content
-                    if (isLiveMode) {
-                      const oldSpeakerEmpty = oldSpeaker.trim().length === 0;
-                      const newSpeakerHasContent = newSpeaker.trim().length > 0;
-                      
-                      if (oldSpeakerEmpty && newSpeakerHasContent && !lineTimestamps.has(index)) {
-                        // Save datetime with delay offset (người gõ note thường chậm hơn người nói)
-                        const currentDatetime = Date.now() - (timestampDelay * 1000);
-                        
-                        const newLineTimestamps = new Map(lineTimestamps);
-                        newLineTimestamps.set(index, currentDatetime);
-                        setLineTimestamps(newLineTimestamps);
-                        
-                        // Sync to parent
-                        const BLOCK_SEPARATOR = '§§§';
-                        const lines = notes.split(BLOCK_SEPARATOR);
-                        syncToParentTimestampMap(lines, newLineTimestamps);
-                      }
-                    }
-                  }}
+                  onChange={(e) => handleSpeakerChange(index, e.target.value)}
                   onKeyDown={(e) => handleSpeakerKeyDown(index, e)}
-                  placeholder="Người nói"
+                  placeholder="Người nói ..."
                   autoSize={{ minRows: 1, maxRows: 10 }}
                   style={{
                     fontFamily: 'monospace',

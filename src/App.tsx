@@ -906,13 +906,23 @@ export const App: React.FC = () => {
     
     // Có dữ liệu chưa lưu nếu:
     // 1. Đang recording
-    // 2. Có audio/notes/transcriptions nhưng chưa save lần đầu
+    // 2. Có audio/notes/speakers/transcriptions nhưng chưa save lần đầu
     // 3. Đã save nhưng notes, speakers hoặc transcriptions bị sửa đổi
     const notesModified = isSaved && savedNotesSnapshot !== notes;
     const hasData = isRecording || 
-                    (!isSaved && (audioBlob !== null || notes.trim().length > 0 || transcriptions.length > 0)) || 
+                    (!isSaved && (audioBlob !== null || notes.trim().length > 0 || speakersMap.size > 0 || transcriptions.length > 0)) || 
                     notesModified || 
                     speakersModified;
+    
+    console.log('🔍 hasUnsavedChanges check:', { 
+      isSaved, 
+      speakersModified, 
+      notesModified, 
+      speakersMapSize: speakersMap.size, 
+      savedSpeakersSnapshotSize: savedSpeakersSnapshot.size,
+      hasData 
+    });
+    
     setHasUnsavedChanges(hasData);
   }, [isRecording, audioBlob, notes, speakersMap, transcriptions, isSaved, savedNotesSnapshot, savedSpeakersSnapshot]);
   
