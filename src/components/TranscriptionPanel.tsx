@@ -55,24 +55,37 @@ export const TranscriptionPanel: React.FC<Props> = ({
 
   // Auto-expand height based on content: min 100px (1/5 of 500), max 500px
   useEffect(() => {
+    // Skip update when editing to prevent interference with input
+    if (editingId) {
+      return;
+    }
+
     const updateHeight = () => {
       if (scrollRef.current && transcriptions.length > 0 && isExpanded) {
         const scrollHeight = scrollRef.current.scrollHeight;
         const newHeight = Math.min(scrollHeight + 80, 500); // +80 for header/footer, max 500px
-        setContentHeight(Math.max(newHeight, 100)); // Minimum 100px (1/5 of 500px)
+        const calculatedHeight = Math.max(newHeight, 100); // Minimum 100px (1/5 of 500px)
+        
+        // CRITICAL: Only update if value actually changed to prevent infinite loop
+        setContentHeight(prev => {
+          if (prev === calculatedHeight) {
+            return prev; // Don't trigger re-render if same value
+          }
+          return calculatedHeight;
+        });
       } else if (transcriptions.length === 0) {
-        setContentHeight(100); // Reset to minimum when empty
+        setContentHeight(prev => prev === 100 ? prev : 100); // Only update if different
       }
     };
 
     // Update immediately
     updateHeight();
 
-    // Update after DOM renders (important for loaded projects with many segments or after expand)
-    const timeoutId = setTimeout(updateHeight, 100);
-
-    return () => clearTimeout(timeoutId);
-  }, [transcriptions, isExpanded]);
+    // REMOVED setTimeout to prevent potential infinite loop
+    // Height will be recalculated on next transcriptions change
+    // const timeoutId = setTimeout(updateHeight, 100);
+    // return () => clearTimeout(timeoutId);
+  }, [transcriptions, isExpanded, editingId]);
 
   const formatTime = (isoTime: string): string => {
     const date = new Date(isoTime);

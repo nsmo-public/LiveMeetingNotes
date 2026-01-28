@@ -906,12 +906,15 @@ export const App: React.FC = () => {
     
     // Có dữ liệu chưa lưu nếu:
     // 1. Đang recording
-    // 2. Có audio/notes nhưng chưa save lần đầu
-    // 3. Đã save nhưng notes hoặc speakers bị sửa đổi
+    // 2. Có audio/notes/transcriptions nhưng chưa save lần đầu
+    // 3. Đã save nhưng notes, speakers hoặc transcriptions bị sửa đổi
     const notesModified = isSaved && savedNotesSnapshot !== notes;
-    const hasData = isRecording || (!isSaved && (audioBlob !== null || notes.trim().length > 0)) || notesModified || speakersModified;
+    const hasData = isRecording || 
+                    (!isSaved && (audioBlob !== null || notes.trim().length > 0 || transcriptions.length > 0)) || 
+                    notesModified || 
+                    speakersModified;
     setHasUnsavedChanges(hasData);
-  }, [isRecording, audioBlob, notes, speakersMap, isSaved, savedNotesSnapshot, savedSpeakersSnapshot]);
+  }, [isRecording, audioBlob, notes, speakersMap, transcriptions, isSaved, savedNotesSnapshot, savedSpeakersSnapshot]);
   
   // Helper function to compare two Maps
   function mapsAreEqual(map1: Map<number, string>, map2: Map<number, string>): boolean {
@@ -956,7 +959,7 @@ export const App: React.FC = () => {
         clearTimeout(autoSaveTimeoutRef.current);
       }
     };
-  }, [meetingInfo, notes, timestampMap, recordingStartTime, audioBlob, hasUnsavedChanges, isSaved]);
+  }, [meetingInfo, notes, timestampMap, recordingStartTime, audioBlob, transcriptions, rawTranscripts, hasUnsavedChanges, isSaved]);
 
   // Switch to live mode when starting a new recording
   useEffect(() => {
