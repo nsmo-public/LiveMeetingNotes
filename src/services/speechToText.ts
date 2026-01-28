@@ -180,9 +180,9 @@ export class SpeechToTextService {
             };
 
             onTranscription(transcriptionResult);
+            // KHÔNG reset segment - để ghép nhiều final results vào cùng 1 segment
+            // Chỉ reset lastInterimText để track text mới
             this.lastInterimText = '';
-            this.segmentStartTimeMs = 0; // Reset for next segment
-            this.segmentStartTimestamp = ''; // Reset for next segment
           } else {
             // Interim result - only send if text changed significantly
             // Apply throttling: only update if 200ms passed since last interim update
@@ -200,12 +200,16 @@ export class SpeechToTextService {
                   this.segmentStartTimestamp = new Date().toISOString();
                 }
                 
+                // Tính timestamp hiện tại cho draft segment (update liên tục)
+                const currentTimestamp = new Date().toISOString();
+                const currentAudioTimeMs = Date.now() - this.transcriptionStartTime;
+                
                 const transcriptionResult: TranscriptionResult = {
                   id: 'draft-segment-interim', // Use fixed ID for all interim results to prevent re-render
                   text: transcript,
-                  startTime: this.segmentStartTimestamp, // Use fixed timestamp from segment start
-                  endTime: this.segmentStartTimestamp,
-                  audioTimeMs: this.segmentStartTimeMs, // Use segment start time
+                  startTime: currentTimestamp, // ** Update liên tục theo thời gian thực **
+                  endTime: currentTimestamp,
+                  audioTimeMs: currentAudioTimeMs, // ** Update liên tục **
                   confidence: confidence,
                   speaker: 'Person1', // Default speaker
                   isFinal: false

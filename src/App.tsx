@@ -1214,8 +1214,7 @@ export const App: React.FC = () => {
           const finalResults = prev.filter(item => item.isFinal);
           const existingDraft = prev.find(item => !item.isFinal);
           
-          // Kiểm tra xem kết quả mới có phải là phiên bản mở rộng của kết quả cũ không
-          // Nếu kết quả cuối cùng chứa hầu hết text của kết quả mới hoặc ngược lại
+          // Kiểm tra xem có nên ghép text vào segment cuối không (cùng timestamp)
           if (finalResults.length > 0) {
             const lastResult = finalResults[finalResults.length - 1];
             
@@ -1223,44 +1222,28 @@ export const App: React.FC = () => {
             if (!lastResult.text) {
               // If last result has no text, replace it with new result
               finalResults[finalResults.length - 1] = result;
-              // Giữ draft segment nếu có
               return existingDraft ? [...finalResults, existingDraft] : finalResults;
             }
             
-            const newText = result.text.trim().toLowerCase();
-            const lastText = lastResult.text.trim().toLowerCase();
-            
-            // Case 1: Kết quả mới là phiên bản mở rộng của kết quả cũ
-            // VD: Cũ: "như vậy là", Mới: "như vậy là cái mẫu"
-            if (newText.startsWith(lastText) && newText.length > lastText.length) {
-              // console.log('🔄 Replacing with extended version:', {
-              //   old: lastText.substring(0, 50) + '...',
-              //   new: newText.substring(0, 50) + '...'
-              // });
-              // Thay thế kết quả cũ bằng kết quả mới NHƯNG GIỮ TẤT CẢ TIMESTAMP CŨ
+            // ** LOGIC MỚI: Nếu cùng startTime → ghép text vào segment cuối **
+            if (result.startTime === lastResult.startTime) {
+              // Ghép text: lastText + " " + newText
+              const updatedText = lastResult.text.trim() + ' ' + result.text.trim();
+              
               finalResults[finalResults.length - 1] = {
-                ...result,
-                startTime: lastResult.startTime, // Preserve original timestamp
+                ...lastResult,
+                text: updatedText,
+                confidence: Math.min(lastResult.confidence, result.confidence), // Take lower confidence
+                // Keep original timestamps (segment start)
+                startTime: lastResult.startTime,
                 endTime: lastResult.endTime,
-                audioTimeMs: lastResult.audioTimeMs // Preserve audio position
+                audioTimeMs: lastResult.audioTimeMs
               };
-              // Giữ draft segment nếu có
+              
               return existingDraft ? [...finalResults, existingDraft] : finalResults;
             }
             
-            // Case 2: Kết quả cũ là phiên bản mở rộng của kết quả mới → bỏ qua kết quả mới
-            // VD: Cũ: "như vậy là cái mẫu", Mới: "như vậy là"
-            if (lastText.startsWith(newText)) {
-              // console.log('⏭️ Skipping shorter duplicate');
-              return prev; // Giữ nguyên (bao gồm cả draft)
-            }
-            
-            // Case 3: Kiểm tra độ tương đồng cao (>80% giống nhau)
-            const similarity = calculateSimilarity(newText, lastText);
-            if (similarity > 0.8) {
-              // console.log('⏭️ Skipping similar result (similarity: ' + (similarity * 100).toFixed(0) + '%)');
-              return prev; // Giữ nguyên (bao gồm cả draft)
-            }
+            // ** Nếu startTime khác → tạo segment mới (logic cũ không cần thiết nữa) **
           }
           
           // Thêm kết quả final mới và giữ draft segment nếu có
