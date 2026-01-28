@@ -959,7 +959,8 @@ export const App: React.FC = () => {
           audioBlob,
           isSaved,
           transcriptions,
-          rawTranscripts
+          rawTranscripts,
+          speakersMap
         );
       }, 3000); // Auto-save 3 seconds after last change
     }
@@ -1026,6 +1027,7 @@ export const App: React.FC = () => {
       });
       setNotes(backup.notes);
       setTimestampMap(backup.timestampMap);
+      setSpeakersMap(backup.speakersMap);
       setRecordingStartTime(backup.recordingStartTime);
       if (backup.audioBlob) {
         setAudioBlob(backup.audioBlob);
@@ -1041,7 +1043,7 @@ export const App: React.FC = () => {
       }
       
       setShowBackupDialog(false);
-      // console.log('✅ Backup restored successfully');
+      console.log('✅ Backup restored successfully, speakersMap size:', backup.speakersMap.size);
     }
   };
   

@@ -75,8 +75,7 @@ export const RecordingControls: React.FC<Props> = ({
   transcriptionConfig,
   onNewTranscription,
   onClearTranscriptions,
-  transcriptions,
-  onSpeakerChange,
+  transcriptions
 }) => {
   const { message } = App.useApp();
   const [duration, setDuration] = useState<number>(0);

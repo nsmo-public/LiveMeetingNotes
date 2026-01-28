@@ -48,7 +48,6 @@ const TranscriptionItemComponent: React.FC<Props> = ({
   onDoubleClick,
   formatTime,
   formatAudioTime,
-  parseAudioTime,
   getConfidenceColor,
   getConfidenceLabel
 }) => {

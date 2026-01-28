@@ -15,6 +15,7 @@ interface BackupData {
   };
   notes: string;
   timestampMap: [number, number][]; // Array of [position, datetime] for serialization
+  speakersMap?: [number, string][]; // Array of [lineIndex, speaker] for serialization
   recordingStartTime: number;
   hasAudioBlob: boolean;
   isSaved: boolean;
@@ -96,17 +97,20 @@ export const saveBackup = async (
   audioBlob: Blob | null,
   isSaved: boolean,
   transcriptions?: any[],
-  rawTranscripts?: any[]
+  rawTranscripts?: any[],
+  speakersMap?: Map<number, string>
 ): Promise<void> => {
   try {
     // Convert Map to array for JSON serialization
     const timestampArray = Array.from(timestampMap.entries());
+    const speakersArray = speakersMap ? Array.from(speakersMap.entries()) : undefined;
     
     const backupData: BackupData = {
       timestamp: Date.now(),
       meetingInfo,
       notes,
       timestampMap: timestampArray,
+      speakersMap: speakersArray,
       recordingStartTime,
       hasAudioBlob: audioBlob !== null,
       isSaved,
@@ -133,6 +137,7 @@ export const loadBackup = async (): Promise<{
   meetingInfo: { projectName: string; location: string; participants: string };
   notes: string;
   timestampMap: Map<number, number>;
+  speakersMap: Map<number, string>;
   recordingStartTime: number;
   audioBlob: Blob | null;
   isSaved: boolean;
@@ -148,6 +153,7 @@ export const loadBackup = async (): Promise<{
     
     // Convert array back to Map
     const timestampMap = new Map(backupData.timestampMap);
+    const speakersMap = backupData.speakersMap ? new Map(backupData.speakersMap) : new Map();
     
     // Load audio blob if it exists
     let audioBlob: Blob | null = null;
@@ -159,6 +165,7 @@ export const loadBackup = async (): Promise<{
       meetingInfo: backupData.meetingInfo,
       notes: backupData.notes,
       timestampMap,
+      speakersMap,
       recordingStartTime: backupData.recordingStartTime,
       audioBlob,
       isSaved: backupData.isSaved,
