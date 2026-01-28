@@ -36,13 +36,14 @@ export class AIRefinementService {
 
   /**
    * Estimate token count for transcripts
+   * OPTIMIZED: Reduced prompt overhead after optimization (1000 -> 500 tokens)
    */
   private static estimateTokenCount(transcriptions: TranscriptionResult[]): number {
     // Rough estimation: 1 token ≈ 4 characters for English, ~2-3 for Vietnamese
     const totalChars = transcriptions.reduce((sum, t) => sum + t.text.length, 0);
     // Vietnamese: ~2.5 chars per token, English: ~4 chars per token
-    // Use 3 as average + overhead for prompt
-    const estimatedTokens = Math.ceil(totalChars / 3) + 1000; // +1000 for prompt overhead
+    // Use 3 as average + reduced overhead for optimized prompt
+    const estimatedTokens = Math.ceil(totalChars / 3) + 500; // +500 for compact prompt overhead (reduced from 1000)
     return estimatedTokens;
   }
 
@@ -392,24 +393,20 @@ export class AIRefinementService {
 
     try {
       // Prepare primary data from transcriptions (user-edited, highest reliability)
-      const transcriptData = transcriptions.map((item, index) => ({
-        index: index + 1,
+      // OPTIMIZED: Only send essential fields to reduce token usage
+      const transcriptData = transcriptions.map((item) => ({
         timestamp: item.startTime,
-        audioTime: item.audioTimeMs !== undefined ? this.formatAudioTime(item.audioTimeMs) : undefined,
-        text: item.text,
-        confidence: item.confidence,
-        type: item.isFinal ? 'final' : 'interim'
+        audioTimeMs: item.audioTimeMs,
+        text: item.text
       }));
 
       // Prepare supplementary raw data (if available)
+      // OPTIMIZED: Only send essential fields to reduce token usage
       const hasRawData = rawData && rawData.length > 0;
-      const rawMetadata = hasRawData ? rawData.map((item, index) => ({
-        index: index + 1,
+      const rawMetadata = hasRawData ? rawData.map((item) => ({
         timestamp: item.timestamp,
-        audioTime: item.audioTimeMs !== undefined ? this.formatAudioTime(item.audioTimeMs) : undefined,
-        text: item.text,
-        confidence: item.confidence,
-        type: item.isFinal ? 'final' : 'interim'
+        audioTimeMs: item.audioTimeMs,
+        text: item.text
       })) : null;
 
       // Create prompt
@@ -550,43 +547,29 @@ export class AIRefinementService {
    * @param rawMetadata - Optional raw data for reference
    */
   private static createRefinementPrompt(transcriptData: any[], rawMetadata: any[] | null): string {
-    const dataJson = JSON.stringify(transcriptData, null, 2);
+    // OPTIMIZED: Use compact JSON format (no pretty-print) to save tokens
+    const dataJson = JSON.stringify(transcriptData);
     const hasRawData = rawMetadata && rawMetadata.length > 0;
-    const rawDataJson = hasRawData ? JSON.stringify(rawMetadata, null, 2) : null;
+    const rawDataJson = hasRawData ? JSON.stringify(rawMetadata) : null;
 
-    return `Vai trò: Bạn là một thư ký chuyên nghiệp chuyên soạn thảo biên bản cuộc họp.
+    // OPTIMIZED: Shortened prompt to reduce token count while maintaining quality
+    return `Vai trò: Thư ký chuyên nghiệp soạn biên bản họp.
 
-Nhiệm vụ: Tôi sẽ cung cấp cho bạn văn bản đã chuyển từ giọng nói sang text (có thể có lỗi nhận diện, lặp từ, thiếu dấu câu). Hãy thực hiện:
+Nhiệm vụ: Chuẩn hóa văn bản speech-to-text:
+1. Sửa lỗi nhận diện từ
+2. Xóa từ đệm (à, ừm, thì, là, mà)
+3. Thêm dấu câu, viết hoa danh từ riêng
+4. Gộp các đoạn liên tiếp thành câu hoàn chỉnh
+5. Giữ nguyên nội dung, không thêm bớt ý
 
-1. Sửa lỗi nhận diện: Chỉnh lại các từ bị sai (ví dụ: 'thành viên hội đồng' thành 'Hội đồng thành viên').
-2. Loại bỏ từ thừa: Xóa các từ đệm như 'à', 'ừm', 'thì', 'là', 'mà' hoặc các đoạn bị lặp lại do người nói ngập ngừng.
-3. Thêm dấu câu & Viết hoa: Ngắt câu hợp lý, viết hoa các danh từ riêng và chức danh.
-4. Giữ nguyên nội dung: Tuyệt đối không được thêm bớt ý kiến hoặc thay đổi sắc thái của người nói.
-5. Gộp các đoạn liên quan: Các đoạn text liền nhau nếu cùng nội dung thì gộp lại thành một đoạn hoàn chỉnh.
+Output: CHỈ JSON array, KHÔNG markdown/giải thích
+Format: [{"timestamp":"...","audioTimeMs":123,"text":"..."},...]
 
-QUAN TRỌNG - Định dạng trả về: 
-- Chỉ trả về JSON array thuần túy, không có markdown code block, không có giải thích
-- Nếu text có xuống dòng, dấu ngoặc kép, hoặc ký tự đặc biệt, phải escape đúng chuẩn JSON
-- Format: [{"timestamp":"...","audioTimeMs":123,"text":"..."},...]
-
-Ví dụ output hợp lệ:
-[
-  {
-    "timestamp": "2026-01-27T10:30:45.123Z",
-    "audioTimeMs": 12345,
-    "text": "Nội dung đã được làm sạch và chuẩn hóa."
-  }
-]
-
-=== DỮ LIỆU CHÍNH (Độ tin cậy tuyệt đối - Có thể đã được người dùng chỉnh sửa) ===
+=== DỮ LIỆU CHÍNH ===
 ${dataJson}
-${hasRawData ? `\n=== DỮ LIỆU BỔ TRỢ (Raw output từ Google Web Speech API - Chỉ tham khảo) ===\n${rawDataJson}\n\nChú ý: Dữ liệu raw chỉ dùng để tham khảo thêm về confidence và metadata gốc. Ưu tiên sử dụng "Dữ liệu chính" vì có thể đã được người dùng edit trực tiếp.` : ''}
+${hasRawData ? `\n=== DỮ LIỆU BỔ TRỢ (tham khảo) ===\n${rawDataJson}` : ''}
 
-Lưu ý: 
-- Sử dụng văn bản từ "Dữ liệu chính" làm nguồn chính
-- Giữ nguyên timestamp và audioTimeMs từ dữ liệu gốc
-- Gộp các segment có nội dung liên tiếp thành câu hoàn chỉnh
-- CHỈ TRẢ VỀ JSON ARRAY, KHÔNG THÊM BẤT KỲ TEXT NÀO KHÁC`;
+Giữ timestamp/audioTimeMs gốc. Chỉ trả về JSON array.`;
   }
 
   /**
@@ -674,12 +657,12 @@ Lưu ý:
   /**
    * Format audio time in milliseconds to mm:ss
    */
-  private static formatAudioTime(ms: number): string {
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${String(seconds).padStart(2, '0')}`;
-  }
+  // private static formatAudioTime(ms: number): string {
+  //   const totalSeconds = Math.floor(ms / 1000);
+  //   const minutes = Math.floor(totalSeconds / 60);
+  //   const seconds = totalSeconds % 60;
+  //   return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  // }
 
   /**
    * Convert refined segments back to TranscriptionResult format

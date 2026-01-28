@@ -376,7 +376,6 @@ export const TranscriptionPanel: React.FC<Props> = ({
                               {item.isAIRefined && (
                                 <Tooltip title="Đoạn văn bản được xử lý bởi Gemini AI">
                                   <Tag 
-                                    icon={<RobotOutlined />} 
                                     style={{ 
                                       fontSize: '11px',
                                       background: 'linear-gradient(135deg, #667eea22 0%, #764ba222 100%)',
@@ -384,7 +383,7 @@ export const TranscriptionPanel: React.FC<Props> = ({
                                       color: '#667eea'
                                     }}
                                   >
-                                    AI
+                                    ✨ AI
                                   </Tag>
                                 </Tooltip>
                               )}
@@ -437,15 +436,6 @@ export const TranscriptionPanel: React.FC<Props> = ({
                                 <Tooltip title="Đã chỉnh sửa thủ công">
                                   <Tag color="orange" style={{ fontSize: '10px', margin: 0 }}>
                                     ✏️ Edited
-                                  </Tag>
-                                </Tooltip>
-                              )}
-                              
-                              {/* AI refined indicator */}
-                              {item.isAIRefined && (
-                                <Tooltip title="Đã chuẩn hóa bằng AI ✨">
-                                  <Tag color="purple" style={{ fontSize: '10px', margin: 0 }}>
-                                    🤖 AI
                                   </Tag>
                                 </Tooltip>
                               )}
