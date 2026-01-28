@@ -13,6 +13,7 @@ export class SpeechToTextService {
   private segmentCheckInterval: NodeJS.Timeout | null = null;
   private transcriptionStartTime: number = 0; // Track when transcription started
   private segmentStartTimeMs: number = 0; // Track when current segment started (for fixed audioTimeMs)
+  private segmentStartTimestamp: string = ''; // Track segment start timestamp (ISO format, fixed per segment)
   private interimDebounceTimer: NodeJS.Timeout | null = null; // Debounce timer for interim results
   private lastInterimUpdateTime: number = 0; // Track last interim update for throttling
 
@@ -118,6 +119,7 @@ export class SpeechToTextService {
       this.lastUpdateTime = Date.now();
       this.lastInterimUpdateTime = 0;
       this.segmentStartTimeMs = 0;
+      this.segmentStartTimestamp = '';
 
       // Start interval to check for segment completion
       const segmentTimeout = this.config?.segmentTimeout || 2500; // Increased to 2.5s for better grouping
@@ -132,7 +134,6 @@ export class SpeechToTextService {
           const confidence = result[0].confidence || 0;
           const isFinal = result.isFinal;
 
-          const now = new Date();
           this.lastUpdateTime = Date.now();
 
           // Set segment start time when first text arrives in new segment
@@ -140,6 +141,8 @@ export class SpeechToTextService {
             // Estimate audio start time by subtracting ~1 second (typical speech-to-text delay)
             this.segmentStartTimeMs = this.lastUpdateTime - this.transcriptionStartTime - 1000;
             if (this.segmentStartTimeMs < 0) this.segmentStartTimeMs = 0;
+            // Save fixed timestamp for this segment
+            this.segmentStartTimestamp = new Date().toISOString();
             // console.log('🎬 New segment started at audio time:', this.segmentStartTimeMs, 'ms');
           }
 
@@ -151,8 +154,8 @@ export class SpeechToTextService {
             const transcriptionResult: TranscriptionResult = {
               id: `transcription-${++this.transcriptionIdCounter}`,
               text: transcript.trim(),
-              startTime: now.toISOString(),
-              endTime: now.toISOString(),
+              startTime: this.segmentStartTimestamp,
+              endTime: this.segmentStartTimestamp,
               audioTimeMs: this.segmentStartTimeMs, // Fixed at segment start
               confidence: confidence,
               speaker: 'Person1', // Default speaker
@@ -162,13 +165,14 @@ export class SpeechToTextService {
             onTranscription(transcriptionResult);
             this.lastInterimText = ''; // Reset for next segment
             this.segmentStartTimeMs = 0; // Reset for next segment
+            this.segmentStartTimestamp = ''; // Reset for next segment
           } else if (isFinal) {
             // Natural final result
             const transcriptionResult: TranscriptionResult = {
               id: `transcription-${++this.transcriptionIdCounter}`,
               text: transcript.trim(),
-              startTime: now.toISOString(),
-              endTime: now.toISOString(),
+              startTime: this.segmentStartTimestamp,
+              endTime: this.segmentStartTimestamp,
               audioTimeMs: this.segmentStartTimeMs, // Fixed at segment start
               confidence: confidence,
               speaker: 'Person1', // Default speaker
@@ -178,6 +182,7 @@ export class SpeechToTextService {
             onTranscription(transcriptionResult);
             this.lastInterimText = '';
             this.segmentStartTimeMs = 0; // Reset for next segment
+            this.segmentStartTimestamp = ''; // Reset for next segment
           } else {
             // Interim result - only send if text changed significantly
             // Apply throttling: only update if 200ms passed since last interim update
@@ -193,8 +198,8 @@ export class SpeechToTextService {
                 const transcriptionResult: TranscriptionResult = {
                   id: `transcription-${this.transcriptionIdCounter + 1}`, // Use next ID but don't increment
                   text: transcript,
-                  startTime: now.toISOString(),
-                  endTime: now.toISOString(),
+                  startTime: this.segmentStartTimestamp, // Use fixed timestamp from segment start
+                  endTime: this.segmentStartTimestamp,
                   audioTimeMs: this.segmentStartTimeMs, // Use segment start time
                   confidence: confidence,
                   speaker: 'Person1', // Default speaker
@@ -300,8 +305,8 @@ export class SpeechToTextService {
       const transcriptionResult: TranscriptionResult = {
         id: `transcription-${++this.transcriptionIdCounter}`,
         text: this.lastInterimText.trim(),
-        startTime: new Date().toISOString(),
-        endTime: new Date().toISOString(),
+        startTime: this.segmentStartTimestamp,
+        endTime: this.segmentStartTimestamp,
         audioTimeMs: this.segmentStartTimeMs, // cố định thời gian tại đoạn bắt đầu
         confidence: 0.8, // Moderate confidence for timeout-forced segments
         speaker: 'Person1', // Default speaker
@@ -311,6 +316,7 @@ export class SpeechToTextService {
       onTranscription(transcriptionResult);
       this.lastInterimText = '';
       this.segmentStartTimeMs = 0; // Reset for next segment
+      this.segmentStartTimestamp = ''; // Reset for next segment
       this.lastUpdateTime = now;
     }
   }
