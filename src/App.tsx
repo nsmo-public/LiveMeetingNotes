@@ -35,6 +35,7 @@ export const App: React.FC = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [savedNotesSnapshot, setSavedNotesSnapshot] = useState<string>('');
   const [savedSpeakersSnapshot, setSavedSpeakersSnapshot] = useState<Map<number, string>>(new Map());
+  const [savedTranscriptionsSnapshot, setSavedTranscriptionsSnapshot] = useState<TranscriptionResult[]>([]);
   const [isLiveMode, setIsLiveMode] = useState(true); // true = live recording, false = loaded project
   const [showBackupDialog, setShowBackupDialog] = useState(false);
   const [backupAge, setBackupAge] = useState<number | null>(null);
@@ -904,6 +905,9 @@ export const App: React.FC = () => {
     // Check if speakers have been modified
     const speakersModified = isSaved && !mapsAreEqual(savedSpeakersSnapshot, speakersMap);
     
+    // Check if transcriptions have been modified
+    const transcriptionsModified = isSaved && !transcriptionsAreEqual(savedTranscriptionsSnapshot, transcriptions);
+    
     // Có dữ liệu chưa lưu nếu:
     // 1. Đang recording
     // 2. Có audio/notes/speakers/transcriptions nhưng chưa save lần đầu
@@ -912,25 +916,41 @@ export const App: React.FC = () => {
     const hasData = isRecording || 
                     (!isSaved && (audioBlob !== null || notes.trim().length > 0 || speakersMap.size > 0 || transcriptions.length > 0)) || 
                     notesModified || 
-                    speakersModified;
+                    speakersModified || 
+                    transcriptionsModified;
     
-    console.log('🔍 hasUnsavedChanges check:', { 
-      isSaved, 
-      speakersModified, 
-      notesModified, 
-      speakersMapSize: speakersMap.size, 
-      savedSpeakersSnapshotSize: savedSpeakersSnapshot.size,
-      hasData 
-    });
+    // console.log('🔍 hasUnsavedChanges check:', { 
+    //   isSaved, 
+    //   speakersModified, 
+    //   notesModified, 
+    //   speakersMapSize: speakersMap.size, 
+    //   savedSpeakersSnapshotSize: savedSpeakersSnapshot.size,
+    //   hasData 
+    // });
     
     setHasUnsavedChanges(hasData);
-  }, [isRecording, audioBlob, notes, speakersMap, transcriptions, isSaved, savedNotesSnapshot, savedSpeakersSnapshot]);
+  }, [isRecording, audioBlob, notes, speakersMap, transcriptions, isSaved, savedNotesSnapshot, savedSpeakersSnapshot, savedTranscriptionsSnapshot]);
   
   // Helper function to compare two Maps
   function mapsAreEqual(map1: Map<number, string>, map2: Map<number, string>): boolean {
     if (map1.size !== map2.size) return false;
     for (const [key, value] of map1) {
       if (map2.get(key) !== value) return false;
+    }
+    return true;
+  }
+  
+  // Helper function to compare two transcription arrays
+  function transcriptionsAreEqual(arr1: TranscriptionResult[], arr2: TranscriptionResult[]): boolean {
+    if (arr1.length !== arr2.length) return false;
+    for (let i = 0; i < arr1.length; i++) {
+      const t1 = arr1[i];
+      const t2 = arr2[i];
+      if (t1.id !== t2.id || t1.text !== t2.text || t1.speaker !== t2.speaker || 
+          t1.startTime !== t2.startTime || t1.audioTimeMs !== t2.audioTimeMs || 
+          t1.isManuallyEdited !== t2.isManuallyEdited) {
+        return false;
+      }
     }
     return true;
   }
@@ -951,10 +971,10 @@ export const App: React.FC = () => {
           participants: meetingInfo.attendees
         };
         
-        console.log('💾 Auto-backup saving with speakersMap:', { 
-          size: speakersMap.size, 
-          entries: Array.from(speakersMap.entries()) 
-        });
+        // console.log('💾 Auto-backup saving with speakersMap:', { 
+        //   size: speakersMap.size, 
+        //   entries: Array.from(speakersMap.entries()) 
+        // });
         
         saveBackup(
           meetingInfoForBackup,
@@ -1015,6 +1035,7 @@ export const App: React.FC = () => {
     setHasUnsavedChanges(false);
     setSavedNotesSnapshot(notes); // Save snapshot to detect future changes
     setSavedSpeakersSnapshot(new Map(speakersMap)); // Save speakers snapshot
+    setSavedTranscriptionsSnapshot([...transcriptions]); // Save transcriptions snapshot
     // Clear auto-backup after successful save
     clearBackup();
   };
@@ -1102,7 +1123,8 @@ export const App: React.FC = () => {
     setIsSaved(true);
     setHasUnsavedChanges(false);
     setSavedNotesSnapshot(loadedData.notes);
-    setSavedSpeakersSnapshot(new Map(loadedData.speakersMap)); // Save speakers snapshot
+    setSavedSpeakersSnapshot(new Map(loadedData.speakersMap));
+    setSavedTranscriptionsSnapshot(loadedData.transcriptions ? [...loadedData.transcriptions] : []); // Save transcriptions snapshot
     setIsLiveMode(false); // Switch to timestamp mode when loading project
   };
 

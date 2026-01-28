@@ -140,12 +140,12 @@ export const NotesEditor: React.FC<Props> = ({
     
     // Only sync if initialSpeakers changed externally (not from our own updates)
     if (isDifferentFromLastSync && isDifferentFromCurrent) {
-      console.log('🔄 Syncing lineSpeakers from initialSpeakers:', { 
-        initialSize: initialSpeakers.size, 
-        currentSize: lineSpeakersRef.current.size,
-        initialEntries: Array.from(initialSpeakers.entries()),
-        currentEntries: Array.from(lineSpeakersRef.current.entries())
-      });
+      // console.log('🔄 Syncing lineSpeakers from initialSpeakers:', { 
+      //   initialSize: initialSpeakers.size, 
+      //   currentSize: lineSpeakersRef.current.size,
+      //   initialEntries: Array.from(initialSpeakers.entries()),
+      //   currentEntries: Array.from(lineSpeakersRef.current.entries())
+      // });
       setLineSpeakers(new Map(initialSpeakers));
       lastSyncedInitialSpeakersRef.current = new Map(initialSpeakers);
     }
@@ -167,10 +167,10 @@ export const NotesEditor: React.FC<Props> = ({
       }
       
       if (isDifferent) {
-        console.log('🔔 Notifying parent about speaker changes:', { 
-          size: lineSpeakers.size, 
-          entries: Array.from(lineSpeakers.entries()) 
-        });
+        // console.log('🔔 Notifying parent about speaker changes:', { 
+        //   size: lineSpeakers.size, 
+        //   entries: Array.from(lineSpeakers.entries()) 
+        // });
         onSpeakersChange(lineSpeakers);
         lastNotifiedSpeakersRef.current = new Map(lineSpeakers);
       }
