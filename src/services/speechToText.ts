@@ -16,6 +16,8 @@ export class SpeechToTextService {
   private segmentStartTimestamp: string = ''; // Track segment start timestamp (ISO format, fixed per segment)
   private interimDebounceTimer: NodeJS.Timeout | null = null; // Debounce timer for interim results
   private lastInterimUpdateTime: number = 0; // Track last interim update for throttling
+  private lastErrorNotificationTime: number = 0; // Track last error notification to prevent spam
+  private errorNotificationCooldown: number = 10000; // 10 seconds cooldown between error notifications
 
   /**
    * Initialize the service with configuration
@@ -97,7 +99,7 @@ export class SpeechToTextService {
    * Try to use browser's Web Speech API (if available)
    */
   private tryWebSpeechAPI(
-    stream: MediaStream,
+    _stream: MediaStream,
     onTranscription: (result: TranscriptionResult) => void
   ): boolean {
     // Check if Web Speech API is available
@@ -227,24 +229,45 @@ export class SpeechToTextService {
       this.recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
 
+        const now = Date.now();
+        const canShowNotification = (now - this.lastErrorNotificationTime) > this.errorNotificationCooldown;
+
         if (event.error === 'no-speech') {
-          console.warn('No speech detected. Prompting user to check microphone.');
-          console.log('Không phát hiện thấy giọng nói. Vui lòng kiểm tra micrô hoặc thử lại.');
+          // No-speech is normal during silence, just log it
+          console.warn('No speech detected (normal during silence)');
         } else if (event.error === 'network') {
-          message.error('Lỗi kết nối mạng xảy ra. Chuyển sang sử dụng Google Cloud API...');
-          //alert('Network error occurred.');
-          if (this.hasGoogleCloudAPI()) {
-            console.log('Falling back to Google Cloud API...');
-            message.error('Falling back to Google Cloud API...');
-            this.startGoogleCloudTranscription(stream);
-          } else {
-            console.warn('Google Cloud API Key is not configured. Cannot fall back.');
+          // Network error on Edge/macOS - show throttled warning
+          console.warn('⚠️ Web Speech API network error (known issue on Edge/macOS)');
+          
+          if (canShowNotification) {
+            message.warning({
+              content: 'Web Speech API gặp sự cố nhỏ trên trình duyệt này. Khuyên dùng Chrome để có trải nghiệm tốt nhất.',
+              duration: 5,
+              key: 'network-error' // Use fixed key to replace previous notification
+            });
+            this.lastErrorNotificationTime = now;
           }
+          
+          // Recognition will auto-restart via onend handler
         } else if (event.error === 'not-allowed') {
-          console.error('Microphone access denied. Prompting user to allow access.');
-          alert('Vui lòng cấp quyền truy cập micrô trong cài đặt trình duyệt.');
+          console.error('Microphone access denied.');
+          if (canShowNotification) {
+            message.error({
+              content: 'Vui lòng cấp quyền truy cập micrô trong cài đặt trình duyệt.',
+              duration: 8
+            });
+            this.lastErrorNotificationTime = now;
+          }
         } else {
           console.error('Unhandled speech recognition error:', event.error);
+          if (canShowNotification) {
+            message.warning({
+              content: `Lỗi nhận diện giọng nói: ${event.error}`,
+              duration: 4,
+              key: 'speech-error'
+            });
+            this.lastErrorNotificationTime = now;
+          }
         }
       };
 
@@ -586,6 +609,7 @@ export class SpeechToTextService {
     this.lastInterimText = '';
     this.lastUpdateTime = 0;
     this.lastInterimUpdateTime = 0;
+    this.lastErrorNotificationTime = 0; // Reset error notification tracking
 
     // Stop MediaRecorder
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
