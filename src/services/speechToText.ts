@@ -18,6 +18,20 @@ export class SpeechToTextService {
   private lastInterimUpdateTime: number = 0; // Track last interim update for throttling
   private lastErrorNotificationTime: number = 0; // Track last error notification to prevent spam
   private errorNotificationCooldown: number = 10000; // 10 seconds cooldown between error notifications
+  private restartAttempts: number = 0; // Track restart attempts for recovery
+  private maxRestartAttempts: number = 3; // Max consecutive restarts before giving up
+  private restartDelayMs: number = 500; // Delay before restart (increases with attempts)
+  private isEdgeOnMac: boolean = false; // Flag for Edge on macOS
+
+  /**
+   * Detect if running on Edge browser on macOS
+   */
+  private detectEdgeOnMac(): boolean {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isEdge = userAgent.includes('edg/');
+    const isMac = userAgent.includes('mac os x') || navigator.platform.toLowerCase().includes('mac');
+    return isEdge && isMac;
+  }
 
   /**
    * Initialize the service with configuration
@@ -110,11 +124,20 @@ export class SpeechToTextService {
     }
 
     try {
+      // Detect Edge on macOS for platform-specific optimizations
+      this.isEdgeOnMac = this.detectEdgeOnMac();
+      
+      if (this.isEdgeOnMac) {
+        console.log('🔧 Detected Edge on macOS - applying compatibility optimizations');
+      }
+
       this.recognition = new SpeechRecognition();
       this.recognition.continuous = true;
       this.recognition.interimResults = true;
       this.recognition.lang = this.config?.languageCode || 'vi-VN';
-      this.recognition.maxAlternatives = this.config?.maxAlternatives || 1;
+      
+      // Use simpler config on Edge/macOS for better stability
+      this.recognition.maxAlternatives = this.isEdgeOnMac ? 1 : (this.config?.maxAlternatives || 1);
 
       // Reset tracking variables
       this.lastInterimText = '';
@@ -122,6 +145,7 @@ export class SpeechToTextService {
       this.lastInterimUpdateTime = 0;
       this.segmentStartTimeMs = 0;
       this.segmentStartTimestamp = '';
+      this.restartAttempts = 0; // Reset restart counter
 
       // Start interval to check for segment completion
       const segmentTimeout = this.config?.segmentTimeout || 2500; // Increased to 2.5s for better grouping
@@ -235,22 +259,45 @@ export class SpeechToTextService {
         if (event.error === 'no-speech') {
           // No-speech is normal during silence, just log it
           console.warn('No speech detected (normal during silence)');
+          // Reset restart attempts on benign errors
+          this.restartAttempts = 0;
         } else if (event.error === 'network') {
-          // Network error on Edge/macOS - show throttled warning
+          // Network error - common on Edge/macOS
           console.warn('⚠️ Web Speech API network error (known issue on Edge/macOS)');
           
-          if (canShowNotification) {
+          // Increment restart attempts
+          this.restartAttempts++;
+          
+          if (canShowNotification && this.restartAttempts <= 2) {
+            const browserHint = this.isEdgeOnMac ? ' Khuyên dùng Chrome trên macOS để có trải nghiệm tốt hơn.' : '';
             message.warning({
-              content: 'Web Speech API gặp sự cố nhỏ trên trình duyệt này. Khuyên dùng Chrome để có trải nghiệm tốt nhất.',
+              content: `Web Speech API gặp sự cố nhỏ.${browserHint}`,
               duration: 5,
-              key: 'network-error' // Use fixed key to replace previous notification
+              key: 'network-error'
             });
             this.lastErrorNotificationTime = now;
           }
           
-          // Recognition will auto-restart via onend handler
+          // On Edge/macOS, add delay before restart to prevent rapid cycling
+          if (this.isEdgeOnMac && this.restartAttempts > 0) {
+            // Exponential backoff: 500ms, 1000ms, 2000ms
+            const delay = Math.min(this.restartDelayMs * Math.pow(2, this.restartAttempts - 1), 2000);
+            console.log(`⏳ Waiting ${delay}ms before restart (attempt ${this.restartAttempts})`);
+            
+            // Force stop current recognition to clear state
+            if (this.recognition) {
+              try {
+                this.recognition.abort();
+              } catch (e) {
+                // Ignore abort errors
+              }
+            }
+          }
+          
+          // Recognition will auto-restart via onend handler with delay
         } else if (event.error === 'not-allowed') {
           console.error('Microphone access denied.');
+          this.restartAttempts = 0; // Don't retry on permission errors
           if (canShowNotification) {
             message.error({
               content: 'Vui lòng cấp quyền truy cập micrô trong cài đặt trình duyệt.',
@@ -258,8 +305,12 @@ export class SpeechToTextService {
             });
             this.lastErrorNotificationTime = now;
           }
+        } else if (event.error === 'aborted') {
+          // Aborted is intentional, don't show error
+          console.log('Recognition aborted (intentional)');
         } else {
           console.error('Unhandled speech recognition error:', event.error);
+          this.restartAttempts++;
           if (canShowNotification) {
             message.warning({
               content: `Lỗi nhận diện giọng nói: ${event.error}`,
@@ -274,15 +325,44 @@ export class SpeechToTextService {
       this.recognition.onend = () => {
         // Only restart if still transcribing and recognition object exists
         if (this.isTranscribing && this.recognition) {
-          try {
-            this.recognition.start();
-          } catch (e) {
-            console.error('Failed to restart recognition:', e);
-            // Don't show error message if we're intentionally stopping
-            if (this.isTranscribing) {
-              console.warn('⚠️ Unable to restart speech recognition');
-            }
+          // Check if we've exceeded max restart attempts
+          if (this.restartAttempts >= this.maxRestartAttempts) {
+            console.error(`❌ Max restart attempts (${this.maxRestartAttempts}) exceeded. Please refresh page or try Chrome.`);
+            message.error({
+              content: 'Nhận diện giọng nói gặp sự cố liên tục. Vui lòng làm mới trang hoặc thử dùng Chrome.',
+              duration: 10
+            });
+            this.stopTranscription();
+            return;
           }
+
+          // Calculate delay based on platform and restart attempts
+          const baseDelay = this.isEdgeOnMac ? this.restartDelayMs : 100;
+          const delay = this.restartAttempts > 0 
+            ? Math.min(baseDelay * Math.pow(2, this.restartAttempts - 1), 2000)
+            : baseDelay;
+
+          if (delay > 100) {
+            console.log(`⏳ Restart delay: ${delay}ms (attempt ${this.restartAttempts + 1})`);
+          }
+
+          setTimeout(() => {
+            if (this.isTranscribing && this.recognition) {
+              try {
+                this.recognition.start();
+                // Reset restart attempts on successful start
+                setTimeout(() => {
+                  this.restartAttempts = Math.max(0, this.restartAttempts - 1);
+                }, 3000); // Decay after 3 seconds of stable operation
+              } catch (e) {
+                console.error('Failed to restart recognition:', e);
+                this.restartAttempts++;
+                if (this.isTranscribing) {
+                  console.warn('⚠️ Unable to restart speech recognition');
+                }
+              }
+            }
+          }, delay);
         }
       };
 
@@ -610,6 +690,8 @@ export class SpeechToTextService {
     this.lastUpdateTime = 0;
     this.lastInterimUpdateTime = 0;
     this.lastErrorNotificationTime = 0; // Reset error notification tracking
+    this.restartAttempts = 0; // Reset restart counter
+    this.isEdgeOnMac = false; // Reset platform detection
 
     // Stop MediaRecorder
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
